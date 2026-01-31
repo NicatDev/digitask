@@ -1,0 +1,51 @@
+.siteHeader {
+    background: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    width: 100%;
+    padding: 0 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 1px 4px rgba(0, 21, 41, .08);
+
+    .headerLeft {
+        display: flex;
+        align-items: center;
+    }
+
+    .headerRight {
+        display: flex;
+        align-items: center;
+
+        .userDropdownTrigger {
+            cursor: pointer;
+
+            .username {
+                font-weight: 500;
+                display: none; // Hide name on small screens
+
+                @media (min-width: 768px) {
+                    display: inline-block;
+                }
+            }
+        }
+    }
+}
+
+.desktopTrigger {
+    display: none;
+
+    @media (min-width: 992px) {
+        display: inline-block;
+    }
+}
+
+.mobileTrigger {
+    display: inline-block;
+
+    @media (min-width: 992px) {
+        display: none;
+    }
+}

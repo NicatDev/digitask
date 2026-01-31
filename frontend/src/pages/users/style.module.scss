@@ -1,0 +1,18 @@
+.usersPage {
+    :global {
+        .ant-tabs-content {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+    }
+
+    @media (max-width: 576px) {
+        padding: 0 8px;
+
+        :global {
+            .ant-tabs-content {
+                max-height: calc(100vh - 160px); // More space on mobile
+            }
+        }
+    }
+}

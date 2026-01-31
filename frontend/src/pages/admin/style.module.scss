@@ -1,0 +1,10 @@
+.adminPage {
+    background: white;
+    min-height: 100%;
+
+    :global {
+        .ant-tabs-content-holder {
+            overflow-y: auto;
+        }
+    }
+}

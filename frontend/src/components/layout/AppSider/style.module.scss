@@ -1,0 +1,48 @@
+.desktopSider {
+    display: none;
+    overflow: auto;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 10;
+    border-right: 1px solid #f0f0f0;
+    background: #ffffff !important;
+
+    @media (min-width: 992px) {
+        display: block;
+    }
+
+    // Ant Design overrides
+    :global {
+        .ant-layout-sider-children {
+            background: #ffffff !important;
+        }
+    }
+}
+
+.logoContainer {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .logoImage {
+        width: 32px;
+        height: 32px;
+        margin-right: 10px;
+    }
+
+    .logoText {
+        color: #001529;
+        font-weight: bold;
+        font-size: 20px;
+        font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    &.mobile {
+        background: #fff;
+        border-bottom: 1px solid #f0f0f0;
+    }
+}

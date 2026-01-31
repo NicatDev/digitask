@@ -1,0 +1,72 @@
+.userModal {
+    :global {
+        .ant-modal-body {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .ant-modal-content {
+            padding: 24px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        :global {
+            .ant-modal {
+                max-width: 100%;
+                margin: 0;
+                top: 0;
+                padding-bottom: 0;
+            }
+
+            .ant-modal-content {
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                border-radius: 0;
+            }
+
+            .ant-modal-body {
+                flex: 1;
+                max-height: none !important;
+            }
+        }
+    }
+}
+
+.avatarContainer {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #f0f0f0;
+
+    &:hover .avatarOverlay {
+        opacity: 1;
+    }
+}
+
+.avatarOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 10;
+}
+
+.editIcon {
+    color: #fff;
+    font-size: 16px;
+}

@@ -1,0 +1,31 @@
+.responsiveModal {
+    :global {
+        .ant-modal-body {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+    }
+
+    @media (max-width: 576px) {
+        :global {
+            .ant-modal {
+                max-width: 100%;
+                margin: 0;
+                top: 0;
+                padding-bottom: 0;
+            }
+
+            .ant-modal-content {
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                border-radius: 0;
+            }
+
+            .ant-modal-body {
+                flex: 1;
+                max-height: none !important;
+            }
+        }
+    }
+}
