@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layout, Menu, Drawer } from 'antd';
-import { TeamOutlined, ShopOutlined, SettingOutlined, FileTextOutlined } from '@ant-design/icons';
+import { TeamOutlined, ShopOutlined, SettingOutlined, FileTextOutlined, GlobalOutlined, BellOutlined } from '@ant-design/icons';
 import styles from './style.module.scss';
 import logo from '../../../assets/logo.svg';
 
@@ -14,6 +14,11 @@ const AppSider = ({ collapsed, mobileOpen, setMobileOpen, location, navigate }) 
             label: 'Tapşırıqlar',
         },
         {
+            key: '/map',
+            icon: <GlobalOutlined />,
+            label: 'Xəritə',
+        },
+        {
             key: '/users',
             icon: <TeamOutlined />,
             label: 'İstifadəçilər',
@@ -22,6 +27,11 @@ const AppSider = ({ collapsed, mobileOpen, setMobileOpen, location, navigate }) 
             key: '/warehouse',
             icon: <ShopOutlined />,
             label: 'Anbar',
+        },
+        {
+            key: '/notifications',
+            icon: <BellOutlined />,
+            label: 'Bildirişlər',
         },
         {
             key: '/admin',

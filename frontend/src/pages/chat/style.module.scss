@@ -1,0 +1,136 @@
+.container {
+    height: calc(100vh - 134px);
+    /* Adjust based on header/padding */
+    display: flex;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: -16px;
+    /* Negate padding if main container has it, verify layout later */
+}
+
+.sidebar {
+    width: 300px;
+    border-right: 1px solid #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    background:white;
+
+    .header {
+        padding: 16px;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .groupList {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .groupItem {
+        cursor: pointer;
+        transition: background 0.3s;
+
+        &:hover {
+            background: #e6f7ff;
+        }
+
+        &.active {
+            background: #e6f7ff;
+            border-right: 2px solid #1890ff;
+        }
+    }
+}
+
+.chatArea {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+
+    .header {
+        padding: 16px;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 64px;
+    }
+
+    .messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: #f5f5f5;
+    }
+
+    .inputArea {
+        padding: 16px;
+        border-top: 1px solid #f0f0f0;
+        background: #fff;
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+    }
+}
+
+.messageBubble {
+    max-width: 60%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    position: relative;
+    font-size: 14px;
+
+    .sender {
+        font-size: 12px;
+        font-weight: bold;
+        margin-bottom: 4px;
+        color: #555;
+    }
+
+    .content {
+        word-wrap: break-word;
+    }
+
+    .time {
+        font-size: 10px;
+        opacity: 0.7;
+        text-align: right;
+        margin-top: 4px;
+    }
+}
+
+.myMessage {
+    align-self: flex-end;
+    background: #1890ff;
+    color: #fff;
+    border-bottom-right-radius: 2px;
+
+    .sender {
+        color: #e6f7ff;
+        display: none;
+        /* Don't show my name */
+    }
+}
+
+.otherMessage {
+    align-self: flex-start;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-bottom-left-radius: 2px;
+}
+
+.emptyState {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    flex-direction: column;
+    gap: 16px;
+}

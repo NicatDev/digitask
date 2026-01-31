@@ -1,5 +1,6 @@
 from django.db import models
 from rest_framework import viewsets, status
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -56,6 +57,19 @@ class TaskViewSet(viewsets.ModelViewSet):
         
         return queryset
     
+    def perform_create(self, serializer):
+        """Create task and trigger notification."""
+        task = serializer.save()
+        
+        # Create notification
+        from .notification import send_notification
+        send_notification(
+            title=f"Yeni Task: {task.title}",
+            message=f"Müştəri: {task.customer.full_name if task.customer else 'N/A'}",
+            notification_type='task_created',
+            related_task=task
+        )
+    
     def destroy(self, request, *args, **kwargs):
         """Soft delete - set is_active to False."""
         instance = self.get_object()
@@ -70,7 +84,13 @@ class TaskViewSet(viewsets.ModelViewSet):
         serializer = TaskStatusUpdateSerializer(data=request.data)
         
         if serializer.is_valid():
-            task.status = serializer.validated_data['status']
+            new_status = serializer.validated_data['status']
+            task.status = new_status
+            
+            # Auto-assign if status changes to IN_PROGRESS and no assignee
+            if new_status == Task.Status.IN_PROGRESS and not task.assigned_to:
+                task.assigned_to = request.user
+                
             task.save()
             return Response(TaskSerializer(task).data)
         
@@ -82,6 +102,7 @@ class TaskServiceViewSet(viewsets.ModelViewSet):
     queryset = TaskService.objects.all()
     serializer_class = TaskServiceSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     
     def get_queryset(self):
         queryset = TaskService.objects.select_related(

@@ -1,0 +1,91 @@
+.container {
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    padding: 16px;
+    gap: 16px;
+
+    @media (max-width: 768px) {
+        flex-direction: column;
+    }
+}
+
+.sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    max-height: calc(100vh - 140px);
+
+    @media (max-width: 768px) {
+        width: 100%;
+        max-height: 250px;
+    }
+}
+
+.mapWrapper {
+    flex: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    min-height: 400px;
+    z-index: 1;
+}
+
+.listItem {
+    &:hover {
+        background: #e6f7ff !important;
+    }
+}
+
+/* Custom Marker Icons */
+.userIcon {
+    background: transparent;
+    border: none;
+
+    div {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            background: #ccc;
+            overflow: hidden;
+
+            img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+        }
+
+        .statusDot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            border: 1px solid white;
+        }
+
+        .online {
+            background: #52c41a;
+        }
+
+        .offline {
+            background: #ff4d4f;
+        }
+    }
+}
+
+.warehouseIcon {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #faad14;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
+}

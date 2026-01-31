@@ -1,9 +1,46 @@
 import React, { useEffect, useState } from 'react';
+import UserLocationModal from './UserLocationModal';
 import { Table, Button, Modal, Form, Input, message, Popconfirm, Select, Switch, Avatar, Upload, Tooltip } from 'antd';
-import { UserOutlined, EditOutlined, UploadOutlined, FilterOutlined } from '@ant-design/icons';
+import { UserOutlined, EditOutlined, UploadOutlined, FilterOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { Grid } from 'antd';
 import styles from './style.module.scss';
 import { getUsers, createUser, updateUser, deleteUser, changeUserPassword, getRoles, getGroups, updateUserAvatar, updateUserStatus } from '../../../../axios/api/account';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix leaflet default marker icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// Set view on edit (used for view only here too)
+const SetViewOnEdit = ({ lat, lng }) => {
+    const map = useMap();
+    useEffect(() => {
+        const parsedLat = parseFloat(lat);
+        const parsedLng = parseFloat(lng);
+        if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+            map.setView([parsedLat, parsedLng], 15);
+        }
+    }, [lat, lng, map]);
+    return null;
+};
+
+// Fix map rendering in modal
+const MapResizer = () => {
+    const map = useMap();
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
+        return () => clearTimeout(timer);
+    }, [map]);
+    return null;
+};
 import { useAuth } from '../../../../context/AuthContext';
 import { handleApiError } from '../../../../utils/errorHandler';
 
@@ -25,7 +62,14 @@ const UserTab = ({ isActive }) => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+    const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+
+    // New Live Map Modal State
+    const [isLiveMapModalOpen, setIsLiveMapModalOpen] = useState(false);
+    const [liveMapUserId, setLiveMapUserId] = useState(null);
+
     const [editingItem, setEditingItem] = useState(null);
+    const [viewingCoords, setViewingCoords] = useState(null);
     const [form] = Form.useForm();
     const [passwordForm] = Form.useForm();
 
@@ -103,6 +147,15 @@ const UserTab = ({ isActive }) => {
         }
     }
 
+    const openMapModal = (record) => {
+        if (record.address_coordinates && record.address_coordinates.lat) {
+            setViewingCoords(record.address_coordinates);
+            setIsMapModalOpen(true);
+        } else {
+            message.info('Bu istifadəçinin ünvanı yoxdur');
+        }
+    };
+
     const getFilteredData = () => {
         return data.filter(item => {
             // Search
@@ -177,6 +230,25 @@ const UserTab = ({ isActive }) => {
         { title: 'Telefon', dataIndex: 'phone_number', key: 'phone_number' },
         { title: 'Rol', dataIndex: 'role_name', key: 'role_name' },
         { title: 'Qrup', dataIndex: 'group_name', key: 'group_name' },
+        {
+            title: 'Unvan',
+            key: 'map',
+            width: 80,
+            render: (_, record) => (
+                <EnvironmentOutlined
+                    style={{
+                        fontSize: 18,
+                        cursor: record.address_coordinates?.lat ? 'pointer' : 'default',
+                        color: record.address_coordinates?.lat ? '#1890ff' : '#ccc'
+                    }}
+                    onClick={() => {
+                        // Open advanced map modal
+                        setLiveMapUserId(record.id);
+                        setIsLiveMapModalOpen(true);
+                    }}
+                />
+            )
+        },
         {
             title: 'Aktiv',
             dataIndex: 'is_active',
@@ -369,7 +441,42 @@ const UserTab = ({ isActive }) => {
                     </Button>
                 </Form>
             </Modal>
-        </div>
+
+            <Modal
+                title="Ünvan"
+                open={isMapModalOpen}
+                onCancel={() => setIsMapModalOpen(false)}
+                footer={null}
+                width={700}
+                destroyOnClose
+            >
+                <div style={{ height: '400px', width: '100%' }}>
+                    <MapContainer
+                        center={viewingCoords ? [viewingCoords.lat, viewingCoords.lng] : [40.4093, 49.8671]}
+                        zoom={15}
+                        style={{ height: '100%', width: '100%' }}
+                    >
+                        <TileLayer
+                            attribution='&copy; OpenStreetMap contributors'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <MapResizer />
+                        {viewingCoords && (
+                            <>
+                                <Marker position={[viewingCoords.lat, viewingCoords.lng]} />
+                                <SetViewOnEdit lat={viewingCoords.lat} lng={viewingCoords.lng} />
+                            </>
+                        )}
+                    </MapContainer>
+                </div>
+            </Modal>
+
+            <UserLocationModal
+                open={isLiveMapModalOpen}
+                onCancel={() => setIsLiveMapModalOpen(false)}
+                userId={liveMapUserId}
+            />
+        </div >
     );
 };
 

@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: always
+
+  backend:
+    build: ./backend
+    command: daphne -b 0.0.0.0 -p 8000 core.asgi:application
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    environment:
+      - DEBUG=1
+      - SECRET_KEY=django-insecure-test-key
+      - ALLOWED_HOSTS=*
+      # Database settings if using postgres, otherwise sqlite default
+    # For now assuming sqlite as local dev default
+
+  # Frontend if needed, but user likely running manually via npm run dev

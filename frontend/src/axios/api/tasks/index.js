@@ -31,6 +31,10 @@ export const updateTaskStatus = (id, status) => axiosInstance.patch(`/tasks/task
 
 // TaskServices API
 export const getTaskServices = (params) => axiosInstance.get('/tasks/task-services/', { params });
-export const createTaskService = (data) => axiosInstance.post('/tasks/task-services/', data);
-export const updateTaskService = (id, data) => axiosInstance.patch(`/tasks/task-services/${id}/`, data);
+export const createTaskService = (data) => axiosInstance.post('/tasks/task-services/', data, {
+    headers: { 'Content-Type': undefined }
+});
+export const updateTaskService = (id, data) => axiosInstance.patch(`/tasks/task-services/${id}/`, data, {
+    headers: { 'Content-Type': undefined }
+});
 export const deleteTaskService = (id) => axiosInstance.delete(`/tasks/task-services/${id}/`);

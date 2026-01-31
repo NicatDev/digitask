@@ -21,10 +21,6 @@ class Task(models.Model):
     note = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.TODO)
     
-    # Map coordinates
-    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.SET_NULL, 
@@ -33,6 +29,8 @@ class Task(models.Model):
         blank=True
     )
     group = models.ForeignKey(Group, on_delete=models.PROTECT, related_name="tasks")
+    
+    services = models.ManyToManyField(Service, blank=True, related_name="tasks")
     
     is_active = models.BooleanField(default=True)  # Soft delete
     created_at = models.DateTimeField(auto_now_add=True)

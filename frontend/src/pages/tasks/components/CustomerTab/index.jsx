@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, message, Popconfirm, Switch, Select, Grid } from 'antd';
+import { Table, Button, Modal, Form, Input, message, Popconfirm, Switch, Select, Grid, Tooltip } from 'antd';
 import { FilterOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import styles from './style.module.scss';
@@ -42,6 +42,18 @@ const SetViewOnEdit = ({ lat, lng }) => {
     return null;
 };
 
+// Fix map rendering in modal
+const MapResizer = () => {
+    const map = useMap();
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
+        return () => clearTimeout(timer);
+    }, [map]);
+    return null;
+};
+
 const CustomerTab = ({ isActive }) => {
     const [data, setData] = useState([]);
     const [regions, setRegions] = useState([]);
@@ -59,6 +71,10 @@ const CustomerTab = ({ isActive }) => {
     const [editingItem, setEditingItem] = useState(null);
     const [selectedCoords, setSelectedCoords] = useState(null);
     const [form] = Form.useForm();
+
+    // Location View Modal state
+    const [locationModalOpen, setLocationModalOpen] = useState(false);
+    const [viewingCustomer, setViewingCustomer] = useState(null);
 
     // Debounce Search
     useEffect(() => {
@@ -168,14 +184,23 @@ const CustomerTab = ({ isActive }) => {
         {
             title: 'Xəritə',
             key: 'map',
-            width: 60,
+            width: 100,
             render: (_, record) => (
-                <EnvironmentOutlined
-                    style={{
-                        fontSize: 18,
-                        color: record.address_coordinates?.lat ? '#1890ff' : '#ccc'
-                    }}
-                />
+                <Tooltip title={record.address_coordinates?.lat ? 'Xəritədə göstər' : 'Koordinat yoxdur'}>
+                    <EnvironmentOutlined
+                        style={{
+                            fontSize: 18,
+                            color: record.address_coordinates?.lat ? '#1890ff' : '#ccc',
+                            cursor: record.address_coordinates?.lat ? 'pointer' : 'default'
+                        }}
+                        onClick={() => {
+                            if (record.address_coordinates?.lat) {
+                                setViewingCustomer(record);
+                                setLocationModalOpen(true);
+                            }
+                        }}
+                    />
+                </Tooltip>
             )
         },
         {
@@ -314,13 +339,14 @@ const CustomerTab = ({ isActive }) => {
                         <div className={styles.mapContainer}>
                             <MapContainer
                                 center={selectedCoords ? [selectedCoords.lat, selectedCoords.lng] : [40.4093, 49.8671]}
-                                zoom={selectedCoords ? 15 : 10}
+                                zoom={selectedCoords ? 15 : 15}
                                 style={{ height: '100%', width: '100%' }}
                             >
                                 <TileLayer
                                     attribution='&copy; OpenStreetMap contributors'
                                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                 />
+                                <MapResizer />
                                 <MapClickHandler onLocationSelect={setSelectedCoords} />
                                 {selectedCoords && (
                                     <>
@@ -341,6 +367,43 @@ const CustomerTab = ({ isActive }) => {
                         Təsdiqlə
                     </Button>
                 </Form>
+            </Modal>
+
+            {/* Customer Location View Modal */}
+            <Modal
+                title={`📍 ${viewingCustomer?.full_name || 'Müştəri'} - Ünvan`}
+                open={locationModalOpen}
+                onCancel={() => {
+                    setLocationModalOpen(false);
+                    setViewingCustomer(null);
+                }}
+                footer={null}
+                width={700}
+                destroyOnHidden
+            >
+                {viewingCustomer?.address_coordinates?.lat && (
+                    <div style={{ height: '450px', width: '100%' }}>
+                        <MapContainer
+                            center={[viewingCustomer.address_coordinates.lat, viewingCustomer.address_coordinates.lng]}
+                            zoom={15}
+                            style={{ height: '100%', width: '100%' }}
+                        >
+                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                            <MapResizer />
+                            <Marker position={[viewingCustomer.address_coordinates.lat, viewingCustomer.address_coordinates.lng]}>
+                                <Popup>
+                                    <strong>{viewingCustomer.full_name}</strong><br />
+                                    {viewingCustomer.address || 'Ünvan qeyd olunmayıb'}<br />
+                                    📞 {viewingCustomer.phone_number || '-'}
+                                </Popup>
+                            </Marker>
+                        </MapContainer>
+                        <div style={{ marginTop: 8, color: '#666' }}>
+                            <strong>Ünvan:</strong> {viewingCustomer.address || 'Qeyd olunmayıb'}<br />
+                            <strong>Koordinatlar:</strong> {viewingCustomer.address_coordinates.lat.toFixed(6)}, {viewingCustomer.address_coordinates.lng.toFixed(6)}
+                        </div>
+                    </div>
+                )}
             </Modal>
         </div>
     );

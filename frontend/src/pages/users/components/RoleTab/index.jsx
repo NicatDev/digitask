@@ -212,9 +212,7 @@ const RoleTab = ({ isActive }) => {
                         <Input.TextArea />
                     </Form.Item>
                     <Row gutter={16}>
-                        <Col span={12}>
-                            {/* Removed is_active switch from modal as requested */}
-                        </Col>
+
                         {/* Add detail permission toggles if needed here via logic, e.g. is_task_reader */}
                         <Col span={12}>
                             <Form.Item name="is_task_writer" label="Tapşırıq (Yazmaq)" valuePropName="checked">
@@ -223,6 +221,26 @@ const RoleTab = ({ isActive }) => {
                         </Col>
                         <Col span={12}>
                             <Form.Item name="is_task_reader" label="Tapşırıq (Oxumaq)" valuePropName="checked">
+                                <Switch />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="is_warehouse_writer" label="Anbar (Yazmaq)" valuePropName="checked">
+                                <Switch />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="is_warehouse_reader" label="Anbar (Oxumaq)" valuePropName="checked">
+                                <Switch />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="is_admin" label="Admin" valuePropName="checked">
+                                <Switch />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="is_super_admin" label="Super Admin" valuePropName="checked">
                                 <Switch />
                             </Form.Item>
                         </Col>

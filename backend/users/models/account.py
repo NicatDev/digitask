@@ -9,7 +9,12 @@ class Role(models.Model):
     # Permission flags (as per user input)
     is_task_reader = models.BooleanField(default=False)
     is_task_writer = models.BooleanField(default=False)
-    # Add other permission flags if they appeared in the file, otherwise stick to these or generic
+
+    is_warehouse_reader = models.BooleanField(default=False)
+    is_warehouse_writer = models.BooleanField(default=False)
+
+    is_admin = models.BooleanField(default=False)
+    is_super_admin = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -19,4 +24,6 @@ class User(AbstractUser):
     group = models.ForeignKey('users.Group', on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
+    address_coordinates = models.JSONField(blank=True, null=True)
     # Soft delete for User is usually handled by is_active=False
