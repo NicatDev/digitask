@@ -4,6 +4,7 @@ import ServiceTab from './components/ServiceTab';
 import ColumnTab from './components/ColumnTab';
 
 import styles from './style.module.scss';
+import TaskTypeTab from './components/TaskTypeTab';
 
 const { Title } = Typography;
 
@@ -20,6 +21,11 @@ const Admin = () => {
             key: '2',
             label: 'Sütunlar',
             children: <ColumnTab isActive={activeTab === '2'} />,
+        },
+        {
+            key: '3',
+            label: 'Tapşırıq Növləri',
+            children: <TaskTypeTab isActive={activeTab === '3'} />,
         },
     ];
 

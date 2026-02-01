@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     'warehouse',
     'tasks',
     'chat',
+    'dashboard',
+    'performance',
 ]
 
 ASGI_APPLICATION = 'core.asgi.application'

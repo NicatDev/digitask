@@ -1,7 +1,8 @@
 from rest_framework import serializers
-from ..models import Task, TaskService, TaskServiceValue, Column, Service, TaskProduct, TaskDocument
+from ..models import Task, TaskService, TaskServiceValue, Column, Service, TaskProduct, TaskDocument, TaskType
 from .product import TaskProductSerializer
 from .document import TaskDocumentSerializer
+from .task_type import TaskTypeSerializer
 
 
 class TaskServiceValueSerializer(serializers.ModelSerializer):
@@ -141,6 +142,8 @@ class TaskSerializer(serializers.ModelSerializer):
     task_services = TaskServiceSerializer(many=True, read_only=True)
     task_products = TaskProductSerializer(many=True, read_only=True)
     task_documents = TaskDocumentSerializer(many=True, read_only=True)
+    task_type_details = TaskTypeSerializer(source='task_type', read_only=True)
+    task_type = serializers.PrimaryKeyRelatedField(queryset=TaskType.objects.filter(is_active=True), allow_null=True, required=False)
     services = serializers.PrimaryKeyRelatedField(many=True, queryset=Service.objects.all(), required=False)
 
     class Meta:
@@ -151,6 +154,7 @@ class TaskSerializer(serializers.ModelSerializer):
             'title', 'note', 'status', 'status_display',
             'assigned_to', 'assigned_to_name',
             'group', 'group_name', 'region_name', 'is_active', 
+            'task_type', 'task_type_details',
             'services', 'task_services', 'task_products', 'task_documents', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

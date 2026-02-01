@@ -1,6 +1,6 @@
 import React from 'react';
-import { Table, Button, Switch, Tooltip, Popconfirm, message } from 'antd';
-import { EnvironmentOutlined } from '@ant-design/icons';
+import { Table, Button, Switch, Tooltip, Popconfirm, message, Space } from 'antd';
+import { EnvironmentOutlined, FileAddOutlined } from '@ant-design/icons';
 import { TASK_STATUSES } from '../../constants';
 import styles from '../../style.module.scss'; // Assuming we keep style.module.scss in TaskTab root or move it
 
@@ -27,13 +27,50 @@ const TaskTable = ({
     onQuestionnaire,
     onDelete,
     onAccept,
-    onViewLocation
+    onViewLocation, // (record) => open map
+    onViewDetail, // (record) => open detail modal
+
+    onProductSelect, // (record) => open product selection modal
+    onDocumentAdd, // (record) => open document modal
+    disableActions = false
 }) => {
 
     const tableColumns = [
         { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-        { title: 'Başlıq', dataIndex: 'title', key: 'title' },
+        {
+            title: 'Başlıq',
+            dataIndex: 'title',
+            key: 'title',
+            render: (text, record) => (
+                <a onClick={() => onViewDetail(record)}>{text}</a>
+            )
+        },
+        {
+            title: 'Növ',
+            dataIndex: 'task_type_details',
+            key: 'task_type',
+            width: 140,
+            render: (type, record) => type ? (
+                <span style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    backgroundColor: type.color,
+                    padding: '4px 12px',
+                    borderRadius: '6px',
+                    color: '#fff',
+                    boxShadow: `0 4px 10px ${type.color}66`,
+                    fontWeight: 500,
+                    textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                    width: 'fit-content'
+                }}>
+                    {type.name}
+                </span>
+            ) : '-'
+        },
         { title: 'Müştəri', dataIndex: 'customer_name', key: 'customer_name' },
+        { title: 'Əlaqə No', dataIndex: 'customer_phone', key: 'customer_phone' },
+        { title: 'Qeydiyyat No', dataIndex: 'customer_register_number', key: 'customer_register_number' },
         { title: 'Qrup', dataIndex: 'group_name', key: 'group_name' },
         {
             title: 'Servislər',
@@ -123,6 +160,7 @@ const TaskTable = ({
         {
             title: 'Status',
             dataIndex: 'status',
+            width: 125,
             key: 'status',
             render: (status) => (
                 <span className={`${styles.statusBadge} ${styles[status]}`}>
@@ -144,17 +182,22 @@ const TaskTable = ({
         {
             title: 'Əməliyyat',
             key: 'action',
+            width: 420,
             render: (_, record) => (
-                <>
-                    <Button type="link" onClick={() => onEdit(record)}>Düzəliş et</Button>
-                    <Button type="link" onClick={() => onStatusChange(record)}>Statusu dəyiş</Button>
-                    <Button type="link" onClick={() => onQuestionnaire(record)}>
-                        {record.task_services && record.task_services.length > 0 ? "Anketə bax" : "Anket doldur"}
+                <Space size={[6, 6]} wrap>
+                    <Button type="link" size="small" onClick={() => onEdit(record)} disabled={disableActions}>Düzəliş</Button>
+                    <Button type="link" size="small" onClick={() => onStatusChange(record)}>Status</Button>
+                    <Button type="link" size="small" onClick={() => onQuestionnaire(record)}>Anket</Button>
+                    <Button type="link" size="small" onClick={() => onProductSelect(record)}>
+                        Məhsul ({record.task_products?.length || 0})
                     </Button>
-                    <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => onDelete(record.id)}>
-                        <Button type="link" danger>Sil</Button>
+                    <Button type="link" size="small" onClick={() => onDocumentAdd(record)}>
+                        <FileAddOutlined /> ({record.task_documents?.length || 0})
+                    </Button>
+                    <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => onDelete(record.id)} disabled={disableActions}>
+                        <Button type="link" size="small" danger disabled={disableActions}>Sil</Button>
                     </Popconfirm>
-                </>
+                </Space>
             ),
         },
     ];
@@ -165,7 +208,7 @@ const TaskTable = ({
             dataSource={data}
             rowKey="id"
             loading={loading}
-            scroll={{ x: 1000 }}
+            scroll={{ x: 1600 }}
             pagination={{ pageSize: 10 }}
         />
     );

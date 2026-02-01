@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import styles from './style.module.scss';
 import GroupList from './components/GroupList';
 import ChatArea from './components/ChatArea';
-import { getChatGroups, createChatGroup, getChatGroupDetails, getGroupMessages, addGroupMember, removeGroupMember, markMessagesRead } from '../../axios/api/chat';
+import { getChatGroups, createChatGroup, getChatGroupDetails, getGroupMessages, addGroupMember, removeGroupMember, markMessagesRead, deleteChatGroup } from '../../axios/api/chat';
 import { getMe } from '../../axios/api/account';
 import { message } from 'antd';
 
@@ -197,6 +197,25 @@ const ChatPage = () => {
         }
     };
 
+    const handleDeleteGroup = async (groupId) => {
+        try {
+            await deleteChatGroup(groupId);
+            message.success("Qrup silindi");
+            fetchGroups();
+            if (selectedGroupId === groupId) {
+                setSelectedGroupId(null);
+                setMessages([]);
+            }
+        } catch (e) {
+            // Check for 403 or other errors. Backend sends 403 if not owner.
+            if (e.response && e.response.status === 403) {
+                message.error(e.response.data.detail || "Bu qrupu silmək üçün icazəniz yoxdur");
+            } else {
+                message.error("Xəta baş verdi");
+            }
+        }
+    };
+
     const selectedGroup = groups.find(g => g.id === selectedGroupId);
 
     return (
@@ -206,6 +225,7 @@ const ChatPage = () => {
                 selectedGroupId={selectedGroupId}
                 onSelectGroup={setSelectedGroupId}
                 onAddGroup={handleAddGroup}
+                onDeleteGroup={handleDeleteGroup}
             />
             <ChatArea
                 group={selectedGroupDetails}

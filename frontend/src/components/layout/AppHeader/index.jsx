@@ -10,12 +10,12 @@ import {
     DownOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../../context/AuthContext';
-import { useNotifications } from '../../../context/NotificationContext';
+import { hasPermission } from '../../../utils/permissions';
 import styles from './style.module.scss';
 
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-
+import { useNotifications } from '../../../context/NotificationContext';
 const { Header } = Layout;
 const { Text } = Typography;
 
@@ -62,6 +62,7 @@ const AppHeader = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
             key: 'profile',
             label: 'Profil',
             icon: <UserOutlined />,
+            onClick: () => navigate('/profile')
         },
         {
             key: 'logout',

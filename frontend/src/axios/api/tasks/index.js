@@ -21,6 +21,12 @@ export const createCustomer = (data) => axiosInstance.post('/tasks/customers/', 
 export const updateCustomer = (id, data) => axiosInstance.patch(`/tasks/customers/${id}/`, data);
 export const deleteCustomer = (id) => axiosInstance.delete(`/tasks/customers/${id}/`);
 
+// Task Types API
+export const getTaskTypes = () => axiosInstance.get('/tasks/task-types/');
+export const createTaskType = (data) => axiosInstance.post('/tasks/task-types/', data);
+export const updateTaskType = (id, data) => axiosInstance.patch(`/tasks/task-types/${id}/`, data);
+export const deleteTaskType = (id) => axiosInstance.delete(`/tasks/task-types/${id}/`);
+
 // Tasks API
 export const getTasks = (params) => axiosInstance.get('/tasks/tasks/', { params });
 export const getTask = (id) => axiosInstance.get(`/tasks/tasks/${id}/`);
@@ -38,3 +44,34 @@ export const updateTaskService = (id, data) => axiosInstance.patch(`/tasks/task-
     headers: { 'Content-Type': undefined }
 });
 export const deleteTaskService = (id) => axiosInstance.delete(`/tasks/task-services/${id}/`);
+
+// TaskProducts API
+export const getTaskProducts = (params) => axiosInstance.get('/tasks/task-products/', { params });
+export const createTaskProducts = (taskId, products) => axiosInstance.post('/tasks/task-products/bulk-create/', {
+    task_id: taskId,
+    products
+});
+export const deleteTaskProduct = (id) => axiosInstance.delete(`/tasks/task-products/${id}/`);
+
+// TaskDocuments API
+export const getTaskDocuments = (params) => axiosInstance.get('/tasks/task-documents/', { params });
+export const createTaskDocument = (data) => {
+    const formData = new FormData();
+    formData.append('title', data.title);
+    formData.append('file', data.file);
+    if (data.task) formData.append('task', data.task);
+    if (data.warehouse) formData.append('warehouse', data.warehouse);
+    if (data.stock_movement) formData.append('stock_movement', data.stock_movement);
+    return axiosInstance.post('/tasks/task-documents/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
+};
+export const deleteTaskDocument = (id) => axiosInstance.delete(`/tasks/task-documents/${id}/`);
+export const archiveDocument = (id, shelfId) => axiosInstance.post(`/tasks/task-documents/${id}/archive/`, { shelf: shelfId });
+
+// Shelves API
+export const getShelves = (params) => axiosInstance.get('/tasks/shelves/', { params });
+export const getShelf = (id) => axiosInstance.get(`/tasks/shelves/${id}/`);
+export const createShelf = (data) => axiosInstance.post('/tasks/shelves/', data);
+export const updateShelf = (id, data) => axiosInstance.patch(`/tasks/shelves/${id}/`, data);
+export const deleteShelf = (id) => axiosInstance.delete(`/tasks/shelves/${id}/`);

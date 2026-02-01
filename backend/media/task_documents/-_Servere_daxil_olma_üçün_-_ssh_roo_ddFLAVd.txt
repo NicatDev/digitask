@@ -1,0 +1,21 @@
+- Servere daxil olma üçün - ssh root@ip-address => Sifre
+- Yeni yaradilmis servere daxil olduqda yuklemeyi unutma:
+    sudo apt install python3 python3-pip python3-venv
+    sudo apt install nginx
+    sudo apt install gunicorn
+    sudo apt install git
+    sudo apt install docker
+- Serverde lazim olan sade commandlar:
+    cd .. - geri qayitmaq ucun
+    cd folder_name - foldere daxil olmaq ucun
+    rm folder_name - folderi silmek ucun
+    touch file_name - yeni file yaratmaq ucun
+    nano file_name - file uzerinde deyisiklik etmek ve yaradib deyismek
+    cat file_name - file i oxumaq ucun
+    mkdir folder_name - folder yaratmaq ucun
+- Gunicorn ve nginx fayllarinin oldugu pathler
+	etc/systemd/system - gunicorn.service ve gunicorn.socket fayllarinin oldugu path
+	etc/nginx/sites-available ve etc/nginx/sites-enabled - nginx fayllarinin oldugu yer ve her ikisindeki conf fayllari eyni adda ve eyni parametrlerde olmalidir. adini projectin adi ile eyni ve ya istediyin kimi her ikisi eyni olmaq serti ile qoymaq olar.
+- Gunicorn ve nginx commandlar:
+	Projeni ilk defe ise salmaq ucun: sudo systemctl enable gunicorn_name, sudo systemctl start gunicorn.name, sudo systemctl restart nginx
+	

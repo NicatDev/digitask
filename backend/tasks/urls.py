@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ServiceViewSet, ColumnViewSet, CustomerViewSet, TaskViewSet, TaskServiceViewSet, NotificationViewSet, TaskProductViewSet, TaskDocumentViewSet, ShelfViewSet
+from .views import ServiceViewSet, ColumnViewSet, CustomerViewSet, TaskViewSet, TaskServiceViewSet, NotificationViewSet, TaskProductViewSet, TaskDocumentViewSet, ShelfViewSet, TaskTypeViewSet
 
 router = DefaultRouter()
 router.register(r'services', ServiceViewSet)
@@ -12,6 +12,7 @@ router.register(r'task-products', TaskProductViewSet)
 router.register(r'task-documents', TaskDocumentViewSet)
 router.register(r'shelves', ShelfViewSet)
 router.register(r'notifications', NotificationViewSet, basename='notification')
+router.register(r'task-types', TaskTypeViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

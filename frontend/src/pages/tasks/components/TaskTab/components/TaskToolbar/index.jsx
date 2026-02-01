@@ -1,9 +1,10 @@
 import React from 'react';
-import { Input, Button, Select, Grid } from 'antd';
+import { Input, Button, Select, Grid, DatePicker } from 'antd';
 import { FilterOutlined } from '@ant-design/icons';
 import { TASK_STATUSES } from '../../constants';
 
 const { Option } = Select;
+const { RangePicker } = DatePicker;
 
 const TaskToolbar = ({
     searchText,
@@ -14,10 +15,16 @@ const TaskToolbar = ({
     setStatusFilter,
     customerFilter,
     setCustomerFilter,
+    assigneeFilter,
+    setAssigneeFilter,
+    dateRange,
+    setDateRange,
     isActiveFilter,
     setIsActiveFilter,
     customers,
-    onNewTask
+    users,
+    onNewTask,
+    disableCreate = false
 }) => {
     const screens = Grid.useBreakpoint();
 
@@ -32,7 +39,7 @@ const TaskToolbar = ({
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: screens.md ? 'auto' : '100%' }}>
                     <Input.Search
-                        placeholder="Axtar..."
+                        placeholder="Başlıq, Qeydiyyat No..."
                         value={searchText}
                         onChange={(e) => setSearchText(e.target.value)}
                         style={{ width: screens.md ? 250 : '100%' }}
@@ -83,6 +90,27 @@ const TaskToolbar = ({
                                 ))}
                             </Select>
                             <Select
+                                placeholder="İcraçı"
+                                style={{ width: screens.md ? 150 : '100%' }}
+                                allowClear
+                                showSearch
+                                optionFilterProp="children"
+                                value={assigneeFilter}
+                                onChange={setAssigneeFilter}
+                            >
+                                {users.map(u => (
+                                    <Option key={u.id} value={u.id}>
+                                        {u.first_name} {u.last_name}
+                                    </Option>
+                                ))}
+                            </Select>
+                            <RangePicker
+                                placeholder={['Başlanğıc', 'Son']}
+                                style={{ width: screens.md ? 220 : '100%' }}
+                                value={dateRange}
+                                onChange={setDateRange}
+                            />
+                            <Select
                                 placeholder="Aktivlik"
                                 style={{ width: screens.md ? 100 : '100%' }}
                                 allowClear={false}
@@ -95,7 +123,7 @@ const TaskToolbar = ({
                             </Select>
                         </>
                     )}
-                    <Button type="primary" block={!screens.md} onClick={onNewTask}>
+                    <Button type="primary" block={!screens.md} onClick={onNewTask} disabled={disableCreate}>
                         Yeni Tapşırıq
                     </Button>
                 </div>

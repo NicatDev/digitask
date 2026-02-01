@@ -17,6 +17,7 @@ class Task(models.Model):
         REJECTED = "rejected", "Rədd edildi"
     
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name="tasks")
+    task_type = models.ForeignKey('TaskType', on_delete=models.SET_NULL, related_name="tasks", null=True, blank=True)
     title = models.CharField(max_length=255)
     note = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.TODO)

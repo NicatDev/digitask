@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Input, Select, Grid, Tag, DatePicker } from 'antd';
-import { FilterOutlined } from '@ant-design/icons';
+import { Table, Button, Input, Select, Grid, Tag, DatePicker, Space } from 'antd';
+import { FilterOutlined, FileAddOutlined } from '@ant-design/icons';
 import styles from './style.module.scss';
 import { getStockMovements, getWarehouses } from '../../../../axios/api/warehouse/index';
 import { handleApiError } from '../../../../utils/errorHandler';
-// import moment from 'moment'; // If needed for date formatting
+import StockMovementDocumentModal from '../StockMovementDocumentModal';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
@@ -20,6 +20,10 @@ const HistoryTab = ({ isActive }) => {
     const [typeFilter, setTypeFilter] = useState(null);
     const [warehouseFilter, setWarehouseFilter] = useState(null);
     const [showFilters, setShowFilters] = useState(false);
+
+    // Document Modal
+    const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+    const [selectedMovement, setSelectedMovement] = useState(null);
 
     const screens = Grid.useBreakpoint();
 
@@ -41,11 +45,8 @@ const HistoryTab = ({ isActive }) => {
             if (typeFilter) params.movement_type = typeFilter;
             if (warehouseFilter) params.warehouse = warehouseFilter;
 
-            // Note: Backend doesn't support date range filtering explicitly yet via 'created_at__gte' unless we added django-filter DateFromToRangeFilter
-            // For now we will rely on client side or basic exact match, but let's stick to supported filters.
-
             const response = await getStockMovements(params);
-            setData(response.data.results || []); // Pagination result
+            setData(response.data.results || []);
         } catch (error) {
             console.error(error);
             handleApiError(error, 'Tarixçəni yükləmək mümkün olmadı');
@@ -82,6 +83,11 @@ const HistoryTab = ({ isActive }) => {
         return <Tag color={t.color}>{t.text}</Tag>;
     };
 
+    const openDocModal = (record) => {
+        setSelectedMovement(record);
+        setIsDocModalOpen(true);
+    };
+
     const columns = [
         { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
         {
@@ -107,6 +113,22 @@ const HistoryTab = ({ isActive }) => {
         { title: 'İcraçı', dataIndex: 'created_by_name', key: 'created_by_name' },
         { title: 'Referans', dataIndex: 'reference_no', key: 'reference_no' },
         { title: 'Səbəb', dataIndex: 'reason', key: 'reason', ellipsis: true },
+        {
+            title: 'Əməliyyat',
+            key: 'action',
+            fixed: 'right',
+            width: 100,
+            render: (_, record) => (
+                <Button
+                    type="link"
+                    size="small"
+                    icon={<FileAddOutlined />}
+                    onClick={() => openDocModal(record)}
+                >
+                    Sənəd
+                </Button>
+            )
+        }
     ];
 
     return (
@@ -177,8 +199,15 @@ const HistoryTab = ({ isActive }) => {
                 dataSource={data}
                 rowKey="id"
                 loading={loading}
-                scroll={{ x: 1200 }}
+                scroll={{ x: 1400 }}
                 pagination={{ pageSize: 10 }}
+            />
+
+            <StockMovementDocumentModal
+                open={isDocModalOpen}
+                onCancel={() => setIsDocModalOpen(false)}
+                stockMovement={selectedMovement}
+                onSuccess={fetchData}
             />
         </div>
     );

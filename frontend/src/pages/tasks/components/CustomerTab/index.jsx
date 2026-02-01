@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, message, Popconfirm, Switch, Select, Grid, Tooltip } from 'antd';
-import { FilterOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Table, Button, Modal, Form, Input, message, Popconfirm, Switch, Select, Grid, Tooltip, AutoComplete, Spin } from 'antd';
+import { FilterOutlined, EnvironmentOutlined, SearchOutlined } from '@ant-design/icons';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -29,14 +29,14 @@ const MapClickHandler = ({ onLocationSelect }) => {
     return null;
 };
 
-// Set view on edit
-const SetViewOnEdit = ({ lat, lng }) => {
+// Set view on coordinates change
+const SetViewOnCoords = ({ lat, lng }) => {
     const map = useMap();
     useEffect(() => {
         const parsedLat = parseFloat(lat);
         const parsedLng = parseFloat(lng);
         if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
-            map.setView([parsedLat, parsedLng], 15);
+            map.setView([parsedLat, parsedLng], 16);
         }
     }, [lat, lng, map]);
     return null;
@@ -76,6 +76,11 @@ const CustomerTab = ({ isActive }) => {
     const [locationModalOpen, setLocationModalOpen] = useState(false);
     const [viewingCustomer, setViewingCustomer] = useState(null);
 
+    // OSM Address Search state
+    const [addressSearchText, setAddressSearchText] = useState('');
+    const [addressOptions, setAddressOptions] = useState([]);
+    const [addressSearching, setAddressSearching] = useState(false);
+
     // Debounce Search
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -83,6 +88,51 @@ const CustomerTab = ({ isActive }) => {
         }, 500);
         return () => clearTimeout(timer);
     }, [searchText]);
+
+    // OSM Nominatim Address Search
+    const searchAddress = useCallback(async (query) => {
+        if (!query || query.length < 3) {
+            setAddressOptions([]);
+            return;
+        }
+
+        setAddressSearching(true);
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=az`
+            );
+            const data = await response.json();
+            const options = data.map(item => ({
+                value: item.display_name,
+                label: item.display_name,
+                lat: parseFloat(item.lat),
+                lon: parseFloat(item.lon)
+            }));
+            setAddressOptions(options);
+        } catch (error) {
+            console.error('OSM search error:', error);
+        } finally {
+            setAddressSearching(false);
+        }
+    }, []);
+
+    // Debounce address search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (addressSearchText) {
+                searchAddress(addressSearchText);
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [addressSearchText, searchAddress]);
+
+    const handleAddressSelect = (value, option) => {
+        if (option.lat && option.lon) {
+            setSelectedCoords({ lat: option.lat, lng: option.lon });
+            // Ünvan field-ə yazılsın
+            form.setFieldValue('address', value);
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -135,6 +185,8 @@ const CustomerTab = ({ isActive }) => {
             form.resetFields();
             setEditingItem(null);
             setSelectedCoords(null);
+            setAddressSearchText('');
+            setAddressOptions([]);
             fetchData();
         } catch (error) {
             handleApiError(error, 'Əməliyyat uğursuz oldu');
@@ -171,6 +223,17 @@ const CustomerTab = ({ isActive }) => {
         } else {
             setSelectedCoords(null);
         }
+        setAddressSearchText('');
+        setAddressOptions([]);
+        setIsModalOpen(true);
+    };
+
+    const openNewModal = () => {
+        setEditingItem(null);
+        form.resetFields();
+        setSelectedCoords(null);
+        setAddressSearchText('');
+        setAddressOptions([]);
         setIsModalOpen(true);
     };
 
@@ -284,12 +347,7 @@ const CustomerTab = ({ isActive }) => {
                                 </Select>
                             </>
                         )}
-                        <Button type="primary" block={!screens.md} onClick={() => {
-                            setEditingItem(null);
-                            form.resetFields();
-                            setSelectedCoords(null);
-                            setIsModalOpen(true);
-                        }}>
+                        <Button type="primary" block={!screens.md} onClick={openNewModal}>
                             Yeni Müştəri
                         </Button>
                     </div>
@@ -335,11 +393,31 @@ const CustomerTab = ({ isActive }) => {
                         <Input />
                     </Form.Item>
 
-                    <Form.Item label="Xəritədə Ünvan (klik edin)">
+                    {/* OSM Address Search */}
+                    <Form.Item label="Ünvan Axtarışı (OSM)">
+                        <AutoComplete
+                            style={{ width: '100%' }}
+                            options={addressOptions}
+                            onSearch={setAddressSearchText}
+                            onSelect={handleAddressSelect}
+                            placeholder="Ünvan yazın və seçin..."
+                            notFoundContent={addressSearching ? <Spin size="small" /> : null}
+                        >
+                            <Input
+                                prefix={<SearchOutlined />}
+                                suffix={addressSearching ? <Spin size="small" /> : null}
+                            />
+                        </AutoComplete>
+                        <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+                            Ünvan yazın, nəticələrdən seçin - xəritədə point avtomatik yerləşəcək
+                        </div>
+                    </Form.Item>
+
+                    <Form.Item label="Xəritədə Ünvan (klik edin və ya yuxarıdan axtarın)">
                         <div className={styles.mapContainer}>
                             <MapContainer
                                 center={selectedCoords ? [selectedCoords.lat, selectedCoords.lng] : [40.4093, 49.8671]}
-                                zoom={selectedCoords ? 15 : 15}
+                                zoom={selectedCoords ? 16 : 12}
                                 style={{ height: '100%', width: '100%' }}
                             >
                                 <TileLayer
@@ -351,7 +429,7 @@ const CustomerTab = ({ isActive }) => {
                                 {selectedCoords && (
                                     <>
                                         <Marker position={[selectedCoords.lat, selectedCoords.lng]} />
-                                        <SetViewOnEdit lat={selectedCoords.lat} lng={selectedCoords.lng} />
+                                        <SetViewOnCoords lat={selectedCoords.lat} lng={selectedCoords.lng} />
                                     </>
                                 )}
                             </MapContainer>

@@ -5,3 +5,4 @@ from .notification import NotificationViewSet
 from .product import TaskProductViewSet
 from .shelf import ShelfViewSet
 from .document import TaskDocumentViewSet
+from .task_type import TaskTypeViewSet

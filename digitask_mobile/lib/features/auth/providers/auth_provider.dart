@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../core/services/api_service.dart';
-import '../../core/constants/app_constants.dart';
+import '../../../core/services/api_service.dart';
+import '../../../core/constants/app_constants.dart';
 import 'package:dio/dio.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }

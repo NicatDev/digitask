@@ -14,7 +14,8 @@ const TaskModal = ({
     customers,
     groups,
     users,
-    services
+    services,
+    taskTypes = []
 }) => {
     return (
         <Modal
@@ -28,12 +29,26 @@ const TaskModal = ({
         >
             <Form form={form} onFinish={onFinish} layout="vertical">
                 <Row gutter={16}>
-                    <Col span={12}>
+                    <Col span={8}>
                         <Form.Item name="title" label="Başlıq" rules={[{ required: true }]}>
                             <Input />
                         </Form.Item>
                     </Col>
-                    <Col span={12}>
+                    <Col span={8}>
+                        <Form.Item name="task_type" label="Növ">
+                            <Select allowClear>
+                                {taskTypes.map(t => (
+                                    <Option key={t.id} value={t.id}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: t.color }} />
+                                            {t.name}
+                                        </div>
+                                    </Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                    </Col>
+                    <Col span={8}>
                         <Form.Item name="customer" label="Müştəri" rules={[{ required: true }]}>
                             <Select showSearch optionFilterProp="children">
                                 {customers.filter(c => c.is_active).map(c => (
@@ -89,7 +104,7 @@ const TaskModal = ({
                     Təsdiqlə
                 </Button>
             </Form>
-        </Modal>
+        </Modal >
     );
 };
 

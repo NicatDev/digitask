@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Form, message, Grid } from 'antd';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { getTasks, createTask, updateTask, deleteTask, updateTaskStatus, getServices, getColumns, getCustomers } from '../../../../axios/api/tasks';
+import { getTasks, createTask, updateTask, deleteTask, updateTaskStatus, getServices, getColumns, getCustomers, getTaskTypes } from '../../../../axios/api/tasks';
 import { getGroups, getUsers } from '../../../../axios/api/account';
 import { handleApiError } from '../../../../utils/errorHandler';
+import { useAuth } from '../../../../context/AuthContext';
+import { hasPermission, PERMISSIONS } from '../../../../utils/permissions';
 
 // Components
 import TaskModal from './TaskModal';
@@ -13,6 +15,9 @@ import TaskToolbar from './components/TaskToolbar';
 import TaskTable from './components/TaskTable';
 import StatusModal from './components/StatusModal';
 import MapModal from './components/MapModal';
+import ProductSelectionModal from './components/ProductSelectionModal';
+import DocumentModal from './components/DocumentModal';
+import TaskDetailModal from './components/TaskDetailModal';
 
 // Styles
 import styles from './style.module.scss'; // Kept primarily for Status Badge styles used in Table
@@ -32,13 +37,19 @@ const TaskTab = ({ isActive }) => {
     const [users, setUsers] = useState([]);
     const [services, setServices] = useState([]);
     const [columns, setColumns] = useState([]);
+    const [taskTypes, setTaskTypes] = useState([]);
     const [loading, setLoading] = useState(false);
+    const { user } = useAuth();
+
+
 
     // Filter States
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
     const [statusFilter, setStatusFilter] = useState(null);
     const [customerFilter, setCustomerFilter] = useState(null);
+    const [assigneeFilter, setAssigneeFilter] = useState(null);
+    const [dateRange, setDateRange] = useState(null);
     const [isActiveFilter, setIsActiveFilter] = useState('all'); // 'all'=all, true=active, false=inactive
     const [showFilters, setShowFilters] = useState(false);
 
@@ -47,11 +58,23 @@ const TaskTab = ({ isActive }) => {
     const [isQuestionnaireModalOpen, setIsQuestionnaireModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [currentTaskForQuestionnaire, setCurrentTaskForQuestionnaire] = useState(null);
-
+    const [selectedCoords, setSelectedCoords] = useState(null);
     // Viewing Location MAP (customer's address)
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
     const [viewingCoords, setViewingCoords] = useState(null);
     const [viewingCustomerName, setViewingCustomerName] = useState('');
+
+    // Product Selection Modal
+    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+    const [currentTaskForProducts, setCurrentTaskForProducts] = useState(null);
+
+    // Document Modal
+    const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
+    const [currentTaskForDocuments, setCurrentTaskForDocuments] = useState(null);
+
+    // Detail Modal
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [selectedTaskForDetail, setSelectedTaskForDetail] = useState(null);
 
     const [form] = Form.useForm();
     // statusForm removed, StatusModal handles its own form or passes value.
@@ -68,13 +91,14 @@ const TaskTab = ({ isActive }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [tasksRes, customersRes, groupsRes, usersRes, servicesRes, columnsRes] = await Promise.all([
+            const [tasksRes, customersRes, groupsRes, usersRes, servicesRes, columnsRes, taskTypesRes] = await Promise.all([
                 getTasks(),
                 getCustomers(),
                 getGroups(),
                 getUsers(),
                 getServices(),
-                getColumns()
+                getColumns(),
+                getTaskTypes()
             ]);
             setData(tasksRes.data.results || tasksRes.data);
             setCustomers(customersRes.data.results || customersRes.data);
@@ -82,6 +106,7 @@ const TaskTab = ({ isActive }) => {
             setUsers(usersRes.data.results || usersRes.data);
             setServices(servicesRes.data.results || servicesRes.data);
             setColumns(columnsRes.data.results || columnsRes.data);
+            setTaskTypes(taskTypesRes.data.results || taskTypesRes.data);
         } catch (error) {
             console.error(error);
             handleApiError(error, 'Məlumatları yükləmək mümkün olmadı');
@@ -187,16 +212,33 @@ const TaskTab = ({ isActive }) => {
         }
     };
 
+    const openProductModal = (record) => {
+        setCurrentTaskForProducts(record);
+        setIsProductModalOpen(true);
+    };
+
     const getFilteredData = () => {
         return data.filter(item => {
             const lowerSearch = debouncedSearchText.toLowerCase();
             const matchesSearch = item.title.toLowerCase().includes(lowerSearch) ||
-                (item.customer_name && item.customer_name.toLowerCase().includes(lowerSearch));
+                (item.customer_name && item.customer_name.toLowerCase().includes(lowerSearch)) ||
+                (item.customer_register_number && item.customer_register_number.toLowerCase().includes(lowerSearch));
 
             const matchesStatus = statusFilter ? item.status === statusFilter : true;
             const matchesCustomer = customerFilter ? item.customer === customerFilter : true;
+            const matchesAssignee = assigneeFilter ? item.assigned_to === assigneeFilter : true;
             const matchesActive = isActiveFilter !== 'all' ? item.is_active === isActiveFilter : true;
-            return matchesSearch && matchesStatus && matchesCustomer && matchesActive;
+
+            // Date range filter
+            let matchesDate = true;
+            if (dateRange && dateRange[0] && dateRange[1]) {
+                const itemDate = new Date(item.created_at).setHours(0, 0, 0, 0);
+                const fromDate = dateRange[0].startOf('day').valueOf();
+                const toDate = dateRange[1].endOf('day').valueOf();
+                matchesDate = itemDate >= fromDate && itemDate <= toDate;
+            }
+
+            return matchesSearch && matchesStatus && matchesCustomer && matchesAssignee && matchesActive && matchesDate;
         });
     };
 
@@ -218,10 +260,16 @@ const TaskTab = ({ isActive }) => {
                 setStatusFilter={setStatusFilter}
                 customerFilter={customerFilter}
                 setCustomerFilter={setCustomerFilter}
+                assigneeFilter={assigneeFilter}
+                setAssigneeFilter={setAssigneeFilter}
+                dateRange={dateRange}
+                setDateRange={setDateRange}
                 isActiveFilter={isActiveFilter}
                 setIsActiveFilter={setIsActiveFilter}
                 customers={customers}
+                users={users}
                 onNewTask={handleNewTask}
+                disableCreate={!hasPermission(user, PERMISSIONS.TASK_WRITER)}
             />
 
             <TaskTable
@@ -229,12 +277,22 @@ const TaskTab = ({ isActive }) => {
                 loading={loading}
                 services={services}
                 onEdit={openEditModal}
+                disableActions={!hasPermission(user, PERMISSIONS.TASK_WRITER)}
                 onStatusChange={openStatusModal}
                 onToggleActive={handleToggleActive}
                 onQuestionnaire={openQuestionnaireModal}
                 onDelete={handleDelete}
                 onAccept={handleAcceptTask}
                 onViewLocation={handleViewLocation}
+                onViewDetail={(record) => {
+                    setSelectedTaskForDetail(record);
+                    setIsDetailModalOpen(true);
+                }}
+                onProductSelect={openProductModal}
+                onDocumentAdd={(record) => {
+                    setCurrentTaskForDocuments(record);
+                    setIsDocumentModalOpen(true);
+                }}
             />
 
             <TaskModal
@@ -247,6 +305,7 @@ const TaskTab = ({ isActive }) => {
                 groups={groups}
                 users={users}
                 services={services}
+                taskTypes={taskTypes}
             />
 
             <QuestionnaireModal
@@ -276,6 +335,27 @@ const TaskTab = ({ isActive }) => {
                 onCancel={() => setIsMapModalOpen(false)}
                 title={viewingCustomerName}
                 coords={viewingCoords}
+            />
+
+            <ProductSelectionModal
+                open={isProductModalOpen}
+                onCancel={() => setIsProductModalOpen(false)}
+                task={currentTaskForProducts}
+                onSuccess={fetchData}
+            />
+
+            <DocumentModal
+                open={isDocumentModalOpen}
+                onCancel={() => setIsDocumentModalOpen(false)}
+                task={currentTaskForDocuments}
+                onSuccess={fetchData}
+            />
+
+            <TaskDetailModal
+                open={isDetailModalOpen}
+                onCancel={() => setIsDetailModalOpen(false)}
+                task={selectedTaskForDetail}
+                services={services}
             />
         </div>
     );

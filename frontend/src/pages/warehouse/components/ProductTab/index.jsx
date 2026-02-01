@@ -4,6 +4,8 @@ import { FilterOutlined, SwapOutlined, PlusOutlined, MinusOutlined, InfoCircleOu
 import styles from './style.module.scss';
 import { getProducts, createProduct, updateProduct, deleteProduct, adjustStock, getWarehouses, getInventory } from '../../../../axios/api/warehouse/index';
 import { handleApiError } from '../../../../utils/errorHandler';
+import { useAuth } from '../../../../context/AuthContext';
+import { hasPermission, PERMISSIONS } from '../../../../utils/permissions';
 
 const { Option } = Select;
 
@@ -12,6 +14,7 @@ const ProductTab = ({ isActive }) => {
     const [loading, setLoading] = useState(false);
     const [warehouses, setWarehouses] = useState([]);
     const [inventory, setInventory] = useState([]);
+    const { user } = useAuth();
 
     // Filter States
     const [searchText, setSearchText] = useState('');
@@ -156,19 +159,6 @@ const ProductTab = ({ isActive }) => {
     };
 
     const columns = [
-        {
-            title: 'Şəkil',
-            dataIndex: 'image',
-            key: 'image',
-            width: 80,
-            render: (image) => image ? (
-                <img
-                    src={image}
-                    alt="Product"
-                    style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }}
-                />
-            ) : '-'
-        },
         { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
         { title: 'Ad', dataIndex: 'name', key: 'name', width: 150 },
         { title: 'Brand', dataIndex: 'brand', key: 'brand' },
@@ -232,6 +222,7 @@ const ProductTab = ({ isActive }) => {
                         setIsStockModalOpen(true);
                         stockForm.resetFields();
                     }}
+                    disabled={!hasPermission(user, PERMISSIONS.WAREHOUSE_WRITER)}
                 >
                     Stock
                 </Button>
@@ -313,11 +304,16 @@ const ProductTab = ({ isActive }) => {
                                 </Select>
                             </>
                         )}
-                        <Button type="primary" block={!screens.md} onClick={() => {
-                            setEditingItem(null);
-                            form.resetFields();
-                            setIsProductModalOpen(true);
-                        }}>
+                        <Button
+                            type="primary"
+                            block={!screens.md}
+                            onClick={() => {
+                                setEditingItem(null);
+                                form.resetFields();
+                                setIsProductModalOpen(true);
+                            }}
+                            disabled={!hasPermission(user, PERMISSIONS.WAREHOUSE_WRITER)}
+                        >
                             Yeni Məhsul
                         </Button>
                     </div>
@@ -343,22 +339,6 @@ const ProductTab = ({ isActive }) => {
                 className={styles.responsiveModal}
             >
                 <Form form={form} onFinish={onProductFinish} layout="vertical">
-                    <Row gutter={16}>
-                        <Col span={24}>
-                            <Form.Item name="image" label="Link (URL)">
-                                <Input placeholder="Şəkil URL" />
-                            </Form.Item>
-                            {/* Ideally this should be a File Upload, but for now assuming logic uses URL or File handling needs to be checked. 
-                                Backend model has ImageField. React code creating needs Upload component to send valid file.
-                                The current hook uses createProduct(values). 
-                                If it just sends JSON, ImageField won't work with simple string unless it's base64 or backend handles url.
-                                Let's check createProduct api. It likely expects FormData for file upload.
-                                For now, I will NOT change the Form to Upload separately unless instructed, 
-                                but I'll add the field columns first as requested. user said 'anbarda mehsullarin butun fieldlerin elave et table-da gorunsun' 
-                                Table is priority.
-                            */}
-                        </Col>
-                    </Row>
                     <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item name="name" label="Ad" rules={[{ required: true }]}>
@@ -451,10 +431,14 @@ const ProductTab = ({ isActive }) => {
             >
                 <Form form={stockForm} onFinish={onStockFinish} layout="vertical">
                     <Form.Item name="movement_type" label="Əməliyyat Növü" rules={[{ required: true }]}>
-                        <Select onChange={() => stockForm.setFieldValue('to_warehouse_id', undefined)}>
+                        <Select onChange={() => {
+                            stockForm.setFieldValue('to_warehouse_id', undefined);
+                            stockForm.setFieldValue('returned_by', undefined);
+                        }}>
                             <Option value="in">Giriş (Import)</Option>
                             <Option value="out">Çıxış (Export)</Option>
                             <Option value="transfer">Transfer</Option>
+                            <Option value="return">Qaytarma (Return)</Option>
                         </Select>
                     </Form.Item>
 
@@ -482,6 +466,19 @@ const ProductTab = ({ isActive }) => {
                                             return <Option key={w.id} value={w.id}>{w.name} ({qty})</Option>;
                                         })}
                                     </Select>
+                                </Form.Item>
+                            ) : null
+                        }
+                    </Form.Item>
+
+                    <Form.Item
+                        noStyle
+                        shouldUpdate={(prev, current) => prev.movement_type !== current.movement_type}
+                    >
+                        {({ getFieldValue }) =>
+                            getFieldValue('movement_type') === 'return' ? (
+                                <Form.Item name="returned_by" label="Qaytaran haqqında məlumat">
+                                    <Input placeholder="Qaytaran şəxsin adı, əlaqə nömrəsi və s." />
                                 </Form.Item>
                             ) : null
                         }

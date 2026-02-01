@@ -1,0 +1,116 @@
+.profilePage {
+    padding: 24px;
+
+    h1 {
+        margin-bottom: 24px;
+        font-size: 24px;
+        font-weight: 600;
+    }
+}
+
+.loadingContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}
+
+.profileContent {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 24px;
+
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.avatarCard {
+    .avatarSection {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 24px 0;
+    }
+
+    .avatarWrapper {
+        position: relative;
+        margin-bottom: 16px;
+    }
+
+    .avatarUploadBtn {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background: #1890ff;
+        color: white;
+        border: 2px solid white;
+
+        &:hover {
+            background: #40a9ff;
+            color: white;
+        }
+    }
+
+    .userName {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+
+    .userRole {
+        color: #888;
+        font-size: 14px;
+    }
+}
+
+.infoCard {
+    .fieldRow {
+        display: flex;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+
+        &:last-child {
+            border-bottom: none;
+        }
+    }
+
+    .fieldLabel {
+        width: 150px;
+        color: #888;
+        font-weight: 500;
+        flex-shrink: 0;
+    }
+
+    .fieldValue {
+        flex: 1;
+    }
+
+    .valueWrapper {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        span {
+            color: #333;
+        }
+    }
+
+    .editButton {
+        opacity: 0.5;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+
+    .editingWrapper {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+
+        input {
+            flex: 1;
+        }
+    }
+}

@@ -1,10 +1,10 @@
 import React from 'react';
-import { List, Avatar, Badge, Button, Modal, Form, Input } from 'antd';
-import { PlusOutlined, UsergroupAddOutlined } from '@ant-design/icons';
+import { List, Avatar, Badge, Button, Modal, Form, Input, Popconfirm } from 'antd';
+import { PlusOutlined, UsergroupAddOutlined, DeleteOutlined } from '@ant-design/icons';
 import styles from '../style.module.scss';
 import dayjs from 'dayjs';
 
-const GroupList = ({ groups, selectedGroupId, onSelectGroup, onAddGroup }) => {
+const GroupList = ({ groups, selectedGroupId, onSelectGroup, onAddGroup, onDeleteGroup }) => {
     const [isModalOpen, setIsModalOpen] = React.useState(false);
     const [form] = Form.useForm();
 
@@ -56,6 +56,17 @@ const GroupList = ({ groups, selectedGroupId, onSelectGroup, onAddGroup }) => {
                                         <span>Mesaj yoxdur</span>
                                     )}
                                 </div>
+                            </div>
+                            <div onClick={(e) => e.stopPropagation()}>
+                                <Popconfirm
+                                    title="Qrupu silmək istəyirsiniz?"
+                                    description="Qrup və bütün mesajlar silinəcək!"
+                                    onConfirm={() => onDeleteGroup(item.id)}
+                                    okText="Bəli"
+                                    cancelText="Xeyr"
+                                >
+                                    <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+                                </Popconfirm>
                             </div>
                         </div>
                     )}

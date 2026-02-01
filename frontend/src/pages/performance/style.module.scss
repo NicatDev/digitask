@@ -1,0 +1,15 @@
+.performancePage {
+    padding: 24px;
+    height: 100%;
+
+    :global {
+        .ant-card {
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .ant-table-wrapper {
+            background: #fff;
+        }
+    }
+}

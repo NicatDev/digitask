@@ -16,6 +16,13 @@ export const loginUser = (data) => axiosInstance.post('token/', data);
 export const deleteUser = (id) => axiosInstance.delete(`users/${id}/`);
 export const changeUserPassword = (id, data) => axiosInstance.post(`users/${id}/change_password/`, data);
 
+// Profile (me) update
+export const updateMyProfile = (data) => axiosInstance.patch('users/me/', data);
+export const updateMyAvatar = (formData) => axiosInstance.patch('users/me/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+});
+export const changeMyPassword = (data) => axiosInstance.post('users/me/change_password/', data);
+
 // Roles
 export const getRoles = () => axiosInstance.get('roles/');
 export const getRole = (id) => axiosInstance.get(`roles/${id}/`);
@@ -39,3 +46,4 @@ export const createRegion = (data) => axiosInstance.post('regions/', data);
 export const updateRegion = (id, data) => axiosInstance.put(`regions/${id}/`, data);
 export const updateRegionStatus = (id, isActive) => axiosInstance.patch(`regions/${id}/`, { is_active: isActive });
 export const deleteRegion = (id) => axiosInstance.delete(`regions/${id}/`);
+
