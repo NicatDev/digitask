@@ -1,0 +1,17 @@
+1) Best companies
+1.2) Companies with pagination
+2) Last vacancies
+2.2) Vacancies with filter and search
+3) Popular categoriler
+4) Categoriler + subcategories categorie gore
+5) Candidates with search and filter or pagination onl;y
+6) Contact us
+7) New vacancy
+8) 
+
+best last
+iconlar 
+Contact us
+Salary range
+Search filter
+Expirences

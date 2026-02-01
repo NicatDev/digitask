@@ -1,0 +1,8 @@
+1) Register maile mesaj getmir
+2) nicat@gmail.com hesabi hele de unverified gosterir
+3) Iconlar yoxdu
+4) Companies api ucun mumkunse numune data lazimdi. Bos gelir response (Sehife dinamikdi amma test olunmayib)
+5) Elaqe sehifesi api tapa bilmedim
+6) Vakansiya api yoxdu
+7) Pricing api yoxdu
+

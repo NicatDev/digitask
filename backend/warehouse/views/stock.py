@@ -72,7 +72,8 @@ class StockMovementViewSet(viewsets.ModelViewSet):
                 quantity_old=qty_old,
                 quantity_new=qty_new,
                 created_by=request.user,
-                reference_no=data.get('reference_no', '')
+                reference_no=data.get('reference_no', ''),
+                returned_by=data.get('returned_by', '') if m_type == StockMovement.Type.RETURN else None
             )
             
             if m_type == StockMovement.Type.TRANSFER:

@@ -1,11 +1,13 @@
-from django.db import models
+from django.db import models, transaction
 from rest_framework import viewsets, status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from ..models import Task, TaskService
-from ..serializers import TaskSerializer, TaskServiceSerializer, TaskStatusUpdateSerializer
+from decimal import Decimal
+from ..models import Task, TaskService, TaskProduct
+from ..serializers import TaskSerializer, TaskServiceSerializer, TaskStatusUpdateSerializer, TaskProductSerializer, TaskProductCreateSerializer
+from warehouse.models import WarehouseInventory, StockMovement
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -18,8 +20,10 @@ class TaskViewSet(viewsets.ModelViewSet):
         queryset = Task.objects.select_related(
             'customer', 'assigned_to', 'group', 'group__region'
         ).prefetch_related(
-            'task_services', 'task_services__service', 'task_services__values'
-        ).order_by('-created_at')
+            'task_services', 'task_services__service', 'task_services__values',
+            'task_products', 'task_products__product', 'task_products__warehouse',
+            'task_documents'
+        ).order_by('created_at')
         
         # Filter by status
         task_status = self.request.query_params.get('status')
@@ -46,12 +50,22 @@ class TaskViewSet(viewsets.ModelViewSet):
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
         
-        # Search
+        # Filter by date range
+        date_from = self.request.query_params.get('date_from')
+        if date_from:
+            queryset = queryset.filter(created_at__date__gte=date_from)
+        
+        date_to = self.request.query_params.get('date_to')
+        if date_to:
+            queryset = queryset.filter(created_at__date__lte=date_to)
+        
+        # Search - title, customer name, register_number, note
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(
                 models.Q(title__icontains=search) |
                 models.Q(customer__full_name__icontains=search) |
+                models.Q(customer__register_number__icontains=search) |
                 models.Q(note__icontains=search)
             )
         
@@ -90,11 +104,48 @@ class TaskViewSet(viewsets.ModelViewSet):
             # Auto-assign if status changes to IN_PROGRESS and no assignee
             if new_status == Task.Status.IN_PROGRESS and not task.assigned_to:
                 task.assigned_to = request.user
+            
+            # DONE olduqda task_products-ları anbardan çıxar
+            if new_status == Task.Status.DONE:
+                self._deduct_task_products(task, request.user)
                 
             task.save()
             return Response(TaskSerializer(task).data)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def _deduct_task_products(self, task, user):
+        """Tapşırıq tamamlandıqda məhsulları anbardan çıxar."""
+        task_products = task.task_products.filter(is_deducted=False)
+        
+        with transaction.atomic():
+            for tp in task_products:
+                inventory, created = WarehouseInventory.objects.get_or_create(
+                    warehouse=tp.warehouse,
+                    product=tp.product
+                )
+                
+                qty_old = inventory.quantity
+                qty_new = qty_old - tp.quantity
+                
+                inventory.quantity = qty_new
+                inventory.save()
+                
+                # Stock movement yarat
+                StockMovement.objects.create(
+                    warehouse=tp.warehouse,
+                    product=tp.product,
+                    movement_type=StockMovement.Type.OUT,
+                    reason=f"Tapşırıq #{task.id} icrası zamanı istifadə olunmuşdur",
+                    quantity_old=qty_old,
+                    quantity_new=qty_new,
+                    created_by=user,
+                    reference_no=f"TASK-{task.id}"
+                )
+                
+                # İşarələ ki, artıq çıxarılıb
+                tp.is_deducted = True
+                tp.save()
 
 
 class TaskServiceViewSet(viewsets.ModelViewSet):

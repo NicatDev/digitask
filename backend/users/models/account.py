@@ -10,6 +10,9 @@ class Role(models.Model):
     is_task_reader = models.BooleanField(default=False)
     is_task_writer = models.BooleanField(default=False)
 
+    is_document_reader = models.BooleanField(default=False)
+    is_document_writer = models.BooleanField(default=False)
+
     is_warehouse_reader = models.BooleanField(default=False)
     is_warehouse_writer = models.BooleanField(default=False)
 

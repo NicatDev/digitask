@@ -1,6 +1,7 @@
-import json
 from rest_framework import serializers
-from ..models import Task, TaskService, TaskServiceValue, Column, Service
+from ..models import Task, TaskService, TaskServiceValue, Column, Service, TaskProduct, TaskDocument
+from .product import TaskProductSerializer
+from .document import TaskDocumentSerializer
 
 
 class TaskServiceValueSerializer(serializers.ModelSerializer):
@@ -131,21 +132,26 @@ class TaskSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source='customer.full_name', read_only=True)
     customer_address = serializers.CharField(source='customer.address', read_only=True)
     customer_coordinates = serializers.JSONField(source='customer.address_coordinates', read_only=True)
+    customer_phone = serializers.CharField(source='customer.phone_number', read_only=True)
+    customer_register_number = serializers.CharField(source='customer.register_number', read_only=True)
     assigned_to_name = serializers.SerializerMethodField()
     group_name = serializers.CharField(source='group.name', read_only=True)
     region_name = serializers.CharField(source='group.region.name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     task_services = TaskServiceSerializer(many=True, read_only=True)
+    task_products = TaskProductSerializer(many=True, read_only=True)
+    task_documents = TaskDocumentSerializer(many=True, read_only=True)
     services = serializers.PrimaryKeyRelatedField(many=True, queryset=Service.objects.all(), required=False)
 
     class Meta:
         model = Task
         fields = [
             'id', 'customer', 'customer_name', 'customer_address', 'customer_coordinates',
+            'customer_phone', 'customer_register_number',
             'title', 'note', 'status', 'status_display',
             'assigned_to', 'assigned_to_name',
             'group', 'group_name', 'region_name', 'is_active', 
-            'services', 'task_services', 'created_at', 'updated_at'
+            'services', 'task_services', 'task_products', 'task_documents', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     

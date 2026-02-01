@@ -22,6 +22,12 @@ class ChatGroupViewSet(viewsets.ModelViewSet):
             Q(memberships__user=user) | Q(owner=user)
         ).distinct().order_by('-created_at')
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.owner != request.user:
+            return Response({'detail': 'Yalnız qrup sahibi qrupu silə bilər.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
+
     def get_serializer_class(self):
         if self.action in ['retrieve', 'update', 'partial_update']:
             return ChatGroupDetailSerializer

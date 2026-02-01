@@ -24,6 +24,6 @@ class StockMovementSerializer(serializers.ModelSerializer):
             'id', 'warehouse', 'warehouse_name', 'from_warehouse', 'to_warehouse',
             'product', 'product_name', 'movement_type', 'movement_type_display',
             'reason', 'quantity_old', 'quantity_new',
-            'created_by', 'created_by_name', 'created_at', 'reference_no'
+            'created_by', 'created_by_name', 'created_at', 'reference_no', 'returned_by'
         ]
         read_only_fields = ['created_by', 'created_at']

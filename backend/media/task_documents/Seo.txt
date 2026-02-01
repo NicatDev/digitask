@@ -1,0 +1,31 @@
+Seo 
+
+- Keyword axtarışı ucun odenissiz menbe: (Search volume ne qeder axtarıldığı, competition ise reqabet çoxluğudur. Keyword hedefleyerken az reqabet olan ve cox axtarilan keyword seçimi vacibdir)
+https://www.wordstream.com/keywords
+https://www.semrush.com/analytics/keywordoverview/
+
+Menbe:
+https://www.semrush.com/blog/keyword-research/
+
+- Meta tagləri:
+Düzgünlüyünü yoxlamaq üçün hrefsin aşağıdakı extensionun yüklə, daxil olduqda hal hazırki veb-sayt haqqında məlumatları göstərir.
+https://chromewebstore.google.com/detail/ahrefs-seo-toolbar-on-pag/hgmoccdbjhknikckedaaebbpdeebhiei
+
+Araşdır: Meta tagləri hansılardır və seo-da rolları nələrdir ?
+
+Mənbələr:
+https://www.semrush.com/blog/html-tags-for-seo/
+
+- Backlink-ləri və domain rating yoxlamaq üçün 
+
+https://ahrefs.com/backlink-checker
+
+Araşdır: Backlinkləri hansı platformalarda vermək olar, dofollow ve nofollow backlink nədir
+Mənbələr:
+https://www.semrush.com/blog/types-of-backlinks/
+https://www.semrush.com/blog/nofollow-links/
+
+
+- Organic traffic yoxlamaq üçün ödənişsiz mənbə: (Nə qədər insanın daxil olduğu və dəyəri haqqında məlumat verir)
+https://ahrefs.com/traffic-checker/
+

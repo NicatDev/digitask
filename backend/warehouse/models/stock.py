@@ -58,6 +58,9 @@ class StockMovement(models.Model):
 
     # gələcəkdə: sənəd/akt nömrəsi, invoice və s.
     reference_no = models.CharField(max_length=80, blank=True)
+    
+    # Qaytarma əməliyyatı üçün qaytaran şəxsin məlumatları
+    returned_by = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
         indexes = [

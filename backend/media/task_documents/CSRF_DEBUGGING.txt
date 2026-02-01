@@ -1,0 +1,45 @@
+
+(myenv) root@vmi1032009://doctor# sudo gunicorn --access-logfile - --workers 2 --bind unix:/run/doctor-gunicorn.sock project.wsgi:application
+[2023-08-21 00:22:11 +0200] [2125099] [INFO] Starting gunicorn 20.0.4
+[2023-08-21 00:22:11 +0200] [2125099] [INFO] Listening at: unix:/run/doctor-gunicorn.sock (2125099)
+[2023-08-21 00:22:11 +0200] [2125099] [INFO] Using worker: sync
+[2023-08-21 00:22:11 +0200] [2125101] [INFO] Booting worker with pid: 2125101
+[2023-08-21 00:22:11 +0200] [2125102] [INFO] Booting worker with pid: 2125102
+
+sudo pkill -f 'gunicorn --access-logfile - --workers 2 --bind 0.0.0.0:399 project.wsgi:application'
+export DJANGO_SETTINGS_MODULE=myproject.settings 
+ps aux | grep gunicorn
+
+sudo lsof -i :99
+sudo kill -9 pid
+sudo gunicorn --access-logfile - --workers 2 --bind 0.0.0.0:399 project.wsgi:application
+gunicorn --access-logfile - --workers 2 --bind unix:/run/myoptgunicorn.sock app.wsgi:application
+
+
+
+sudo gunicorn --access-logfile - --workers 2 --bind unix:/run/reab-gunicorn.sock project.wsgi:application
+sudo gunicorn --access-logfile - --workers 2 --bind unix:/run/cs-gunicorn.sock cs.wsgi:application
+sudo gunicorn --access-logfile - --workers 2 --bind unix:/run/heyder-gunicorn.sock project.wsgi:application
+sudo gunicorn --access-logfile - --workers 2 --bind 0.0.0.0:99 project.wsgi:application
+
+sudo gunicorn --access-logfile - --workers 2 --bind unix:/run/gilli-gunicorn.sock billy.wsgi:application
+
+sudo gunicorn --access-logfile - --workers 2 --bind unix:/run/reab-gunicorn.sock project.wsgi:application
+sudo gunicorn --access-logfile - --workers 2 --bind 0.0.0.0:100 project.wsgi:application
+
+
+gunicorn app:application --preload -b 0.0.0.0:5000 sehvler gunicorn 
+
+/usr/bin/gunicorn --workers 5 --bind unix:/run/azgpfull-gunicorn.sock project.wsgi:application
+sudo journalctl -u azgpfull-gunicorn  -sehvler gunicorn
+
+gunicornun loglari  sudo journalctl -u Onlineshop-gunicorn -f
+
+custom email
+name = Name surname 
+email address =  custom@domain.az
+smtp server = smtp@gmail.com
+username = myemail (without @gmail.com)
+password = app password (2 verification => app password => generate)
+https://www.youtube.com/watch?v=MEheS8gM4Xs
+
