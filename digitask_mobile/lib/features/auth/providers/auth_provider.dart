@@ -42,22 +42,34 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(String email, String password) async {
+  Future<void> login(String username, String password) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
+      debugPrint('Attempting login to: ${AppConstants.baseUrl}${AppConstants.loginEndpoint}');
+      debugPrint('Username: $username');
+      
       final response = await _apiService.dio.post(
         AppConstants.loginEndpoint,
         data: {
-          'email': email,
+          'username': username,
           'password': password,
         },
       );
 
+      debugPrint('Login response status: ${response.statusCode}');
+      debugPrint('Login response data: ${response.data}');
+
       final access = response.data['access'];
       final refresh = response.data['refresh'];
+
+      if (access == null || refresh == null) {
+        _error = 'Serverdən düzgün cavab gəlmədi';
+        _status = AuthStatus.unauthenticated;
+        return;
+      }
 
       await _storage.write(key: AppConstants.tokenKey, value: access);
       await _storage.write(key: AppConstants.refreshTokenKey, value: refresh);
@@ -65,10 +77,50 @@ class AuthProvider extends ChangeNotifier {
       await fetchProfile();
       _status = AuthStatus.authenticated;
     } on DioException catch (e) {
-      _error = e.response?.data['detail'] ?? 'Login failed. Please check your credentials.';
+      debugPrint('DioException type: ${e.type}');
+      debugPrint('DioException message: ${e.message}');
+      debugPrint('DioException response: ${e.response?.data}');
+      
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          _error = 'Bağlantı vaxtı bitdi. Server açıqdır?';
+          break;
+        case DioExceptionType.connectionError:
+          _error = 'Serverə qoşulmaq mümkün olmadı.\n'
+                   'URL: ${AppConstants.baseUrl}\n'
+                   'Backend serverin işlədiyindən əmin olun.';
+          break;
+        case DioExceptionType.badResponse:
+          final statusCode = e.response?.statusCode;
+          final responseData = e.response?.data;
+          String? detail;
+          
+          // Safely extract detail from response
+          if (responseData is Map<String, dynamic>) {
+            detail = responseData['detail']?.toString();
+          } else if (responseData is String) {
+            detail = responseData;
+          }
+          
+          if (statusCode == 401) {
+            _error = detail ?? 'İstifadəçi adı və ya şifrə yanlışdır';
+          } else if (statusCode == 400) {
+            _error = detail ?? 'Yanlış məlumat göndərildi';
+          } else if (statusCode == 404) {
+            _error = 'Login endpoint tapılmadı (404)';
+          } else {
+            _error = 'Server xətası: $statusCode\n${detail ?? ''}';
+          }
+          break;
+        default:
+          _error = 'Şəbəkə xətası: ${e.message}';
+      }
       _status = AuthStatus.unauthenticated;
     } catch (e) {
-      _error = 'An unexpected error occurred.';
+      debugPrint('Unexpected error: $e');
+      _error = 'Gözlənilməz xəta: $e';
       _status = AuthStatus.unauthenticated;
     } finally {
       _isLoading = false;
