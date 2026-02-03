@@ -177,6 +177,8 @@ CORS_ALLOW_ALL_ORIGINS = True
 #     "http://127.0.0.1:5173",
 # ]
 
+CSRF_TRUSTED_ORIGINS = ["https://new.digitask.store", "https://new-app.digitask.store"]
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',

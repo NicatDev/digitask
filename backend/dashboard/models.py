@@ -3,7 +3,7 @@ from django.utils import timezone
 
 class Event(models.Model):
     class Type(models.TextChoices):
-        MEETING = 'meeting', 'İclat'
+        MEETING = 'meeting', 'İclas'
         HOLIDAY = 'holiday', 'Bayram'
         MAINTENANCE = 'maintenance', 'Texniki işlər'
         OTHER = 'other', 'Digər'

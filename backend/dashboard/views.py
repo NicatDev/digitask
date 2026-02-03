@@ -19,7 +19,7 @@ class EventViewSet(viewsets.ModelViewSet):
         if active_only == 'true':
             # Show events that are active and date is >= today (including passed hours today)
             now = timezone.now()
-            qs = qs.filter(is_active=True, date__date__gte=now.date())
+            qs = qs.filter(is_active=True, date__date__gte=now.date()).order_by('date')
         return qs
 
     def perform_create(self, serializer):
