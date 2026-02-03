@@ -83,3 +83,11 @@ must modern and interactive design
   - MUST stream updates via Django Channels.
 
 
+## Mobile Requirements Summary
+- MUST use **Flutter** for mobile app.
+- MUST use **Dio** for API calls.
+- MUST use **Senior Flutter Developer** for mobile app development.
+- MUST use **Django Channels** for:
+  - group chat realtime
+  - live tracking realtime (location streaming)
+- Dont change backend for mobile app development.

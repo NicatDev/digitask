@@ -5,7 +5,9 @@ import dayjs from 'dayjs';
 import styles from './style.module.scss';
 import { getUserPerformance } from '../../axios/api/performance';
 import { Column } from '@ant-design/plots';
+import { Typography } from 'antd';
 
+const { Title } = Typography;
 const PerformancePage = () => {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState([]);
@@ -91,7 +93,7 @@ const PerformancePage = () => {
                     <Col span={12}>
                         <h4 style={{ marginBottom: 16 }}>Tapşırıq Növləri (Detallı)</h4>
                         <Space wrap>
-                            {record.breakdown.types.length > 0 ? (
+                             {record.breakdown.types.length > 0 ? (
                                 record.breakdown.types.map((t, index) => (
                                     <Tag key={index} color="cyan" style={{ marginBottom: 8, padding: '4px 10px' }}>
                                         {t.task_type__name || 'Təyin olunmayıb'}: <span style={{ fontWeight: 600 }}>{t.count}</span>
@@ -123,19 +125,10 @@ const PerformancePage = () => {
 
     return (
         <div className={styles.performancePage}>
-            <Card>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-                    <h2 style={{ margin: 0 }}>İşçi Performansı</h2>
-                    <Space>
-                        <DatePicker
-                            picker="month"
-                            value={month}
-                            onChange={setMonth}
-                            allowClear={false}
-                        />
-                        <Button icon={<ReloadOutlined />} onClick={fetchData} />
-                    </Space>
-                </div>
+       
+                    <Title level={2} >İşçi Performansı</Title>
+                    
+            
 
                 <Table
                     loading={loading}
@@ -145,7 +138,7 @@ const PerformancePage = () => {
                     expandable={{ expandedRowRender }}
                     pagination={false}
                 />
-            </Card>
+         
         </div>
     );
 };

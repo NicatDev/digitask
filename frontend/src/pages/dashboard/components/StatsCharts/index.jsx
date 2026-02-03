@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Pie, Column, Bar, Area } from '@ant-design/plots';
 import { Card, Statistic, Row, Col, Tabs } from 'antd';
-import styles from '../style.module.scss';
-import { getDashboardStats } from '../../../axios/api/dashboard';
+import styles from './style.module.scss';
+import { getDashboardStats } from '../../../../axios/api/dashboard';
 
 const StatsCharts = () => {
     const [stats, setStats] = useState(null);
@@ -65,7 +65,18 @@ const StatsCharts = () => {
             key: '1',
             label: 'Tapşırıq Statusları',
             children: (
-                <div className={styles.chartCard} style={{ margin: 0 }}>
+                <div className={styles.chartCard} style={{ margin: 0, padding: 0, boxShadow: 'none' }}>
+                    {/* 
+                        Note: The inner chartCard logic in original code had margin:0.
+                        Since I reused .chartCard which has padding and shadow, and this is inside a .chartCard (Tabs wrapper),
+                        we might not want double padding/shadow.
+                        Original code: 
+                            Outer div className=chartCard (Tabs)
+                            Tabs -> children -> div className=chartCard margin=0
+                        This implies double card visual?
+                        If I want to be safe, I remove shadow/padding from inner. 
+                        Added inline reset for inner wrapper to be safe as per "inside tabs".
+                     */}
                     <Pie
                         data={statusData}
                         angleField="value"
@@ -83,7 +94,7 @@ const StatsCharts = () => {
             key: '2',
             label: 'Tapşırıq Növləri',
             children: (
-                <div className={styles.chartCard} style={{ margin: 0 }}>
+                <div className={styles.chartCard} style={{ margin: 0, padding: 0, boxShadow: 'none' }}>
                     <Column
                         data={fixedTypeData}
                         xField="type"
@@ -102,7 +113,7 @@ const StatsCharts = () => {
             key: '3',
             label: 'Top 5 İstifadəçi', // Explicit label as requested
             children: (
-                <div className={styles.chartCard} style={{ margin: 0 }}>
+                <div className={styles.chartCard} style={{ margin: 0, padding: 0, boxShadow: 'none' }}>
                     <Bar
                         data={userData}
                         xField="value"
@@ -117,7 +128,7 @@ const StatsCharts = () => {
             key: '4',
             label: 'Anbar Əməliyyatları',
             children: (
-                <div className={styles.chartCard} style={{ margin: 0 }}>
+                <div className={styles.chartCard} style={{ margin: 0, padding: 0, boxShadow: 'none' }}>
                     <Column
                         data={warehouseData}
                         xField="date"
@@ -133,7 +144,7 @@ const StatsCharts = () => {
 
     return (
         <div className={styles.statsContainer}>
-            <div className={styles.chartCard} style={{ marginBottom: '24px' }}>
+            <div className={styles.chartCard}>
                 <Row gutter={16}>
                     <Col span={12}>
                         <Statistic title="Ümumi Tapşırıq" value={tasks.total} />
@@ -149,8 +160,6 @@ const StatsCharts = () => {
             </div>
         </div>
     );
-
-
 };
 
 export default StatsCharts;

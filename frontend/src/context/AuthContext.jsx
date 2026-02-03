@@ -24,8 +24,6 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error('Fetch user failed', error);
             setUser(null);
-            // If token invalid, maybe clear it?
-            // localStorage.removeItem('access_token');
             if (redirectOnError) navigate('/login');
         } finally {
             setLoading(false);
@@ -36,9 +34,10 @@ export const AuthProvider = ({ children }) => {
         fetchUser();
     }, []);
 
-    const login = (token) => {
-        localStorage.setItem('access_token', token);
-        fetchUser(true); // Fetch user immediately after setting token
+    const login = (access, refresh) => {
+        localStorage.setItem('access_token', access);
+        localStorage.setItem('refresh_token', refresh);
+        fetchUser(true); 
     };
 
     const logout = () => {

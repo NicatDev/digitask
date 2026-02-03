@@ -1,0 +1,128 @@
+.eventSection {
+    margin-bottom: 24px;
+}
+
+.sectionScrollContainer {
+    display: flex;
+    gap: 24px;
+    padding: 4px 4px 24px 4px; // Bottom padding for shadow visibility
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    cursor: grab;
+
+    // Hide scrollbar
+    &::-webkit-scrollbar {
+        display: none;
+    }
+
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+
+    &:active {
+        cursor: grabbing;
+    }
+}
+
+.addEventCard {
+    // Overriding Antd Card for the 'Add' button look
+    width: 300px;
+    min-width: 300px;
+    height: 200px; // Fixed height for consistency
+    border: 2px dashed #d9d9d9 !important;
+    background: #fafafa !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+
+    :global(.ant-card-body) {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        width: 100%;
+    }
+
+    .plusIcon {
+        font-size: 32px;
+        margin-bottom: 12px;
+        color: #8c8c8c;
+    }
+
+    .addText {
+        font-size: 16px;
+        font-weight: 600;
+        color: #8c8c8c;
+    }
+
+    &:hover {
+        border-color: #1890ff !important;
+
+        .plusIcon,
+        .addText {
+            color: #1890ff;
+        }
+    }
+}
+
+.eventCard {
+    width: 350px;
+    min-width: 350px;
+    height: 200px; // Fixed height
+    display: flex;
+    flex-direction: column;
+
+    :global(.ant-card-head) {
+        min-height: 48px;
+        padding: 0 16px;
+    }
+
+    :global(.ant-card-head-title) {
+        padding: 12px 0;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    :global(.ant-card-body) {
+        padding: 16px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+}
+
+.cardHeaderRight {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dateText {
+    color: #8c8c8c;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.description {
+    color: #595959;
+    font-size: 14px;
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 3; // Show 3 lines of description
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 0;
+}
+
+.infoIcon {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    font-size: 16px;
+    color: #1890ff;
+}

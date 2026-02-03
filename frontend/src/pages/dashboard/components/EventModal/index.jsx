@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Form, Input, Button, Select, DatePicker, message } from 'antd';
-import { createEvent } from '../../../axios/api/dashboard';
+import { createEvent } from '../../../../axios/api/dashboard';
+import styles from './style.module.scss';
 
 const EventModal = ({ open, onCancel, onSuccess }) => {
     const [form] = Form.useForm();
@@ -33,6 +34,7 @@ const EventModal = ({ open, onCancel, onSuccess }) => {
             onCancel={onCancel}
             footer={null}
             destroyOnClose
+            className={styles.eventModal}
         >
             <Form form={form} onFinish={onFinish} layout="vertical" initialValues={{ event_type: 'announcement' }}>
                 <Form.Item name="title" label="Başlıq" rules={[{ required: true }]}>
@@ -43,7 +45,7 @@ const EventModal = ({ open, onCancel, onSuccess }) => {
                 </Form.Item>
                 <Form.Item name="event_type" label="Növ" rules={[{ required: true }]}>
                     <Select>
-                        <Select.Option value="meeting">İclat</Select.Option>
+                        <Select.Option value="meeting">İclas</Select.Option>
                         <Select.Option value="holiday">Bayram</Select.Option>
                         <Select.Option value="maintenance">Texniki işlər</Select.Option>
                         <Select.Option value="announcement">Elan</Select.Option>

@@ -21,9 +21,7 @@ const Login = () => {
                 username: values.username,
                 password: values.password,
             });
-
-            login(response.data.access);
-            localStorage.setItem('refresh_token', response.data.refresh);
+            login(response.data.access,response.data.refresh);
             message.success('Giriş uğurludur!');
             navigate('/users');
 
