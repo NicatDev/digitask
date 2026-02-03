@@ -1,6 +1,6 @@
 import React from 'react';
 import EventSection from './components/EventSection';
-import StatsCharts from './components/StatsCharts';
+import TopUsersList from './components/TopUsersList';
 import styles from './style.module.scss';
 
 
@@ -9,7 +9,7 @@ const Dashboard = () => {
         <div className={styles.dashboardPage}>
             <EventSection />
 
-            <StatsCharts />
+            <TopUsersList />
         </div>
     );
 };

@@ -37,6 +37,7 @@ const DocumentsTab = ({ isActive }) => {
         try {
             const response = await getTaskDocuments({ confirmed: 'false', search: debouncedSearchText });
             setData(response.data.results || response.data);
+            console.log(response, '---')
         } catch (error) {
             handleApiError(error, 'Sənədləri yükləmək mümkün olmadı');
         } finally {
@@ -97,7 +98,12 @@ const DocumentsTab = ({ isActive }) => {
             ) : '-'
         },
         { title: 'Başlıq', dataIndex: 'title', key: 'title' },
-        { title: 'Tapşırıq', dataIndex: 'task_title', key: 'task_title', render: (v) => v || '-' },
+        {
+            title: 'Əməliyyat',
+            dataIndex: 'task_title',
+            key: 'task_title',
+            render: (v, record) => record.stock_movement_title || v || '-'
+        },
         {
             title: 'Tarix',
             dataIndex: 'created_at',

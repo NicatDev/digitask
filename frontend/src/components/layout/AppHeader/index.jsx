@@ -21,40 +21,8 @@ const { Text } = Typography;
 
 const AppHeader = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
     const { user, logout } = useAuth();
-    const { unreadCount } = useNotifications();
+    const { unreadCount, chatUnreadCount } = useNotifications();
     const navigate = useNavigate();
-    const [chatUnreadCount, setChatUnreadCount] = useState(0);
-    const ws = useRef(null);
-
-    useEffect(() => {
-        if (user) {
-            connectNotificationWS();
-        }
-        return () => {
-            if (ws.current) ws.current.close();
-        };
-    }, [user]);
-
-    const connectNotificationWS = () => {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.hostname;
-        const port = '8000';
-        const token = localStorage.getItem('access_token');
-        const url = `${protocol}//${host}:${port}/ws/chat/notifications/?token=${token}`;
-
-        ws.current = new WebSocket(url);
-
-        ws.current.onopen = () => {
-            console.log("Connected to Notification WS");
-        };
-
-        ws.current.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === 'unread_count') {
-                setChatUnreadCount(data.count);
-            }
-        };
-    };
 
 
     const items = [

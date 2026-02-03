@@ -5,8 +5,10 @@ const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
     const [unreadCount, setUnreadCount] = useState(0);
+    const [chatUnreadCount, setChatUnreadCount] = useState(0);
     const [notifications, setNotifications] = useState([]);
     const ws = useRef(null);
+    const reconnectTimeout = useRef(null);
 
     useEffect(() => {
         const token = localStorage.getItem('access_token');
@@ -17,7 +19,12 @@ export const NotificationProvider = ({ children }) => {
 
         return () => {
             if (ws.current) {
+                // Prevent reconnect on unmount
+                ws.current.onclose = null;
                 ws.current.close();
+            }
+            if (reconnectTimeout.current) {
+                clearTimeout(reconnectTimeout.current);
             }
         };
     }, []);
@@ -25,6 +32,11 @@ export const NotificationProvider = ({ children }) => {
     const connectWebSocket = () => {
         const token = localStorage.getItem('access_token');
         if (!token) return;
+
+        // Prevent multiple connections
+        if (ws.current && (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.hostname;
@@ -39,17 +51,22 @@ export const NotificationProvider = ({ children }) => {
 
         ws.current.onmessage = (event) => {
             const data = JSON.parse(event.data);
+
             if (data.notification) {
                 // New notification received
                 setUnreadCount(prev => prev + 1);
                 setNotifications(prev => [data.notification, ...prev]);
+            }
+
+            if (data.type === 'unread_count') {
+                setChatUnreadCount(data.count);
             }
         };
 
         ws.current.onclose = () => {
             console.log('Notification WebSocket disconnected');
             // Reconnect after 5 seconds
-            setTimeout(() => {
+            reconnectTimeout.current = setTimeout(() => {
                 if (localStorage.getItem('access_token')) {
                     connectWebSocket();
                 }
@@ -58,6 +75,7 @@ export const NotificationProvider = ({ children }) => {
 
         ws.current.onerror = (err) => {
             console.error('Notification WebSocket error', err);
+            ws.current.close();
         };
     };
 
@@ -87,6 +105,7 @@ export const NotificationProvider = ({ children }) => {
     return (
         <NotificationContext.Provider value={{
             unreadCount,
+            chatUnreadCount,
             notifications,
             markAllRead,
             refetchCount,

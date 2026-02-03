@@ -3,11 +3,14 @@ import { Card, Tag, Tooltip } from 'antd';
 import { CalendarOutlined, PlusOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import styles from './style.module.scss';
 import { getEvents } from '../../../../axios/api/dashboard';
+import EventDetailModal from '../EventDetailModal';
 import EventModal from '../EventModal';
 
 const EventSection = () => {
     const [events, setEvents] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
     // Drag to scroll refs
     const scrollRef = useRef(null);
@@ -90,6 +93,16 @@ const EventSection = () => {
         setIsModalOpen(true);
     };
 
+    const handleEventClick = (e, event) => {
+        if (isDragging.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        setSelectedEvent(event);
+        setIsDetailModalOpen(true);
+    }
+
     return (
         <div className={styles.eventSection}>
             <div
@@ -119,6 +132,7 @@ const EventSection = () => {
                             key={event.id}
                             className={styles.eventCard}
                             hoverable
+                            onClick={(e) => handleEventClick(e, event)}
                             title={
                                 <Tooltip title={event.title} placement="topLeft">
                                     <span style={{ cursor: 'default' }}>
@@ -156,6 +170,16 @@ const EventSection = () => {
                 onCancel={() => setIsModalOpen(false)}
                 onSuccess={() => {
                     setIsModalOpen(false);
+                    fetchEvents();
+                }}
+            />
+
+            <EventDetailModal
+                open={isDetailModalOpen}
+                event={selectedEvent}
+                onCancel={() => setIsDetailModalOpen(false)}
+                onSuccess={() => {
+                    setIsDetailModalOpen(false);
                     fetchEvents();
                 }}
             />

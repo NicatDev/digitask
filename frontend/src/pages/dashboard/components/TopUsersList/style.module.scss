@@ -1,0 +1,65 @@
+.topUsersCard {
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px;
+
+    height: 100%;
+
+    h3 {
+        margin-bottom: 24px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+    }
+}
+
+.userItem {
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+
+    &:last-child {
+        border-bottom: none;
+    }
+}
+
+.userInfo {
+    display: flex;
+    flex-direction: column;
+}
+
+.userName {
+    font-weight: 600;
+    color: #1f1f1f;
+    font-size: 15px;
+}
+
+.userGroup {
+    color: #8c8c8c;
+    font-size: 13px;
+    margin-top: 2px;
+}
+
+.statsRow {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.statItem {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+
+    &.total {
+        color: #1890ff;
+    }
+
+    &.active {
+        color: #faad14;
+    }
+
+    &.done {
+        color: #52c41a;
+    }
+}
