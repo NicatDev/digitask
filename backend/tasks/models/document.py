@@ -30,6 +30,7 @@ class TaskDocument(models.Model):
         null=True,
         blank=True
     )
+    stock_movement_title = models.CharField(max_length=255, blank=True, null=True)
     shelf = models.ForeignKey(
         Shelf,
         on_delete=models.SET_NULL,

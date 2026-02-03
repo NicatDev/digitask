@@ -77,3 +77,14 @@ class TaskDocumentViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(document)
         return Response(serializer.data)
+
+    def perform_create(self, serializer):
+        stock_movement = serializer.validated_data.get('stock_movement')
+        stock_movement_title = serializer.validated_data.get('stock_movement_title')
+        
+        # Auto-generate title if stock_movement exists and title is not provided
+        if stock_movement and not stock_movement_title:
+            title = f"{stock_movement.warehouse.name} - {stock_movement.get_movement_type_display()}"
+            serializer.save(stock_movement_title=title)
+        else:
+            serializer.save()

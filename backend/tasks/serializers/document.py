@@ -11,7 +11,7 @@ class TaskDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskDocument
         fields = [
-            'id', 'task', 'task_title', 'warehouse', 'stock_movement', 'shelf', 'shelf_name',
+            'id', 'task', 'task_title', 'warehouse', 'stock_movement', 'stock_movement_title', 'shelf', 'shelf_name',
             'title', 'file', 'file_url', 
             'confirmed', 'confirmed_by', 'confirmed_by_name', 'confirmed_at',
             'created_at'

@@ -2,7 +2,7 @@ from rest_framework import viewsets, views, response, permissions
 from django.utils import timezone
 from .models import Event
 from .serializers import EventSerializer
-from tasks.models import Task, TaskType
+from tasks.models import Task, TaskType, Notification
 from warehouse.models import StockMovement
 from django.db.models import Count, Q
 from datetime import timedelta
@@ -22,6 +22,14 @@ class EventViewSet(viewsets.ModelViewSet):
             qs = qs.filter(is_active=True, date__date__gte=now.date())
         return qs
 
+    def perform_create(self, serializer):
+        event = serializer.save()
+        Notification.objects.create(
+            title=f"Yeni Tədbir: {event.title}",
+            message=event.description or "",
+            notification_type=Notification.NotificationType.GENERAL
+        )
+
 class DashboardStatsView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -36,10 +44,17 @@ class DashboardStatsView(views.APIView):
         # By Type
         type_stats = Task.objects.values('task_type__name', 'task_type__color').annotate(count=Count('id'))
 
-        # By User (Top 5)
+        # By User (Top 5) - All Time
         user_stats = Task.objects.exclude(assigned_to=None).values(
-            'assigned_to__username', 'assigned_to__first_name', 'assigned_to__last_name'
-        ).annotate(count=Count('id')).order_by('-count')[:5]
+            'assigned_to__username', 
+            'assigned_to__first_name', 
+            'assigned_to__last_name',
+            'assigned_to__group__name'
+        ).annotate(
+            total_tasks=Count('id'),
+            active_tasks=Count('id', filter=Q(status__in=['todo', 'in_progress', 'arrived'])),
+            done_tasks=Count('id', filter=Q(status='done'))
+        ).order_by('-total_tasks')[:5]
 
         # 2. Warehouse Stats (Last 30 days)
         last_30_days = timezone.now() - timedelta(days=30)
