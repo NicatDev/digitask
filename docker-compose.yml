@@ -1,26 +1,73 @@
-version: '3.8'
-
 services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=digitask
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
-    restart: always
 
-  backend:
-    build: ./backend
-    command: daphne -b 0.0.0.0 -p 8000 core.asgi:application
+  backend_wsgi:
+    build: 
+      context: ./backend
+    command: >
+      sh -c "python manage.py migrate && 
+             python manage.py collectstatic --noinput && 
+             gunicorn core.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - ./backend:/app
-    ports:
-      - "8000:8000"
-    depends_on:
-      - redis
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
     environment:
-      - DEBUG=1
-      - SECRET_KEY=django-insecure-test-key
-      - ALLOWED_HOSTS=*
-      # Database settings if using postgres, otherwise sqlite default
-    # For now assuming sqlite as local dev default
+      - DEBUG=False
+      - DB_NAME=digitask
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_HOST=db
+      - REDIS_HOST=redis
+    depends_on:
+      - db
+      - redis
 
-  # Frontend if needed, but user likely running manually via npm run dev
+  backend_asgi:
+    build: 
+      context: ./backend
+    command: daphne -b 0.0.0.0 -p 8001 core.asgi:application
+    volumes:
+      - ./backend:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    environment:
+      - DEBUG=False
+      - DB_NAME=digitask
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_HOST=db
+      - REDIS_HOST=redis
+    depends_on:
+      - db
+      - redis
+
+  frontend:
+    build:
+      context: ./frontend
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    ports:
+      - "80:80"
+    depends_on:
+      - backend_wsgi
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:

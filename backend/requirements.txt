@@ -1,0 +1,12 @@
+Django>=5.2.6
+djangorestframework
+channels
+daphne
+channels_redis
+psycopg2-binary
+django-cors-headers
+drf-spectacular
+djangorestframework-simplejwt
+gunicorn
+uvicorn
+Pillow

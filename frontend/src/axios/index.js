@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const baseURL = 'http://127.0.0.1:8000/api/';
+const baseURL = window.location.hostname === 'new.digitask.store'
+    ? 'http://new-app.digitask.store/api/'
+    : 'http://127.0.0.1:8000/api/';
 
 const axiosInstance = axios.create({
     baseURL: baseURL,
