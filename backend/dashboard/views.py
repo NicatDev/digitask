@@ -49,7 +49,8 @@ class DashboardStatsView(views.APIView):
             'assigned_to__username', 
             'assigned_to__first_name', 
             'assigned_to__last_name',
-            'assigned_to__group__name'
+            'assigned_to__group__name',
+            'assigned_to__avatar'
         ).annotate(
             total_tasks=Count('id'),
             active_tasks=Count('id', filter=Q(status__in=['todo', 'in_progress', 'arrived'])),
