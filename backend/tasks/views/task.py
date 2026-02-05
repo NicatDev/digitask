@@ -8,12 +8,14 @@ from decimal import Decimal
 from ..models import Task, TaskService, TaskProduct
 from ..serializers import TaskSerializer, TaskServiceSerializer, TaskStatusUpdateSerializer, TaskProductSerializer, TaskProductCreateSerializer
 from warehouse.models import WarehouseInventory, StockMovement
+from ..pagination import TaskPagination
 
 
 class TaskViewSet(viewsets.ModelViewSet):
     """ViewSet for Task CRUD operations."""
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
+    pagination_class = TaskPagination
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
