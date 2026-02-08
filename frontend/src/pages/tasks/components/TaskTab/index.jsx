@@ -38,10 +38,14 @@ const TaskTab = ({ isActive }) => {
     const [services, setServices] = useState([]);
     const [columns, setColumns] = useState([]);
     const [taskTypes, setTaskTypes] = useState([]);
+    const [pagination, setPagination] = useState({
+        current: 1,
+        pageSize: 1, // Matching backend page_size=1
+        total: 0
+    });
+
     const [loading, setLoading] = useState(false);
     const { user } = useAuth();
-
-
 
     // Filter States
     const [searchText, setSearchText] = useState('');
@@ -50,35 +54,27 @@ const TaskTab = ({ isActive }) => {
     const [customerFilter, setCustomerFilter] = useState(null);
     const [assigneeFilter, setAssigneeFilter] = useState(null);
     const [dateRange, setDateRange] = useState(null);
-    const [isActiveFilter, setIsActiveFilter] = useState('all'); // 'all'=all, true=active, false=inactive
+    const [isActiveFilter, setIsActiveFilter] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
 
+    // Modal States
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
     const [isQuestionnaireModalOpen, setIsQuestionnaireModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [currentTaskForQuestionnaire, setCurrentTaskForQuestionnaire] = useState(null);
     const [selectedCoords, setSelectedCoords] = useState(null);
-    // Viewing Location MAP (customer's address)
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
     const [viewingCoords, setViewingCoords] = useState(null);
     const [viewingCustomerName, setViewingCustomerName] = useState('');
-
-    // Product Selection Modal
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [currentTaskForProducts, setCurrentTaskForProducts] = useState(null);
-
-    // Document Modal
     const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
     const [currentTaskForDocuments, setCurrentTaskForDocuments] = useState(null);
-
-    // Detail Modal
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedTaskForDetail, setSelectedTaskForDetail] = useState(null);
 
     const [form] = Form.useForm();
-    // statusForm removed, StatusModal handles its own form or passes value.
-    // Actually our StatusModal component uses its own form internally now.
 
     // Debounce Search
     useEffect(() => {
@@ -88,11 +84,27 @@ const TaskTab = ({ isActive }) => {
         return () => clearTimeout(timer);
     }, [searchText]);
 
-    const fetchData = async () => {
+    const fetchData = async (params = {}) => {
         setLoading(true);
         try {
+            // Prepare query params
+            const queryParams = {
+                page: params.page || pagination.current,
+                search: params.search !== undefined ? params.search : debouncedSearchText,
+                status: params.status !== undefined ? params.status : statusFilter,
+                customer: params.customer !== undefined ? params.customer : customerFilter,
+                assigned_to: params.assigned_to !== undefined ? params.assigned_to : assigneeFilter,
+                is_active: params.is_active !== undefined ? (params.is_active === 'all' ? undefined : params.is_active) : (isActiveFilter === 'all' ? undefined : isActiveFilter),
+                // Date range handling...
+            };
+
+            if (dateRange && dateRange[0]) {
+                queryParams.date_from = dateRange[0].format('YYYY-MM-DD');
+                queryParams.date_to = dateRange[1].format('YYYY-MM-DD');
+            }
+
             const [tasksRes, customersRes, groupsRes, usersRes, servicesRes, columnsRes, taskTypesRes] = await Promise.all([
-                getTasks(),
+                getTasks(queryParams),
                 getCustomers(),
                 getGroups(),
                 getUsers(),
@@ -100,7 +112,20 @@ const TaskTab = ({ isActive }) => {
                 getColumns(),
                 getTaskTypes()
             ]);
-            setData(tasksRes.data.results || tasksRes.data);
+
+            // Handle paginated response
+            const taskData = tasksRes.data;
+            if (taskData.results) {
+                setData(taskData.results);
+                setPagination(prev => ({
+                    ...prev,
+                    current: queryParams.page,
+                    total: taskData.count
+                }));
+            } else {
+                setData(taskData); // Fallback for non-paginated
+            }
+
             setCustomers(customersRes.data.results || customersRes.data);
             setGroups(groupsRes.data.results || groupsRes.data);
             setUsers(usersRes.data.results || usersRes.data);
@@ -115,11 +140,26 @@ const TaskTab = ({ isActive }) => {
         }
     };
 
+    // Initial Fetch
     useEffect(() => {
         if (isActive) {
             fetchData();
         }
     }, [isActive]);
+
+    // Refetch on filter changes
+    useEffect(() => {
+        if (isActive) {
+            // Reset to page 1 on filter change
+            // We need to distinguish between Page Change and Filter Change.
+            // Usually best to call fetchData({ page: 1 }) when filters change.
+            fetchData({ page: 1 });
+        }
+    }, [debouncedSearchText, statusFilter, customerFilter, assigneeFilter, isActiveFilter, dateRange]);
+
+    const handleTableChange = (newPagination) => {
+        fetchData({ page: newPagination.current });
+    };
 
     const handleDelete = async (id) => {
         try {
@@ -130,6 +170,7 @@ const TaskTab = ({ isActive }) => {
             handleApiError(error, 'Silinmə uğursuz oldu');
         }
     };
+
 
     const onFinish = async (values) => {
         try {
@@ -217,31 +258,6 @@ const TaskTab = ({ isActive }) => {
         setIsProductModalOpen(true);
     };
 
-    const getFilteredData = () => {
-        return data.filter(item => {
-            const lowerSearch = debouncedSearchText.toLowerCase();
-            const matchesSearch = item.title.toLowerCase().includes(lowerSearch) ||
-                (item.customer_name && item.customer_name.toLowerCase().includes(lowerSearch)) ||
-                (item.customer_register_number && item.customer_register_number.toLowerCase().includes(lowerSearch));
-
-            const matchesStatus = statusFilter ? item.status === statusFilter : true;
-            const matchesCustomer = customerFilter ? item.customer === customerFilter : true;
-            const matchesAssignee = assigneeFilter ? item.assigned_to === assigneeFilter : true;
-            const matchesActive = isActiveFilter !== 'all' ? item.is_active === isActiveFilter : true;
-
-            // Date range filter
-            let matchesDate = true;
-            if (dateRange && dateRange[0] && dateRange[1]) {
-                const itemDate = new Date(item.created_at).setHours(0, 0, 0, 0);
-                const fromDate = dateRange[0].startOf('day').valueOf();
-                const toDate = dateRange[1].endOf('day').valueOf();
-                matchesDate = itemDate >= fromDate && itemDate <= toDate;
-            }
-
-            return matchesSearch && matchesStatus && matchesCustomer && matchesAssignee && matchesActive && matchesDate;
-        });
-    };
-
     const handleNewTask = () => {
         setEditingItem(null);
         form.resetFields();
@@ -273,8 +289,10 @@ const TaskTab = ({ isActive }) => {
             />
 
             <TaskTable
-                data={getFilteredData()}
+                data={data}
                 loading={loading}
+                pagination={pagination}
+                onChange={handleTableChange}
                 services={services}
                 onEdit={openEditModal}
                 disableActions={!hasPermission(user, PERMISSIONS.TASK_WRITER)}

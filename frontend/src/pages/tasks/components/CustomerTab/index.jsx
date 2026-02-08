@@ -58,6 +58,11 @@ const CustomerTab = ({ isActive }) => {
     const [data, setData] = useState([]);
     const [regions, setRegions] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [pagination, setPagination] = useState({
+        current: 1,
+        pageSize: 5,
+        total: 0
+    });
 
     // Filter States
     const [searchText, setSearchText] = useState('');
@@ -134,28 +139,53 @@ const CustomerTab = ({ isActive }) => {
         }
     };
 
-    const fetchData = async () => {
+    const fetchData = React.useCallback(async (params = {}) => {
         setLoading(true);
         try {
+            const page = params.current || pagination.current;
+            const apiParams = {
+                page: page,
+                search: debouncedSearchText,
+            };
+
+            if (regionFilter) apiParams.region = regionFilter;
+            if (statusFilter !== 'all') apiParams.is_active = statusFilter;
+
             const [customersRes, regionsRes] = await Promise.all([
-                getCustomers(),
+                getCustomers(apiParams),
                 getRegions()
             ]);
-            setData(customersRes.data.results || customersRes.data);
-            setRegions(regionsRes.data.results || regionsRes.data);
+
+            const results = customersRes.data.results || [];
+            const count = customersRes.data.count || 0;
+
+            setData(results);
+            setPagination(prev => ({
+                ...prev,
+                current: page,
+                total: count
+            }));
+
+            if (regions.length === 0) {
+                setRegions(regionsRes.data.results || regionsRes.data);
+            }
         } catch (error) {
             console.error(error);
             handleApiError(error, 'Məlumatları yükləmək mümkün olmadı');
         } finally {
             setLoading(false);
         }
+    }, [debouncedSearchText, regionFilter, statusFilter, pagination.current, regions.length]);
+
+    const handleTableChange = (newPagination) => {
+        fetchData({ current: newPagination.current });
     };
 
     useEffect(() => {
         if (isActive) {
-            fetchData();
+            fetchData({ current: 1 });
         }
-    }, [isActive]);
+    }, [isActive, debouncedSearchText, regionFilter, statusFilter]); // Trigger on filters change
 
     const handleDelete = async (id) => {
         try {
@@ -203,17 +233,7 @@ const CustomerTab = ({ isActive }) => {
         }
     };
 
-    const getFilteredData = () => {
-        return data.filter(item => {
-            const lowerSearch = debouncedSearchText.toLowerCase();
-            const matchesSearch = item.full_name.toLowerCase().includes(lowerSearch) ||
-                (item.phone_number && item.phone_number.includes(lowerSearch)) ||
-                (item.register_number && item.register_number.includes(lowerSearch));
-            const matchesRegion = regionFilter ? item.region === regionFilter : true;
-            const matchesStatus = statusFilter !== 'all' ? item.is_active === statusFilter : true;
-            return matchesSearch && matchesRegion && matchesStatus;
-        });
-    };
+
 
     const openEditModal = (record) => {
         setEditingItem(record);
@@ -356,11 +376,12 @@ const CustomerTab = ({ isActive }) => {
 
             <Table
                 columns={columns}
-                dataSource={getFilteredData()}
+                dataSource={data}
                 rowKey="id"
                 loading={loading}
                 scroll={{ x: 900 }}
-                pagination={{ pageSize: 10 }}
+                pagination={pagination}
+                onChange={handleTableChange}
             />
 
             <Modal

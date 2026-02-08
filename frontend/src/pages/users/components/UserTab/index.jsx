@@ -8,6 +8,18 @@ import { getUsers, createUser, updateUser, deleteUser, changeUserPassword, getRo
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+
+dayjs.extend(relativeTime);
+
+const isRecentlyOnline = (user) => {
+    if (user?.is_online) return true;
+    if (!user?.last_seen) return false;
+    const lastSeen = dayjs(user.last_seen);
+    const tenMinutesAgo = dayjs().subtract(10, 'minute');
+    return lastSeen.isAfter(tenMinutesAgo);
+};
 
 // Fix leaflet default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -234,20 +246,34 @@ const UserTab = ({ isActive }) => {
             title: 'Unvan',
             key: 'map',
             width: 80,
-            render: (_, record) => (
-                <EnvironmentOutlined
-                    style={{
-                        fontSize: 18,
-                        cursor: record.address_coordinates?.lat ? 'pointer' : 'default',
-                        color: record.address_coordinates?.lat ? '#1890ff' : '#ccc'
-                    }}
-                    onClick={() => {
-                        // Open advanced map modal
-                        setLiveMapUserId(record.id);
-                        setIsLiveMapModalOpen(true);
-                    }}
-                />
-            )
+            render: (_, record) => {
+                const hasLocation = record.address_coordinates?.lat;
+                let color = '#ccc';
+                if (hasLocation) {
+                    if (record.is_online) {
+                        color = '#52c41a'; // Green
+                    } else if (isRecentlyOnline(record)) {
+                        color = '#fa8c16'; // Orange
+                    } else {
+                        color = '#f5222d'; // Red
+                    }
+                }
+
+                return (
+                    <EnvironmentOutlined
+                        style={{
+                            fontSize: 18,
+                            cursor: hasLocation ? 'pointer' : 'default',
+                            color: color
+                        }}
+                        onClick={() => {
+                            // Open advanced map modal
+                            setLiveMapUserId(record.id);
+                            setIsLiveMapModalOpen(true);
+                        }}
+                    />
+                );
+            }
         },
         {
             title: 'Aktiv',

@@ -54,24 +54,24 @@ export const createTaskProducts = (taskId, products) => axiosInstance.post('/tas
 export const deleteTaskProduct = (id) => axiosInstance.delete(`/tasks/task-products/${id}/`);
 
 // TaskDocuments API
-export const getTaskDocuments = (params) => axiosInstance.get('/tasks/task-documents/', { params });
+export const getTaskDocuments = (params) => axiosInstance.get('/documents/documents/', { params });
 export const createTaskDocument = (data) => {
     const formData = new FormData();
     formData.append('title', data.title);
     formData.append('file', data.file);
     if (data.task) formData.append('task', data.task);
-    if (data.warehouse) formData.append('warehouse', data.warehouse);
+    if (data.action) formData.append('action', data.action);
     if (data.stock_movement) formData.append('stock_movement', data.stock_movement);
-    return axiosInstance.post('/tasks/task-documents/', formData, {
+    return axiosInstance.post('/documents/documents/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
 };
-export const deleteTaskDocument = (id) => axiosInstance.delete(`/tasks/task-documents/${id}/`);
-export const archiveDocument = (id, shelfId) => axiosInstance.post(`/tasks/task-documents/${id}/archive/`, { shelf: shelfId });
+export const deleteTaskDocument = (id) => axiosInstance.delete(`/documents/documents/${id}/`);
+export const archiveDocument = (id, shelfId) => axiosInstance.post(`/documents/documents/${id}/archive/`, { shelf: shelfId });
 
 // Shelves API
-export const getShelves = (params) => axiosInstance.get('/tasks/shelves/', { params });
-export const getShelf = (id) => axiosInstance.get(`/tasks/shelves/${id}/`);
-export const createShelf = (data) => axiosInstance.post('/tasks/shelves/', data);
-export const updateShelf = (id, data) => axiosInstance.patch(`/tasks/shelves/${id}/`, data);
-export const deleteShelf = (id) => axiosInstance.delete(`/tasks/shelves/${id}/`);
+export const getShelves = (params) => axiosInstance.get('/documents/shelves/', { params });
+export const getShelf = (id) => axiosInstance.get(`/documents/shelves/${id}/`);
+export const createShelf = (data) => axiosInstance.post('/documents/shelves/', data);
+export const updateShelf = (id, data) => axiosInstance.patch(`/documents/shelves/${id}/`, data);
+export const deleteShelf = (id) => axiosInstance.delete(`/documents/shelves/${id}/`);

@@ -17,6 +17,13 @@ const ArchiveTab = ({ isActive }) => {
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
     const [shelfFilter, setShelfFilter] = useState(null);
 
+    // Pagination
+    const [pagination, setPagination] = useState({
+        current: 1,
+        pageSize: 5,
+        total: 0
+    });
+
     const screens = Grid.useBreakpoint();
 
     useEffect(() => {
@@ -24,13 +31,28 @@ const ArchiveTab = ({ isActive }) => {
         return () => clearTimeout(timer);
     }, [searchText]);
 
-    const fetchData = async () => {
+    const fetchData = async (params = {}) => {
         setLoading(true);
         try {
-            const params = { confirmed: 'true', search: debouncedSearchText };
-            if (shelfFilter) params.shelf = shelfFilter;
-            const response = await getTaskDocuments(params);
-            setData(response.data.results || response.data);
+            const queryParams = {
+                confirmed: 'true',
+                search: debouncedSearchText,
+                page: params.page || pagination.current
+            };
+            if (shelfFilter) queryParams.shelf = shelfFilter;
+            const response = await getTaskDocuments(queryParams);
+            const responseData = response.data;
+
+            if (responseData.results) {
+                setData(responseData.results);
+                setPagination(prev => ({
+                    ...prev,
+                    current: queryParams.page,
+                    total: responseData.count
+                }));
+            } else {
+                setData(responseData);
+            }
         } catch (error) {
             handleApiError(error, 'Arxivi yükləmək mümkün olmadı');
         } finally {
@@ -49,10 +71,14 @@ const ArchiveTab = ({ isActive }) => {
 
     useEffect(() => {
         if (isActive) {
-            fetchData();
+            fetchData({ page: 1 });
             fetchShelves();
         }
     }, [isActive, debouncedSearchText, shelfFilter]);
+
+    const handleTableChange = (newPagination) => {
+        fetchData({ page: newPagination.current });
+    };
 
     const columns = [
         {
@@ -116,7 +142,8 @@ const ArchiveTab = ({ isActive }) => {
                 rowKey="id"
                 loading={loading}
                 scroll={{ x: 900 }}
-                pagination={{ pageSize: 10 }}
+                pagination={pagination}
+                onChange={handleTableChange}
             />
         </div>
     );

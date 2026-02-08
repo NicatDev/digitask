@@ -232,15 +232,23 @@ const UserLocationModal = ({ open, onCancel, userId }) => {
                         <MapResizer />
 
                         {/* Fly to user when data loads */}
-                        {userData?.latitude && <FlyToUser lat={parseFloat(userData.latitude)} lng={parseFloat(userData.longitude)} />}
+                        {userData?.latitude && userData?.longitude && !isNaN(parseFloat(userData.latitude)) && !isNaN(parseFloat(userData.longitude)) &&
+                            <FlyToUser lat={parseFloat(userData.latitude)} lng={parseFloat(userData.longitude)} />
+                        }
 
-                        {warehouses.map(w => (
-                            <Marker key={`w-${w.id}`} position={[parseFloat(w.lat), parseFloat(w.lng)]} icon={getWarehouseIcon()}>
-                                <Popup><strong>Anbar:</strong> {w.name}</Popup>
-                            </Marker>
-                        ))}
+                        {warehouses.map(w => {
+                            const lat = parseFloat(w.lat);
+                            const lng = parseFloat(w.lng);
+                            if (isNaN(lat) || isNaN(lng)) return null;
 
-                        {userData && userData.latitude && (
+                            return (
+                                <Marker key={`w-${w.id}`} position={[lat, lng]} icon={getWarehouseIcon()}>
+                                    <Popup><strong>Anbar:</strong> {w.name}</Popup>
+                                </Marker>
+                            );
+                        })}
+
+                        {userData && userData.latitude && userData.longitude && !isNaN(parseFloat(userData.latitude)) && !isNaN(parseFloat(userData.longitude)) && (
                             <Marker
                                 position={[parseFloat(userData.latitude), parseFloat(userData.longitude)]}
                                 icon={createUserIconWithName(userIsActiveOrRecent, userData.full_name)}
@@ -267,11 +275,16 @@ const UserLocationModal = ({ open, onCancel, userId }) => {
 
                         {/* Customer Markers & Routes for all active tasks */}
                         {userData?.active_tasks && userData.active_tasks.map((task, taskIdx) => {
+                            const lat = parseFloat(task.customer_lat);
+                            const lng = parseFloat(task.customer_lng);
+
+                            if (isNaN(lat) || isNaN(lng)) return null;
+
                             const routeColor = ROUTE_COLORS[taskIdx % ROUTE_COLORS.length];
                             return (
                                 <React.Fragment key={`task-${task.id}`}>
                                     <Marker
-                                        position={[parseFloat(task.customer_lat), parseFloat(task.customer_lng)]}
+                                        position={[lat, lng]}
                                         icon={getCustomerIcon(routeColor)}
                                     >
                                         <Popup>

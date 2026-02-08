@@ -1,8 +1,8 @@
 from rest_framework import serializers
 import json
-from ..models import Task, TaskService, TaskServiceValue, Column, Service, TaskProduct, TaskDocument, TaskType
+from ..models import Task, TaskService, TaskServiceValue, Column, Service, TaskProduct, TaskType
 from .product import TaskProductSerializer
-from .document import TaskDocumentSerializer
+from documents.serializers import TaskDocumentSerializer
 from .task_type import TaskTypeSerializer
 
 

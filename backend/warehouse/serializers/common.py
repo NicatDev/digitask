@@ -13,6 +13,7 @@ class WarehouseSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     unit_display = serializers.CharField(source='get_unit_display', read_only=True)
+    total_stock = serializers.DecimalField(max_digits=18, decimal_places=3, read_only=True)
 
     class Meta:
         model = Product
@@ -20,5 +21,5 @@ class ProductSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'unit', 'unit_display',
             'image', 'brand', 'model', 'serial_number', 'port_count',
             'size', 'weight', 'price', 'note',
-            'min_quantity', 'max_quantity', 'is_active'
+            'min_quantity', 'max_quantity', 'total_stock', 'is_active'
         ]

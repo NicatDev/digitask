@@ -33,23 +33,49 @@ const ProductTab = ({ isActive }) => {
     const [stockForm] = Form.useForm();
     const [selectedProduct, setSelectedProduct] = useState(null);
 
+    const [pagination, setPagination] = useState({
+        current: 1,
+        pageSize: 5,
+        total: 0,
+    });
+
     // Debounce Search
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearchText(searchText);
+            setPagination(prev => ({ ...prev, current: 1 })); // Reset to page 1 on search
         }, 500);
         return () => clearTimeout(timer);
     }, [searchText]);
 
-    const fetchData = async () => {
+    const fetchData = async (params = {}) => {
         setLoading(true);
         try {
+            const queryParams = {
+                page: params.current || pagination.current,
+                page_size: params.pageSize || pagination.pageSize,
+                search: debouncedSearchText,
+            };
+
+            if (statusFilter !== 'all') {
+                queryParams.is_active = statusFilter;
+            }
+
             const [productsRes, warehousesRes, inventoryRes] = await Promise.all([
-                getProducts(),
+                getProducts(queryParams),
                 getWarehouses(),
-                getInventory()
+                getInventory() // Note: This might need pagination too if list is huge
             ]);
-            setData(productsRes.data.results || productsRes.data);
+
+            const productsData = productsRes.data;
+            setData(productsData.results || []);
+            setPagination(prev => ({
+                ...prev,
+                current: params.current || pagination.current,
+                pageSize: params.pageSize || pagination.pageSize,
+                total: productsData.count || 0,
+            }));
+
             setWarehouses(warehousesRes.data.results || warehousesRes.data);
             setInventory(inventoryRes.data.results || inventoryRes.data);
         } catch (error) {
@@ -64,7 +90,16 @@ const ProductTab = ({ isActive }) => {
         if (isActive) {
             fetchData();
         }
-    }, [isActive]);
+    }, [isActive, debouncedSearchText, statusFilter]);
+
+    const handleTableChange = (newPagination, filters, sorter) => {
+        fetchData({
+            current: newPagination.current,
+            pageSize: newPagination.pageSize,
+        });
+    };
+
+
 
     const handleDelete = async (id) => {
         try {
@@ -121,16 +156,7 @@ const ProductTab = ({ isActive }) => {
         }
     };
 
-    const getFilteredData = () => {
-        return data.filter(item => {
-            const lowerSearch = debouncedSearchText.toLowerCase();
-            const matchesSearch = item.name.toLowerCase().includes(lowerSearch) ||
-                (item.brand && item.brand.toLowerCase().includes(lowerSearch)) ||
-                (item.model && item.model.toLowerCase().includes(lowerSearch));
-            const matchesStatus = statusFilter !== 'all' ? item.is_active === statusFilter : true;
-            return matchesSearch && matchesStatus;
-        });
-    };
+
 
     const getProductInventory = (productId) => {
         return inventory.filter(inv => inv.product === productId);
@@ -322,11 +348,12 @@ const ProductTab = ({ isActive }) => {
 
             <Table
                 columns={columns}
-                dataSource={getFilteredData()}
+                dataSource={data}
                 rowKey="id"
                 loading={loading}
                 scroll={{ x: 1000 }}
-                pagination={{ pageSize: 10 }}
+                pagination={pagination}
+                onChange={handleTableChange}
             />
 
             {/* Product Create/Edit Modal */}

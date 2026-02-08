@@ -6,11 +6,6 @@ import { TASK_STATUSES } from '../../constants';
 const TaskDetailModal = ({ open, onCancel, task, services = [] }) => {
     if (!task) return null;
 
-    const getStatusLabel = (status) => {
-        const found = TASK_STATUSES.find(s => s.value === status);
-        return found ? found.label : status;
-    };
-
     const StatusBadge = ({ status }) => {
         const found = TASK_STATUSES.find(s => s.value === status);
         return (
@@ -40,7 +35,7 @@ const TaskDetailModal = ({ open, onCancel, task, services = [] }) => {
                     <Descriptions.Item label="Qrup">{task.group_name || '-'}</Descriptions.Item>
                     <Descriptions.Item label="İcraçı">{task.assigned_to_name || <Tag>Təyin edilməyib</Tag>}</Descriptions.Item>
                     <Descriptions.Item label="Təsvir" span={2}>
-                        <div style={{ whiteSpace: 'pre-wrap' }}>{task.description || '-'}</div>
+                        <div style={{ whiteSpace: 'pre-wrap' }}>{task.note || '-'}</div>
                     </Descriptions.Item>
                     <Descriptions.Item label="Servislər" span={2}>
                         {task.services && task.services.length > 0 ? (

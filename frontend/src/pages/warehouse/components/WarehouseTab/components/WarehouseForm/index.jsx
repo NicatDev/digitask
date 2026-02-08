@@ -45,15 +45,13 @@ const DraggableMarker = ({ lat, lng }) => {
 };
 
 const WarehouseForm = ({ form, onFinish, regions, selectedCoords, setSelectedCoords, editingItem }) => {
-    // Ensure coordinates are always valid numbers
-    const validCoords = useMemo(() => {
-        const lat = parseFloat(selectedCoords?.lat);
-        const lng = parseFloat(selectedCoords?.lng);
-        return {
-            lat: !isNaN(lat) ? lat : DEFAULT_COORDS.lat,
-            lng: !isNaN(lng) ? lng : DEFAULT_COORDS.lng
-        };
-    }, [selectedCoords]);
+    // Check if we have valid coordinates
+    const hasValidCoords = selectedCoords && !isNaN(parseFloat(selectedCoords.lat)) && !isNaN(parseFloat(selectedCoords.lng));
+
+    // Get display coordinates (for map center and marker)
+    const displayCoords = hasValidCoords
+        ? { lat: parseFloat(selectedCoords.lat), lng: parseFloat(selectedCoords.lng) }
+        : DEFAULT_COORDS;
 
     // Only center on initial load when editing an existing warehouse with coordinates
     const shouldCenter = !!editingItem && editingItem.coordinates?.lat && editingItem.coordinates?.lng;
@@ -74,10 +72,10 @@ const WarehouseForm = ({ form, onFinish, regions, selectedCoords, setSelectedCoo
                 <Input />
             </Form.Item>
 
-            <Form.Item label={<span><EnvironmentOutlined /> Xəritədən Seç (Lat: {validCoords.lat.toFixed(4)}, Lng: {validCoords.lng.toFixed(4)})</span>}>
+            <Form.Item label={<span><EnvironmentOutlined /> {hasValidCoords ? `Xəritədən Seçildi (Lat: ${displayCoords.lat.toFixed(4)}, Lng: ${displayCoords.lng.toFixed(4)})` : 'Xəritədən Seç (klik edin)'}</span>}>
                 <div className={styles.mapContainer}>
                     <MapContainer
-                        center={[validCoords.lat, validCoords.lng]}
+                        center={[displayCoords.lat, displayCoords.lng]}
                         zoom={12}
                         style={{ height: '100%', width: '100%' }}
                     >
@@ -85,12 +83,12 @@ const WarehouseForm = ({ form, onFinish, regions, selectedCoords, setSelectedCoo
                             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
-                        <DraggableMarker lat={validCoords.lat} lng={validCoords.lng} />
+                        {hasValidCoords && <DraggableMarker lat={displayCoords.lat} lng={displayCoords.lng} />}
                         <MapClickHandler onLocationSelect={setSelectedCoords} />
                         <MapReadyHandler
                             shouldCenter={shouldCenter}
-                            lat={validCoords.lat}
-                            lng={validCoords.lng}
+                            lat={displayCoords.lat}
+                            lng={displayCoords.lng}
                         />
                     </MapContainer>
                 </div>

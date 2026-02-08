@@ -13,7 +13,7 @@ const WarehouseTab = ({ isActive }) => {
     const [data, setData] = useState([]);
     const [regions, setRegions] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [selectedCoords, setSelectedCoords] = useState({ lat: 40.4093, lng: 49.8671 });
+    const [selectedCoords, setSelectedCoords] = useState(null);
 
     // Filter States
     const [searchText, setSearchText] = useState('');
@@ -21,6 +21,13 @@ const WarehouseTab = ({ isActive }) => {
     const [statusFilter, setStatusFilter] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
     const screens = Grid.useBreakpoint();
+
+    // Pagination
+    const [pagination, setPagination] = useState({
+        current: 1,
+        pageSize: 5,
+        total: 0
+    });
 
     // Form Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,14 +46,33 @@ const WarehouseTab = ({ isActive }) => {
         return () => clearTimeout(timer);
     }, [searchText]);
 
-    const fetchData = async () => {
+    const fetchData = async (params = {}) => {
         setLoading(true);
         try {
+            const queryParams = {
+                page: params.page || pagination.current,
+                search: debouncedSearchText
+            };
+            if (statusFilter !== 'all') {
+                queryParams.is_active = statusFilter;
+            }
+
             const [warehouseRes, regionRes] = await Promise.all([
-                getWarehouses(),
+                getWarehouses(queryParams),
                 getRegions()
             ]);
-            setData(warehouseRes.data.results || warehouseRes.data);
+
+            const responseData = warehouseRes.data;
+            if (responseData.results) {
+                setData(responseData.results);
+                setPagination(prev => ({
+                    ...prev,
+                    current: queryParams.page,
+                    total: responseData.count
+                }));
+            } else {
+                setData(responseData);
+            }
             setRegions(regionRes.data);
         } catch (error) {
             console.error(error);
@@ -56,11 +82,15 @@ const WarehouseTab = ({ isActive }) => {
         }
     };
 
+    const handleTableChange = (newPagination) => {
+        fetchData({ page: newPagination.current });
+    };
+
     useEffect(() => {
         if (isActive) {
-            fetchData();
+            fetchData({ page: 1 });
         }
-    }, [isActive]);
+    }, [isActive, debouncedSearchText, statusFilter]);
 
     const handleDelete = async (id) => {
         try {
@@ -76,8 +106,11 @@ const WarehouseTab = ({ isActive }) => {
         try {
             const payload = {
                 ...values,
-                coordinates: selectedCoords
             };
+            // Only include coordinates if user selected a location
+            if (selectedCoords && selectedCoords.lat && selectedCoords.lng) {
+                payload.coordinates = selectedCoords;
+            }
             if (editingItem) {
                 await updateWarehouse(editingItem.id, payload);
                 message.success('Anbar yeniləndi');
@@ -88,7 +121,7 @@ const WarehouseTab = ({ isActive }) => {
             setIsModalOpen(false);
             form.resetFields();
             setEditingItem(null);
-            setSelectedCoords({ lat: 40.4093, lng: 49.8671 });
+            setSelectedCoords(null);
             fetchData();
         } catch (error) {
             handleApiError(error, 'Əməliyyat uğursuz oldu');
@@ -105,15 +138,7 @@ const WarehouseTab = ({ isActive }) => {
         }
     };
 
-    const getFilteredData = () => {
-        return data.filter(item => {
-            const lowerSearch = debouncedSearchText.toLowerCase();
-            const matchesSearch = item.name.toLowerCase().includes(lowerSearch) ||
-                (item.address && item.address.toLowerCase().includes(lowerSearch));
-            const matchesStatus = statusFilter !== 'all' ? item.is_active === statusFilter : true;
-            return matchesSearch && matchesStatus;
-        });
-    };
+    // Client-side filtering removed - now using server-side
 
     const openEditModal = (record) => {
         setEditingItem(record);
@@ -121,7 +146,7 @@ const WarehouseTab = ({ isActive }) => {
         if (record.coordinates && record.coordinates.lat && record.coordinates.lng) {
             setSelectedCoords(record.coordinates);
         } else {
-            setSelectedCoords({ lat: 40.4093, lng: 49.8671 });
+            setSelectedCoords(null);
         }
         setIsModalOpen(true);
     };
@@ -129,7 +154,7 @@ const WarehouseTab = ({ isActive }) => {
     const openNewModal = () => {
         setEditingItem(null);
         form.resetFields();
-        setSelectedCoords({ lat: 40.4093, lng: 49.8671 });
+        setSelectedCoords(null);
         setIsModalOpen(true);
     };
 
@@ -236,11 +261,12 @@ const WarehouseTab = ({ isActive }) => {
 
             <Table
                 columns={columns}
-                dataSource={getFilteredData()}
+                dataSource={data}
                 rowKey="id"
                 loading={loading}
                 scroll={{ x: 800 }}
-                pagination={{ pageSize: 10 }}
+                pagination={pagination}
+                onChange={handleTableChange}
             />
 
             <Modal

@@ -43,7 +43,14 @@ const TopUsersList = () => {
                         <List.Item.Meta
                             avatar={
                                 <Badge count={index + 1} color="#faad14" offset={[0, 5]}>
-                                    <Avatar size={48} icon={<UserOutlined />} style={{ backgroundColor: '#fde3cf', color: '#f56a00' }} />
+                                    {item['assigned_to__avatar'] ? (
+                                        <Avatar
+                                            size={48}
+                                            src={`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/media/${item['assigned_to__avatar']}`}
+                                        />
+                                    ) : (
+                                        <Avatar size={48} icon={<UserOutlined />} style={{ backgroundColor: '#fde3cf', color: '#f56a00' }} />
+                                    )}
                                 </Badge>
                             }
                             title={

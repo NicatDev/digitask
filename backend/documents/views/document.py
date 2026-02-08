@@ -3,9 +3,16 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from django.utils import timezone
 from ..models import TaskDocument
 from ..serializers import TaskDocumentSerializer
+
+
+class DocumentPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class TaskDocumentViewSet(viewsets.ModelViewSet):
@@ -14,21 +21,16 @@ class TaskDocumentViewSet(viewsets.ModelViewSet):
     serializer_class = TaskDocumentSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+    pagination_class = DocumentPagination
     
     def get_queryset(self):
         queryset = TaskDocument.objects.select_related(
-            'task', 'warehouse', 'stock_movement', 'shelf', 'confirmed_by'
+            'task', 'stock_movement', 'shelf', 'confirmed_by'
         ).order_by('-created_at')
         
-        # Filter by task
         task = self.request.query_params.get('task')
         if task:
             queryset = queryset.filter(task_id=task)
-        
-        # Filter by warehouse
-        warehouse = self.request.query_params.get('warehouse')
-        if warehouse:
-            queryset = queryset.filter(warehouse_id=warehouse)
         
         # Filter by stock_movement
         stock_movement = self.request.query_params.get('stock_movement')
@@ -80,11 +82,16 @@ class TaskDocumentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         stock_movement = serializer.validated_data.get('stock_movement')
-        stock_movement_title = serializer.validated_data.get('stock_movement_title')
+        action_text = serializer.validated_data.get('action')
+        task = serializer.validated_data.get('task')
         
-        # Auto-generate title if stock_movement exists and title is not provided
-        if stock_movement and not stock_movement_title:
-            title = f"{stock_movement.warehouse.name} - {stock_movement.get_movement_type_display()}"
-            serializer.save(stock_movement_title=title)
+        # If stock_movement is provided and no action, generate action text
+        if stock_movement and not action_text:
+            action_text = f"{stock_movement.warehouse.name} - {stock_movement.get_movement_type_display()}"
+            serializer.save(action=action_text)
+        # If task is provided and no action, generate action text
+        elif task and not action_text:
+            action_text = f"Tapşırıq: {task.title}"
+            serializer.save(action=action_text)
         else:
             serializer.save()

@@ -19,6 +19,9 @@ class UserSerializer(serializers.ModelSerializer):
     is_document_writer = serializers.BooleanField(source='role.is_document_writer', read_only=True)
     is_admin = serializers.BooleanField(source='role.is_admin', read_only=True)
     is_super_admin = serializers.BooleanField(source='role.is_super_admin', read_only=True)
+    
+    is_online = serializers.SerializerMethodField()
+    last_seen = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -26,9 +29,21 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'phone_number', 'avatar', 'first_name', 'last_name', 
             'role', 'role_name', 'group', 'group_name', 'is_active', 'password', 'address', 'address_coordinates',
             'is_task_reader', 'is_task_writer', 'is_warehouse_reader', 'is_warehouse_writer',
-            'is_document_reader', 'is_document_writer', 'is_admin', 'is_super_admin'
+            'is_document_reader', 'is_document_writer', 'is_admin', 'is_super_admin',
+            'is_online', 'last_seen'
         ]
         extra_kwargs = {'password': {'write_only': True, 'required': False}}
+
+    def get_is_online(self, obj):
+        # Check if attribute exists (avoid RelatedObjectDoesNotExist)
+        if hasattr(obj, 'location_profile'):
+            return obj.location_profile.is_online
+        return False
+
+    def get_last_seen(self, obj):
+        if hasattr(obj, 'location_profile'):
+            return obj.location_profile.last_seen
+        return None
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)

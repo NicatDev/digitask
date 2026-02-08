@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
-import { Input, List, Card, Badge, message, Collapse, Tag } from 'antd';
-import { UserOutlined, ShopOutlined, SearchOutlined } from '@ant-design/icons';
+import { Input, List, Card, Badge, message, Collapse, Tag, Checkbox, Button, Space } from 'antd';
+import { UserOutlined, ShopOutlined, SearchOutlined, FilterOutlined } from '@ant-design/icons';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import styles from './style.module.scss';
@@ -38,7 +38,11 @@ const FlyToLocation = ({ coords, trigger }) => {
     const map = useMap();
     useEffect(() => {
         if (coords && trigger) {
-            map.flyTo([coords.lat, coords.lng], 16, { duration: 1.2 });
+            const lat = parseFloat(coords.lat);
+            const lng = parseFloat(coords.lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                map.flyTo([lat, lng], 16, { duration: 1.2 });
+            }
         }
     }, [coords, trigger, map]);
     return null;
@@ -144,6 +148,10 @@ const LiveMap = () => {
     const [flyTrigger, setFlyTrigger] = useState(0);
     const ws = useRef(null);
 
+    // Filters
+    const [selectedUserIds, setSelectedUserIds] = useState(new Set());
+    const [selectedWarehouseIds, setSelectedWarehouseIds] = useState(new Set());
+
     useEffect(() => {
         fetchInitialData();
         connectWebSocket();
@@ -158,6 +166,11 @@ const LiveMap = () => {
             const usersData = res.data.users || [];
             setUsers(usersData);
             setWarehouses(res.data.warehouses || []);
+
+            // Initially select none (as per request)
+            // If user wants to select online ones:
+            // const onlineIds = new Set(usersData.filter(u => u.is_online).map(u => u.user_id));
+            // setSelectedUserIds(onlineIds);
 
             // Fetch routes for all active tasks
             usersData.forEach(u => {
@@ -257,6 +270,8 @@ const LiveMap = () => {
         if (user.latitude && user.longitude) {
             setFlyTarget({ lat: user.latitude, lng: user.longitude });
             setFlyTrigger(prev => prev + 1);
+            // Auto Select if clicking
+            setSelectedUserIds(prev => new Set(prev).add(user.user_id));
         } else {
             message.info(`${user.full_name} üçün ünvan məlumatı yoxdur`);
         }
@@ -266,6 +281,37 @@ const LiveMap = () => {
         if (warehouse.lat && warehouse.lng) {
             setFlyTarget({ lat: warehouse.lat, lng: warehouse.lng });
             setFlyTrigger(prev => prev + 1);
+            setSelectedWarehouseIds(prev => new Set(prev).add(warehouse.id));
+        }
+    };
+
+    const toggleUser = (id) => {
+        const newSet = new Set(selectedUserIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedUserIds(newSet);
+    };
+
+    const toggleWarehouse = (id) => {
+        const newSet = new Set(selectedWarehouseIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedWarehouseIds(newSet);
+    };
+
+    const toggleAllUsers = () => {
+        if (selectedUserIds.size === users.length) {
+            setSelectedUserIds(new Set());
+        } else {
+            setSelectedUserIds(new Set(users.map(u => u.user_id)));
+        }
+    };
+
+    const toggleAllWarehouses = () => {
+        if (selectedWarehouseIds.size === warehouses.length) {
+            setSelectedWarehouseIds(new Set());
+        } else {
+            setSelectedWarehouseIds(new Set(warehouses.map(w => w.id)));
         }
     };
 
@@ -277,10 +323,17 @@ const LiveMap = () => {
         {
             key: 'users',
             label: (
-                <span>
-                    <UserOutlined style={{ marginRight: 8 }} />
-                    İstifadəçilər ({users.length})
-                </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>
+                        <UserOutlined style={{ marginRight: 8 }} />
+                        İstifadəçilər ({users.length})
+                    </span>
+                    <Checkbox
+                        indeterminate={selectedUserIds.size > 0 && selectedUserIds.size < users.length}
+                        checked={users.length > 0 && selectedUserIds.size === users.length}
+                        onClick={(e) => { e.stopPropagation(); toggleAllUsers(); }}
+                    />
+                </div>
             ),
             children: (
                 <List
@@ -290,27 +343,30 @@ const LiveMap = () => {
                         const hasLocation = user.latitude && user.longitude;
                         return (
                             <List.Item
-                                onClick={() => handleUserClick(user)}
-                                style={{
-                                    cursor: 'pointer',
-                                    padding: '8px 12px',
-                                    borderRadius: '4px',
-                                    marginBottom: '4px',
-                                    background: '#fafafa'
-                                }}
                                 className={styles.listItem}
+                                style={{ padding: '8px 12px', background: '#fafafa', marginBottom: 4 }}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-                                    <Badge status={user.is_online ? 'success' : 'default'} />
-                                    <span style={{
-                                        color: hasLocation ? '#333' : '#bfbfbf',
-                                        fontWeight: hasLocation ? 500 : 400
-                                    }}>
-                                        {user.full_name}
-                                    </span>
-                                    {!hasLocation && (
-                                        <Tag color="default" style={{ fontSize: 10, marginLeft: 'auto' }}>GPS yoxdur</Tag>
-                                    )}
+                                    <Checkbox
+                                        checked={selectedUserIds.has(user.user_id)}
+                                        onChange={() => toggleUser(user.user_id)}
+                                        disabled={!hasLocation}
+                                    />
+                                    <div
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, cursor: 'pointer' }}
+                                        onClick={() => handleUserClick(user)}
+                                    >
+                                        <Badge status={user.is_online ? 'success' : 'default'} />
+                                        <span style={{
+                                            color: hasLocation ? '#333' : '#bfbfbf',
+                                            fontWeight: hasLocation ? 500 : 400
+                                        }}>
+                                            {user.full_name}
+                                        </span>
+                                        {!hasLocation && (
+                                            <Tag color="default" style={{ fontSize: 10, marginLeft: 'auto' }}>GPS yoxdur</Tag>
+                                        )}
+                                    </div>
                                 </div>
                             </List.Item>
                         );
@@ -321,10 +377,17 @@ const LiveMap = () => {
         {
             key: 'warehouses',
             label: (
-                <span>
-                    <ShopOutlined style={{ marginRight: 8 }} />
-                    Anbarlar ({warehouses.length})
-                </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>
+                        <ShopOutlined style={{ marginRight: 8 }} />
+                        Anbarlar ({warehouses.length})
+                    </span>
+                    <Checkbox
+                        indeterminate={selectedWarehouseIds.size > 0 && selectedWarehouseIds.size < warehouses.length}
+                        checked={warehouses.length > 0 && selectedWarehouseIds.size === warehouses.length}
+                        onClick={(e) => { e.stopPropagation(); toggleAllWarehouses(); }}
+                    />
+                </div>
             ),
             children: (
                 <List
@@ -332,17 +395,21 @@ const LiveMap = () => {
                     dataSource={warehouses}
                     renderItem={warehouse => (
                         <List.Item
-                            onClick={() => handleWarehouseClick(warehouse)}
-                            style={{
-                                cursor: 'pointer',
-                                padding: '8px 12px',
-                                borderRadius: '4px',
-                                marginBottom: '4px',
-                                background: '#fffbe6'
-                            }}
                             className={styles.listItem}
+                            style={{ padding: '8px 12px', background: '#fffbe6', marginBottom: 4 }}
                         >
-                            <span style={{ fontWeight: 500 }}>📦 {warehouse.name}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                                <Checkbox
+                                    checked={selectedWarehouseIds.has(warehouse.id)}
+                                    onChange={() => toggleWarehouse(warehouse.id)}
+                                />
+                                <div
+                                    style={{ flex: 1, cursor: 'pointer' }}
+                                    onClick={() => handleWarehouseClick(warehouse)}
+                                >
+                                    <span style={{ fontWeight: 500 }}>📦 {warehouse.name}</span>
+                                </div>
+                            </div>
                         </List.Item>
                     )}
                 />
@@ -361,7 +428,12 @@ const LiveMap = () => {
                         value={searchText}
                         onChange={e => setSearchText(e.target.value)}
                         allowClear
+                        style={{ marginBottom: 8 }}
                     />
+                    <Space size="small">
+                        <Button size="small" onClick={() => { setSelectedUserIds(new Set(users.map(u => u.user_id))); setSelectedWarehouseIds(new Set(warehouses.map(w => w.id))); }}>Hamısını Seç</Button>
+                        <Button size="small" onClick={() => { setSelectedUserIds(new Set()); setSelectedWarehouseIds(new Set()); }}>Təmizlə</Button>
+                    </Space>
                 </Card>
                 <Collapse items={collapseItems} defaultActiveKey={['users', 'warehouses']} />
             </div>
@@ -377,20 +449,34 @@ const LiveMap = () => {
                     <FlyToLocation coords={flyTarget} trigger={flyTrigger} />
 
                     {/* Warehouses */}
-                    {warehouses.map(w => (
-                        <Marker key={`w-${w.id}`} position={[w.lat, w.lng]} icon={getWarehouseIcon()}>
-                            <Popup><strong>Anbar:</strong> {w.name}</Popup>
-                        </Marker>
-                    ))}
+                    {warehouses.map(w => {
+                        if (!selectedWarehouseIds.has(w.id)) return null;
+
+                        const lat = parseFloat(w.lat);
+                        const lng = parseFloat(w.lng);
+                        if (isNaN(lat) || isNaN(lng)) return null;
+
+                        return (
+                            <Marker key={`w-${w.id}`} position={[lat, lng]} icon={getWarehouseIcon()}>
+                                <Popup><strong>Anbar:</strong> {w.name}</Popup>
+                            </Marker>
+                        );
+                    })}
 
                     {/* Users */}
                     {users.map(u => {
-                        if (!u.latitude || !u.longitude) return null;
+                        if (!selectedUserIds.has(u.user_id)) return null;
+
+                        const lat = parseFloat(u.latitude);
+                        const lng = parseFloat(u.longitude);
+
+                        if (isNaN(lat) || isNaN(lng)) return null;
+
                         const userIsActiveOrRecent = isRecentlyOnline(u);
                         return (
                             <React.Fragment key={`u-${u.user_id}`}>
                                 <Marker
-                                    position={[parseFloat(u.latitude), parseFloat(u.longitude)]}
+                                    position={[lat, lng]}
                                     icon={createUserIconWithName(userIsActiveOrRecent, u.full_name)}
                                 >
                                     <Popup>
@@ -407,12 +493,17 @@ const LiveMap = () => {
 
                                 {/* Customer Markers & Routes for all active tasks */}
                                 {u.active_tasks && u.active_tasks.map((task, taskIdx) => {
+                                    const cLat = parseFloat(task.customer_lat);
+                                    const cLng = parseFloat(task.customer_lng);
+
+                                    if (isNaN(cLat) || isNaN(cLng)) return null;
+
                                     const routeColor = ROUTE_COLORS[taskIdx % ROUTE_COLORS.length];
                                     const routeKey = `${u.user_id}_${task.id}`;
                                     return (
                                         <React.Fragment key={`task-${task.id}`}>
                                             <Marker
-                                                position={[parseFloat(task.customer_lat), parseFloat(task.customer_lng)]}
+                                                position={[cLat, cLng]}
                                                 icon={getCustomerIcon(routeColor)}
                                             >
                                                 <Popup>

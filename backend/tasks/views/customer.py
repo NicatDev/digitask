@@ -4,11 +4,14 @@ from rest_framework.permissions import IsAuthenticated
 from ..models import Customer
 from ..serializers import CustomerSerializer
 
+from ..pagination import TaskPagination
+
 
 class CustomerViewSet(viewsets.ModelViewSet):
     """ViewSet for Customer CRUD operations."""
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
+    pagination_class = TaskPagination
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):

@@ -32,6 +32,8 @@ const TaskTable = ({
 
     onProductSelect, // (record) => open product selection modal
     onDocumentAdd, // (record) => open document modal
+    pagination, // Pagination object from parent
+    onChange, // Table change handler
     disableActions = false
 }) => {
 
@@ -209,7 +211,8 @@ const TaskTable = ({
             rowKey="id"
             loading={loading}
             scroll={{ x: 1600 }}
-            pagination={{ pageSize: 10 }}
+            pagination={pagination}
+            onChange={onChange}
         />
     );
 };

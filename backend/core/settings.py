@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'chat',
     'dashboard',
     'performance',
+    'documents',
 ]
 
 ASGI_APPLICATION = 'core.asgi.application'

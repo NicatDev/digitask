@@ -14,6 +14,14 @@ const HistoryTab = ({ isActive }) => {
     const [loading, setLoading] = useState(false);
     const [warehouses, setWarehouses] = useState([]);
 
+    // Pagination State
+    const [pagination, setPagination] = useState({
+        current: 1,
+        pageSize: 5,
+        total: 0,
+        showSizeChanger: false,
+    });
+
     // Filter States
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
@@ -35,18 +43,28 @@ const HistoryTab = ({ isActive }) => {
         return () => clearTimeout(timer);
     }, [searchText]);
 
-    const fetchData = async () => {
+    const fetchData = async (params = {}) => {
         setLoading(true);
         try {
             // Build query params
-            const params = {
+            const queryParams = {
                 search: debouncedSearchText,
+                page: params.current || pagination.current,
+                page_size: 5,
             };
-            if (typeFilter) params.movement_type = typeFilter;
-            if (warehouseFilter) params.warehouse = warehouseFilter;
+            if (typeFilter) queryParams.movement_type = typeFilter;
+            if (warehouseFilter) queryParams.warehouse = warehouseFilter;
 
-            const response = await getStockMovements(params);
-            setData(response.data.results || []);
+            const response = await getStockMovements(queryParams);
+            const results = response.data.results || [];
+            const total = response.data.count || 0;
+
+            setData(results);
+            setPagination(prev => ({
+                ...prev,
+                current: params.current || pagination.current,
+                total: total,
+            }));
         } catch (error) {
             console.error(error);
             handleApiError(error, 'Tarixçəni yükləmək mümkün olmadı');
@@ -66,10 +84,16 @@ const HistoryTab = ({ isActive }) => {
 
     useEffect(() => {
         if (isActive) {
-            fetchData();
-            fetchWarehouses();
+            // Reset to page 1 on filter change
+            fetchData({ current: 1 });
         }
     }, [isActive, debouncedSearchText, typeFilter, warehouseFilter]);
+
+    const handleTableChange = (newPagination) => {
+        fetchData({
+            current: newPagination.current,
+        });
+    };
 
     const getTypeTag = (type) => {
         const map = {
@@ -200,7 +224,8 @@ const HistoryTab = ({ isActive }) => {
                 rowKey="id"
                 loading={loading}
                 scroll={{ x: 1400 }}
-                pagination={{ pageSize: 10 }}
+                pagination={pagination}
+                onChange={handleTableChange}
             />
 
             <StockMovementDocumentModal

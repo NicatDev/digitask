@@ -10,6 +10,7 @@ class Shelf(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'tasks_shelf'
         ordering = ['name']
         verbose_name = 'Rəf'
         verbose_name_plural = 'Rəflər'

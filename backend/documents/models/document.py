@@ -1,8 +1,8 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-from .task import Task
+from tasks.models import Task
 from .shelf import Shelf
-from warehouse.models import Warehouse, StockMovement
+from warehouse.models import StockMovement
 
 User = get_user_model()
 
@@ -16,13 +16,6 @@ class TaskDocument(models.Model):
         null=True,
         blank=True
     )
-    warehouse = models.ForeignKey(
-        Warehouse, 
-        on_delete=models.SET_NULL, 
-        related_name="task_documents",
-        null=True,
-        blank=True
-    )
     stock_movement = models.ForeignKey(
         StockMovement,
         on_delete=models.CASCADE,
@@ -30,7 +23,7 @@ class TaskDocument(models.Model):
         null=True,
         blank=True
     )
-    stock_movement_title = models.CharField(max_length=255, blank=True, null=True)
+    action = models.CharField(max_length=255, blank=True, null=True, help_text="Prosesin açıqlaması")
     shelf = models.ForeignKey(
         Shelf,
         on_delete=models.SET_NULL,
@@ -52,10 +45,10 @@ class TaskDocument(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'tasks_taskdocument'
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=["task"]),
-            models.Index(fields=["warehouse"]),
             models.Index(fields=["confirmed"]),
             models.Index(fields=["shelf"]),
         ]
