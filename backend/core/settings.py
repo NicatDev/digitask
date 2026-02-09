@@ -67,10 +67,10 @@ else:
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
-                "hosts": [(os.environ.get('REDIS_HOST', 'redis'), 6379)],
-            },
+                "hosts": [("localhost", 6379)],
         },
-    }
+    },
+}
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -117,13 +117,13 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB_NAME', 'postgres'),
-            'USER': os.environ.get('DB_USER', 'postgres'),
-            'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),
-            'HOST': os.environ.get('DB_HOST', 'db'),
+            'NAME': 'postgres',        # DB adı
+            'USER': 'postgres',        # istifadəçi
+            'PASSWORD': 'postgres',    # şifrə
+            'HOST': 'localhost',       # ← dəyişdi
             'PORT': 5432,
-        }
     }
+}
 
 
 # Password validation
