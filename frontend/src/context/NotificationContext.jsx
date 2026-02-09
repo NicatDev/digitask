@@ -7,6 +7,7 @@ export const NotificationProvider = ({ children }) => {
     const [unreadCount, setUnreadCount] = useState(0);
     const [chatUnreadCount, setChatUnreadCount] = useState(0);
     const [notifications, setNotifications] = useState([]);
+    const [lastChatNotification, setLastChatNotification] = useState(null);
     const ws = useRef(null);
     const reconnectTimeout = useRef(null);
 
@@ -38,10 +39,12 @@ export const NotificationProvider = ({ children }) => {
             return;
         }
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.hostname;
-        const port = '8000';
-        const url = `${protocol}//${host}:${port}/ws/chat/notifications/?token=${token}`;
+        // Use dynamic base URL based on environment
+        const isProduction = window.location.hostname === 'new.digitask.store' ||
+            window.location.hostname === 'digitask.store' ||
+            window.location.hostname === 'app.digitask.store';
+        const wsBase = isProduction ? 'wss://app.digitask.store' : 'ws://127.0.0.1:8000';
+        const url = `${wsBase}/ws/notifications/?token=${token}`;
 
         ws.current = new WebSocket(url);
 
@@ -56,6 +59,10 @@ export const NotificationProvider = ({ children }) => {
                 // New notification received
                 setUnreadCount(prev => prev + 1);
                 setNotifications(prev => [data.notification, ...prev]);
+            }
+
+            if (data.chat_notification) {
+                setLastChatNotification(data.chat_notification);
             }
 
             if (data.type === 'unread_count') {
@@ -81,8 +88,10 @@ export const NotificationProvider = ({ children }) => {
 
     const fetchUnreadCount = async () => {
         try {
-            const res = await axiosInstance.get('/tasks/notifications/unread_count/');
-            setUnreadCount(res.data.unread_count || 0);
+            const res = await axiosInstance.get('/notifications/unread_count/');
+            if (res && res.data) {
+                setUnreadCount(res.data.unread_count || 0);
+            }
         } catch (e) {
             console.error('Failed to fetch unread count', e);
         }
@@ -90,7 +99,7 @@ export const NotificationProvider = ({ children }) => {
 
     const markAllRead = async () => {
         try {
-            await axiosInstance.post('/tasks/notifications/mark_read/');
+            await axiosInstance.post('/notifications/mark_read/');
             setUnreadCount(0);
             setNotifications([]);
         } catch (e) {
@@ -110,7 +119,8 @@ export const NotificationProvider = ({ children }) => {
             markAllRead,
             refetchCount,
             setNotifications,
-            setUnreadCount
+            setUnreadCount,
+            lastChatNotification
         }}>
             {children}
         </NotificationContext.Provider>

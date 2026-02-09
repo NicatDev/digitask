@@ -22,7 +22,7 @@ class ChatGroupListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ChatGroup
-        fields = ['id', 'name', 'image', 'last_message', 'unread_count', 'created_at']
+        fields = ['id', 'name', 'owner', 'image', 'last_message', 'unread_count', 'created_at']
 
     def get_last_message(self, obj):
         last_msg = obj.messages.last()

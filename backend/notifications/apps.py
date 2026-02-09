@@ -1,9 +1,9 @@
 from django.apps import AppConfig
 
 
-class ChatConfig(AppConfig):
+class NotificationsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'chat'
+    name = 'notifications'
 
     def ready(self):
-        import chat.signals
+        import notifications.signals

@@ -7,7 +7,8 @@ import {
     LogoutOutlined,
     BellOutlined,
     MessageOutlined,
-    DownOutlined
+    DownOutlined,
+    AndroidOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
@@ -61,6 +62,14 @@ const AppHeader = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
 
             <div className={styles.headerRight}>
                 <Space size="large">
+                    {/* Android APK Download */}
+                    <Button
+                        type="text"
+                        icon={<AndroidOutlined style={{ color: '#3DDC84', fontSize: '18px' }} />}
+                        onClick={() => window.open('/api/app/download/', '_blank')}
+                        title="Android APK Yüklə"
+                    />
+
                     {/* Chat Messages */}
                     <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => navigate('/chat')}>
                         <Button type="text" icon={<MessageOutlined />} />

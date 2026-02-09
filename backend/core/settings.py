@@ -24,7 +24,7 @@ SECRET_KEY = 'django-insecure-8m#6w%im$(e!8$($0x7ofn3$)u22yog+yxxygsts(d=yb@l^gy
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'users',
     'warehouse',
     'tasks',
+    'notifications',
     'chat',
     'dashboard',
     'performance',
@@ -116,7 +117,7 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB_NAME', 'digitask'),
+            'NAME': os.environ.get('DB_NAME', 'postgres'),
             'USER': os.environ.get('DB_USER', 'postgres'),
             'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),
             'HOST': os.environ.get('DB_HOST', 'db'),
@@ -178,7 +179,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 #     "http://127.0.0.1:5173",
 # ]
 
-CSRF_TRUSTED_ORIGINS = ["https://new.digitask.store", "https://new-app.digitask.store"]
+CSRF_TRUSTED_ORIGINS = ["https://new.digitask.store", "https://new-app.digitask.store", "https://app.digitask.store", "https://digitask.store"]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

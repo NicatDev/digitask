@@ -1,8 +1,22 @@
 import axios from 'axios';
 
-const baseURL = window.location.hostname === 'new.digitask.store'
-    ? 'https://new-app.digitask.store/api/'
+// Determine if we're in production
+const isProduction = window.location.hostname === 'new.digitask.store' ||
+    window.location.hostname === 'digitask.store' ||
+    window.location.hostname === 'app.digitask.store';
+
+const baseURL = isProduction
+    ? 'https://app.digitask.store/api/'
     : 'http://127.0.0.1:8000/api/';
+
+// Export these for use in other parts of the app
+export const getBaseUrl = () => isProduction
+    ? 'https://app.digitask.store'
+    : 'http://127.0.0.1:8000';
+
+export const getWsUrl = () => isProduction
+    ? 'wss://app.digitask.store'
+    : 'ws://127.0.0.1:8000';
 
 const axiosInstance = axios.create({
     baseURL: baseURL,

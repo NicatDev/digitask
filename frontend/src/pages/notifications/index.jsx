@@ -23,7 +23,7 @@ const NotificationsPage = () => {
     const fetchNotifications = async () => {
         setLoading(true);
         try {
-            const res = await axiosInstance.get('/tasks/notifications/');
+            const res = await axiosInstance.get('/notifications/');
             setNotifications(res.data);
         } catch (e) {
             console.error('Failed to fetch notifications', e);
@@ -34,7 +34,7 @@ const NotificationsPage = () => {
 
     const handleMarkAllRead = async () => {
         try {
-            await axiosInstance.post('/tasks/notifications/mark_read/');
+            await axiosInstance.post('/notifications/mark_read/');
             setNotifications([]);
             setUnreadCount(0);
             message.success('Bütün bildirişlər oxundu!');

@@ -78,7 +78,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         task = serializer.save()
         
         # Create notification
-        from .notification import send_notification
+        from notifications.services import send_notification
         send_notification(
             title=f"Yeni Task: {task.title}",
             message=f"Müştəri: {task.customer.full_name if task.customer else 'N/A'}",

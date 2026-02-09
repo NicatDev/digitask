@@ -35,10 +35,11 @@ const MainLayout = () => {
         const token = localStorage.getItem('access_token');
         if (!token) return;
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.hostname;
-        const port = '8000';
-        const url = `${protocol}//${host}:${port}/ws/tracking/?token=${token}`;
+        const isProduction = window.location.hostname === 'new.digitask.store' ||
+            window.location.hostname === 'digitask.store' ||
+            window.location.hostname === 'app.digitask.store';
+        const wsBase = isProduction ? 'wss://app.digitask.store' : 'ws://127.0.0.1:8000';
+        const url = `${wsBase}/ws/tracking/?token=${token}`;
 
         trackingWs.current = new WebSocket(url);
 

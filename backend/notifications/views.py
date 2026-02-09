@@ -2,45 +2,8 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from ..models import Notification
-from ..serializers import NotificationSerializer
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
-
-
-def send_notification(title, message, notification_type='general', related_task=None):
-    """Create notification and broadcast via WebSocket."""
-    notification = Notification.objects.create(
-        title=title,
-        message=message,
-        notification_type=notification_type,
-        related_task=related_task
-    )
-    
-    # Broadcast to all connected users via channel layer
-    try:
-        channel_layer = get_channel_layer()
-        # We broadcast to a general notifications group
-        # Users subscribe to their personal channel in NotificationConsumer
-        from users.models import User
-        for user in User.objects.filter(is_active=True):
-            async_to_sync(channel_layer.group_send)(
-                f'user_notifications_{user.id}',
-                {
-                    'type': 'notification_message',
-                    'notification': {
-                        'id': notification.id,
-                        'title': notification.title,
-                        'message': notification.message,
-                        'notification_type': notification.notification_type,
-                        'created_at': notification.created_at.isoformat()
-                    }
-                }
-            )
-    except Exception as e:
-        print(f"Failed to broadcast notification: {e}")
-    
-    return notification
+from .models import Notification
+from .serializers import NotificationSerializer
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):

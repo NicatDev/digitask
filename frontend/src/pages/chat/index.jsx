@@ -5,6 +5,7 @@ import ChatArea from './components/ChatArea';
 import { getChatGroups, createChatGroup, getChatGroupDetails, getGroupMessages, addGroupMember, removeGroupMember, markMessagesRead, deleteChatGroup } from '../../axios/api/chat';
 import { getMe } from '../../axios/api/account';
 import { message } from 'antd';
+import { useNotifications } from '../../context/NotificationContext';
 
 const ChatPage = () => {
     const [groups, setGroups] = useState([]);
@@ -19,6 +20,37 @@ const ChatPage = () => {
 
     // WebSocket
     const ws = useRef(null);
+    const { lastChatNotification } = useNotifications();
+
+    useEffect(() => {
+        if (lastChatNotification) {
+            setGroups(prevGroups => {
+                return prevGroups.map(group => {
+                    if (group.id === lastChatNotification.group_id) {
+                        // Only increment unread if NOT the currently selected group (or if window not focused, but that's harder)
+                        // Actually, if we are in the group, the chat WS handles the message.
+                        // But the LIST needs to update "last message" regardless.
+                        // And unread count only if not selected.
+
+                        const isSelected = group.id === selectedGroupId;
+
+                        return {
+                            ...group,
+                            last_message: {
+                                content: lastChatNotification.message_content,
+                                sender: lastChatNotification.sender_name,
+                                created_at: lastChatNotification.created_at
+                            },
+                            unread_count: isSelected ? group.unread_count : (group.unread_count + 1)
+                        };
+                    }
+                    return group;
+                });
+            });
+
+            // Move updated group to top? Optional but nice.
+        }
+    }, [lastChatNotification]);
 
     useEffect(() => {
         fetchProfile();
@@ -79,11 +111,12 @@ const ChatPage = () => {
             ws.current.close();
         }
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.hostname; // e.g. localhost
-        const port = '8000'; // Backend port
+        const isProduction = window.location.hostname === 'new.digitask.store' ||
+            window.location.hostname === 'digitask.store' ||
+            window.location.hostname === 'app.digitask.store';
+        const wsBase = isProduction ? 'wss://app.digitask.store' : 'ws://127.0.0.1:8000';
         const token = localStorage.getItem('access_token');
-        const url = `${protocol}//${host}:${port}/ws/chat/groups/${groupId}/?token=${token}`;
+        const url = `${wsBase}/ws/chat/groups/${groupId}/?token=${token}`;
 
         ws.current = new WebSocket(url);
 

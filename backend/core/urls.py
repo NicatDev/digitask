@@ -19,16 +19,19 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from .views import AppDownloadView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('users.urls')),
     path('api/warehouse/', include('warehouse.urls')),
     path('api/tasks/', include('tasks.urls')),
+    path('api/notifications/', include('notifications.urls')),
     path('api/chat/', include('chat.urls')),
     path('api/dashboard/', include('dashboard.urls')),
     path('api/performance/', include('performance.urls')),
     path('api/documents/', include('documents.urls')),
+    path('api/app/download/', AppDownloadView.as_view(), name='app-download'),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),

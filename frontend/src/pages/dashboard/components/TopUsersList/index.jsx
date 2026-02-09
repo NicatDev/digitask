@@ -46,7 +46,7 @@ const TopUsersList = () => {
                                     {item['assigned_to__avatar'] ? (
                                         <Avatar
                                             size={48}
-                                            src={`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/media/${item['assigned_to__avatar']}`}
+                                            src={`${(window.location.hostname === 'new.digitask.store' || window.location.hostname === 'digitask.store' || window.location.hostname === 'app.digitask.store') ? 'https://app.digitask.store' : 'http://127.0.0.1:8000'}/media/${item['assigned_to__avatar']}`}
                                         />
                                     ) : (
                                         <Avatar size={48} icon={<UserOutlined />} style={{ backgroundColor: '#fde3cf', color: '#f56a00' }} />

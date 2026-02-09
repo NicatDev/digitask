@@ -2,7 +2,8 @@ from rest_framework import viewsets, views, response, permissions
 from django.utils import timezone
 from .models import Event
 from .serializers import EventSerializer
-from tasks.models import Task, TaskType, Notification
+from tasks.models import Task, TaskType
+from notifications.models import Notification
 from warehouse.models import StockMovement
 from django.db.models import Count, Q
 from datetime import timedelta
