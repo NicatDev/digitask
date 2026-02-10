@@ -66,7 +66,7 @@ const AppHeader = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
                     <Button
                         type="text"
                         icon={<AndroidOutlined style={{ color: '#3DDC84', fontSize: '18px' }} />}
-                        onClick={() => window.open('/api/app/download/', '_blank')}
+                        onClick={() => window.open('/android.apk', '_blank')}
                         title="Android APK Yüklə"
                     />
 
