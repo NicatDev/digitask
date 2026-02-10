@@ -20,6 +20,8 @@ class ChatGroupListSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
 
+    owner = UserSimpleSerializer(read_only=True)
+
     class Meta:
         model = ChatGroup
         fields = ['id', 'name', 'owner', 'image', 'last_message', 'unread_count', 'created_at']
