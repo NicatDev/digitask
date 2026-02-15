@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:mobile/core/services/chat_service.dart';
+import 'package:mobile/models/user_model.dart';
 
 class CustomersTab extends StatefulWidget {
   const CustomersTab({super.key});
@@ -272,10 +274,19 @@ class _CustomersTabState extends State<CustomersTab> {
                 style: IconButton.styleFrom(backgroundColor: Colors.white),
               ),
               const SizedBox(width: 4),
-              IconButton(
-                icon: const Icon(Icons.add, color: Colors.blue),
-                onPressed: _showAddCustomerModal,
-                style: IconButton.styleFrom(backgroundColor: Colors.white),
+              const SizedBox(width: 4),
+              
+              // Add Customer Button - Disabled if not writer
+              ValueListenableBuilder<User?>(
+                valueListenable: ChatService().currentUser,
+                builder: (context, user, child) {
+                  final isWriter = user?.isTaskWriter ?? false;
+                  return IconButton(
+                    icon: Icon(Icons.add, color: isWriter ? Colors.blue : Colors.grey),
+                    onPressed: isWriter ? _showAddCustomerModal : null,
+                    style: IconButton.styleFrom(backgroundColor: Colors.white),
+                  );
+                }
               ),
             ],
           ),
@@ -296,10 +307,11 @@ class _CustomersTabState extends State<CustomersTab> {
                               separatorBuilder: (_, __) => const SizedBox(height: 12),
                               itemBuilder: (ctx, index) {
                                 final customer = _customers[index];
+                                final isWriter = ChatService().currentUser.value?.isTaskWriter ?? false;
                                 return CustomerCard(
                                   customer: customer,
-                                  onEdit: () => _showEditCustomerModal(customer),
-                                  onDelete: () => _deleteCustomer(customer['id']),
+                                  onEdit: isWriter ? () => _showEditCustomerModal(customer) : null,
+                                  onDelete: isWriter ? () => _deleteCustomer(customer['id']) : null,
                                   onLocation: _hasValidCoordinates(customer) ? () => _showLocationModal(customer) : null,
                                 );
                               },
@@ -351,11 +363,11 @@ class _CustomersTabState extends State<CustomersTab> {
 // ==================== CUSTOMER CARD ====================
 class CustomerCard extends StatelessWidget {
   final Map<String, dynamic> customer;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
   final VoidCallback? onLocation;
 
-  const CustomerCard({super.key, required this.customer, required this.onEdit, required this.onDelete, this.onLocation});
+  const CustomerCard({super.key, required this.customer, this.onEdit, this.onDelete, this.onLocation});
 
   @override
   Widget build(BuildContext context) {
@@ -429,12 +441,12 @@ class CustomerCard extends StatelessWidget {
                   tooltip: 'View Location',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.orange),
+                  icon: Icon(Icons.edit, color: onEdit != null ? Colors.orange : Colors.grey),
                   onPressed: onEdit,
                   tooltip: 'Edit',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
+                  icon: Icon(Icons.delete, color: onDelete != null ? Colors.red : Colors.grey),
                   onPressed: onDelete,
                   tooltip: 'Delete',
                 ),

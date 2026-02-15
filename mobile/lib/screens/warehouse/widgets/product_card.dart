@@ -3,17 +3,17 @@ import 'package:mobile/models/product.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final VoidCallback onStockAction;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  final VoidCallback? onStockAction;
   final VoidCallback onInventoryClick;
 
   const ProductCard({
     super.key,
     required this.product,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onStockAction,
+    this.onEdit,
+    this.onDelete,
+    this.onStockAction,
     required this.onInventoryClick,
   });
 
@@ -132,17 +132,17 @@ class ProductCard extends StatelessWidget {
                   children: [
                     TextButton.icon(
                       onPressed: onStockAction,
-                      icon: const Icon(Icons.swap_horiz, size: 18),
-                      label: const Text('Stock'),
-                      style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                      icon: Icon(Icons.swap_horiz, size: 18, color: onStockAction != null ? Colors.blue : Colors.grey),
+                      label: Text('Stock', style: TextStyle(color: onStockAction != null ? Colors.blue : Colors.grey)),
+                      style: TextButton.styleFrom(foregroundColor: onStockAction != null ? Colors.blue : Colors.grey),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.orange, size: 20),
+                      icon: Icon(Icons.edit, color: onEdit != null ? Colors.orange : Colors.grey, size: 20),
                       onPressed: onEdit,
                       tooltip: 'Edit',
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                      icon: Icon(Icons.delete, color: onDelete != null ? Colors.red : Colors.grey, size: 20),
                       onPressed: onDelete,
                       tooltip: 'Delete',
                     ),

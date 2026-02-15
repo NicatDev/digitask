@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/constants.dart';
 import 'package:mobile/models/chat_model.dart';
+import 'package:mobile/models/user_model.dart';
 
 class ChatService {
   static final ChatService _instance = ChatService._internal();
@@ -27,10 +28,14 @@ class ChatService {
   // WebSocket
   WebSocketChannel? _channel;
   int? _currentGroupId;
-  int? _currentUserId;
+  // int? _currentUserId; // Removed in favor of currentUser.value.id getter below
 
-  void setCurrentUser(int userId) {
-      _currentUserId = userId;
+  final ValueNotifier<User?> currentUser = ValueNotifier<User?>(null);
+
+  int? get currentUserId => currentUser.value?.id;
+
+  void setCurrentUser(User user) {
+      currentUser.value = user;
   }
 
   Future<void> fetchGroups() async {
@@ -151,6 +156,57 @@ class ChatService {
       }
   }
 
+  Future<ChatGroup> getGroupDetails(int groupId) async {
+    try {
+      final response = await ApiClient().dio.get('/chat/groups/$groupId/');
+      return ChatGroup.fromJson(response.data);
+    } catch (e) {
+      print('Error fetching group details: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> addMember(int groupId, int userId) async {
+    try {
+      await ApiClient().dio.post('/chat/groups/$groupId/add-member/', data: {'user_id': userId});
+      await fetchGroups(); // Refresh list to update counts/members if needed
+    } catch (e) {
+      print('Error adding member: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> removeMember(int groupId, int userId) async {
+    try {
+      await ApiClient().dio.post('/chat/groups/$groupId/remove-member/', data: {'user_id': userId});
+      await fetchGroups();
+    } catch (e) {
+      print('Error removing member: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<User>> searchUsers(String query) async {
+    try {
+      final response = await ApiClient().dio.get('/users/', queryParameters: {'search': query});
+      // Assuming paginated response or list, check structure. 
+      // Account api "getUsers" usually returns paginated results.
+      // Adjust based on typical API response.
+      final data = response.data;
+      List<dynamic> results = [];
+      if (data is Map && data.containsKey('results')) {
+          results = data['results'];
+      } else if (data is List) {
+          results = data;
+      }
+      
+      return results.map((json) => User.fromJson(json)).toList();
+    } catch (e) {
+      print('Error searching users: $e');
+      rethrow;
+    }
+  }
+
 
   // Connect to Specific Group Chat
   Future<void> connectToGroup(int groupId) async {
@@ -220,7 +276,7 @@ class ChatService {
           senderName: data['sender'],
           content: data['message'],
           createdAt: DateTime.parse(data['created_at']),
-          isRead: _currentUserId != null && data['sender_id'] == _currentUserId, 
+          isRead: currentUserId != null && data['sender_id'] == currentUserId, 
       );
       // Append to current messages
       if (_currentGroupId == chatMessage.groupId) {
@@ -240,7 +296,7 @@ class ChatService {
           final bool isCurrentChat = _currentGroupId == chatMessage.groupId;
           
           // Also check if I am the sender, unread shouldn't increase
-          final bool isMe = _currentUserId != null && chatMessage.senderId == _currentUserId;
+          final bool isMe = currentUserId != null && chatMessage.senderId == currentUserId;
           
           final int newUnread = (isCurrentChat || isMe) ? group.unreadCount : group.unreadCount + 1;
           

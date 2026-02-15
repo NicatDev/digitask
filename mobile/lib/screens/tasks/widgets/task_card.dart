@@ -14,6 +14,7 @@ class TaskCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onRefresh;
   final VoidCallback? onAccept;
+  final bool isWriter;
 
   const TaskCard({
     super.key,
@@ -22,6 +23,7 @@ class TaskCard extends StatelessWidget {
     required this.onEdit,
     required this.onRefresh,
     this.onAccept,
+    this.isWriter = false,
   });
 
   @override
@@ -206,7 +208,14 @@ class TaskCard extends StatelessWidget {
                 if (task['assigned_to'] == null || task['assigned_to_name'] == null)
                   _buildActionBtn(context, Icons.person_add, Colors.teal, onAccept ?? () {}),
                 
-                _buildActionBtn(context, Icons.edit, Colors.blue, onEdit),
+                // Edit Button - Disabled if not writer
+                _buildActionBtn(
+                    context, 
+                    Icons.edit, 
+                    isWriter ? Colors.blue : Colors.grey, 
+                    isWriter ? onEdit : null
+                ),
+                
                 _buildActionBtn(context, Icons.sync_alt, Colors.orange, () {
                   showModalBottomSheet(
                     context: context, 
@@ -244,7 +253,7 @@ class TaskCard extends StatelessWidget {
     );
   }
 
-  Widget _buildActionBtn(BuildContext context, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildActionBtn(BuildContext context, IconData icon, Color color, VoidCallback? onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(50),

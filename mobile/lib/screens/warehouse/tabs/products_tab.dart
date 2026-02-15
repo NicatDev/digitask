@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile/core/api/api_client.dart';
+import 'package:mobile/core/services/chat_service.dart';
+import 'package:mobile/models/user_model.dart';
 import 'package:mobile/models/product.dart';
 import 'package:mobile/screens/warehouse/widgets/product_card.dart';
 import 'package:mobile/screens/warehouse/widgets/product_modal.dart';
@@ -218,10 +220,16 @@ class _ProductsTabState extends State<ProductsTab> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showProductModal(),
-        backgroundColor: Colors.blue,
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: ValueListenableBuilder<User?>(
+        valueListenable: ChatService().currentUser,
+        builder: (context, user, child) {
+          final isWriter = user?.isWarehouseWriter ?? false;
+          return FloatingActionButton(
+            onPressed: isWriter ? () => _showProductModal() : null,
+            backgroundColor: isWriter ? Colors.blue : Colors.grey,
+            child: const Icon(Icons.add, color: Colors.white),
+          );
+        }
       ),
       body: Column(
         children: [
@@ -272,11 +280,12 @@ class _ProductsTabState extends State<ProductsTab> {
                                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                                 itemBuilder: (ctx, index) {
                                   final product = _products[index];
+                                  final isWriter = ChatService().currentUser.value?.isWarehouseWriter ?? false;
                                   return ProductCard(
                                     product: product,
-                                    onEdit: () => _showProductModal(product),
-                                    onDelete: () => _deleteProduct(product.id),
-                                    onStockAction: () => _showStockModal(product),
+                                    onEdit: isWriter ? () => _showProductModal(product) : null,
+                                    onDelete: isWriter ? () => _deleteProduct(product.id) : null,
+                                    onStockAction: isWriter ? () => _showStockModal(product) : null,
                                     onInventoryClick: () => _showInventoryModal(product),
                                   );
                                 },
