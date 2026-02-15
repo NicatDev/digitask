@@ -42,3 +42,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .eslintcache
+
+# Migrations
+**/migrations/*.py
+!**/migrations/__init__.py
