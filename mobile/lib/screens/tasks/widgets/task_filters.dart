@@ -28,7 +28,7 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
   String? _status;
   int? _customerId;
   int? _assigneeId;
-  String _active = 'all';
+  String _active = 'active';
 
   final List<Map<String, String>> _statuses = [
     {'value': 'todo', 'label': 'To Do'},
@@ -53,7 +53,7 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
       _status = null;
       _customerId = null;
       _assigneeId = null;
-      _active = 'all';
+      _active = 'active';
     });
   }
 

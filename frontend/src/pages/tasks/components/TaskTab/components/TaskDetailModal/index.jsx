@@ -33,7 +33,12 @@ const TaskDetailModal = ({ open, onCancel, task, services = [] }) => {
                     <Descriptions.Item label="Yaradılma tarixi">{dayjs(task.created_at).format('DD.MM.YYYY HH:mm')}</Descriptions.Item>
                     <Descriptions.Item label="Son yenilənmə">{dayjs(task.updated_at).format('DD.MM.YYYY HH:mm')}</Descriptions.Item>
                     <Descriptions.Item label="Qrup">{task.group_name || '-'}</Descriptions.Item>
-                    <Descriptions.Item label="İcraçı">{task.assigned_to_name || <Tag>Təyin edilməyib</Tag>}</Descriptions.Item>
+                    <Descriptions.Item label="İcraçılar">
+                        {task.assigned_to_names && task.assigned_to_names.length > 0
+                            ? task.assigned_to_names.map((name, idx) => <Tag key={idx} color="blue">{name}</Tag>)
+                            : <Tag>Təyin edilməyib</Tag>
+                        }
+                    </Descriptions.Item>
                     <Descriptions.Item label="Təsvir" span={2}>
                         <div style={{ whiteSpace: 'pre-wrap' }}>{task.note || '-'}</div>
                     </Descriptions.Item>

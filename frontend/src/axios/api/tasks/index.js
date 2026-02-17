@@ -34,6 +34,8 @@ export const createTask = (data) => axiosInstance.post('/tasks/tasks/', data);
 export const updateTask = (id, data) => axiosInstance.patch(`/tasks/tasks/${id}/`, data);
 export const deleteTask = (id) => axiosInstance.delete(`/tasks/tasks/${id}/`);
 export const updateTaskStatus = (id, status) => axiosInstance.patch(`/tasks/tasks/${id}/update_status/`, { status });
+export const addTaskAssignee = (taskId, userId) => axiosInstance.post(`/tasks/tasks/${taskId}/add_assignee/`, { user_id: userId });
+export const joinTask = (taskId) => axiosInstance.post(`/tasks/tasks/${taskId}/join_task/`);
 
 // TaskServices API
 export const getTaskServices = (params) => axiosInstance.get('/tasks/task-services/', { params });

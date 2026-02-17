@@ -1,4 +1,5 @@
 from django.db import models, transaction
+from django.contrib.auth import get_user_model
 from rest_framework import viewsets, status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import action
@@ -10,6 +11,8 @@ from ..serializers import TaskSerializer, TaskServiceSerializer, TaskStatusUpdat
 from warehouse.models import WarehouseInventory, StockMovement
 from ..pagination import TaskPagination
 
+User = get_user_model()
+
 
 class TaskViewSet(viewsets.ModelViewSet):
     """ViewSet for Task CRUD operations."""
@@ -20,12 +23,13 @@ class TaskViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = Task.objects.select_related(
-            'customer', 'assigned_to', 'group', 'group__region'
+            'customer', 'group', 'group__region'
         ).prefetch_related(
+            'assigned_to',
             'task_services', 'task_services__service', 'task_services__values',
             'task_products', 'task_products__product', 'task_products__warehouse',
             'task_documents'
-        ).order_by('created_at')
+        ).order_by('-created_at')
         
         # Filter by status
         task_status = self.request.query_params.get('status')
@@ -42,15 +46,17 @@ class TaskViewSet(viewsets.ModelViewSet):
         if group:
             queryset = queryset.filter(group_id=group)
         
-        # Filter by assigned_to
+        # Filter by assigned_to (M2M)
         assigned_to = self.request.query_params.get('assigned_to')
         if assigned_to:
-            queryset = queryset.filter(assigned_to_id=assigned_to)
+            queryset = queryset.filter(assigned_to__id=assigned_to)
         
-        # Filter by is_active
+        # Filter by is_active (default: active only)
         is_active = self.request.query_params.get('is_active')
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
+        else:
+            queryset = queryset.filter(is_active=True)
         
         # Filter by date range
         date_from = self.request.query_params.get('date_from')
@@ -71,7 +77,7 @@ class TaskViewSet(viewsets.ModelViewSet):
                 models.Q(note__icontains=search)
             )
         
-        return queryset
+        return queryset.distinct()
     
     def perform_create(self, serializer):
         """Create task and trigger notification."""
@@ -103,18 +109,48 @@ class TaskViewSet(viewsets.ModelViewSet):
             new_status = serializer.validated_data['status']
             task.status = new_status
             
-            # Auto-assign if status changes to IN_PROGRESS and no assignee
-            if new_status == Task.Status.IN_PROGRESS and not task.assigned_to:
-                task.assigned_to = request.user
+            # Auto-assign if status changes to IN_PROGRESS and no assignees
+            if new_status == Task.Status.IN_PROGRESS and not task.assigned_to.exists():
+                task.save()
+                task.assigned_to.add(request.user)
+            else:
+                task.save()
             
             # DONE olduqda task_products-ları anbardan çıxar
             if new_status == Task.Status.DONE:
                 self._deduct_task_products(task, request.user)
                 
-            task.save()
             return Response(TaskSerializer(task).data)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=True, methods=['post'])
+    def add_assignee(self, request, pk=None):
+        """Add a user to the task's assignees. Only existing assignees can add others."""
+        task = self.get_object()
+        user_id = request.data.get('user_id')
+        
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if request user is already an assignee
+        if not task.assigned_to.filter(id=request.user.id).exists():
+            return Response({'error': 'Only existing assignees can add others'}, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        task.assigned_to.add(user)
+        return Response(TaskSerializer(task).data)
+    
+    @action(detail=True, methods=['post'])
+    def join_task(self, request, pk=None):
+        """Allow current user to join the task as an assignee."""
+        task = self.get_object()
+        task.assigned_to.add(request.user)
+        return Response(TaskSerializer(task).data)
     
     def _deduct_task_products(self, task, user):
         """Tapşırıq tamamlandıqda məhsulları anbardan çıxar."""

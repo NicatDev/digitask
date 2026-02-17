@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Form, message, Grid } from 'antd';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { getTasks, createTask, updateTask, deleteTask, updateTaskStatus, getServices, getColumns, getCustomers, getTaskTypes } from '../../../../axios/api/tasks';
+import { getTasks, createTask, updateTask, deleteTask, updateTaskStatus, getServices, getColumns, getCustomers, getTaskTypes, addTaskAssignee, joinTask } from '../../../../axios/api/tasks';
 import { getGroups, getUsers } from '../../../../axios/api/account';
 import { handleApiError } from '../../../../utils/errorHandler';
 import { useAuth } from '../../../../context/AuthContext';
@@ -18,6 +18,7 @@ import MapModal from './components/MapModal';
 import ProductSelectionModal from './components/ProductSelectionModal';
 import DocumentModal from './components/DocumentModal';
 import TaskDetailModal from './components/TaskDetailModal';
+import AssigneeModal from './components/AssigneeModal';
 
 // Styles
 import styles from './style.module.scss'; // Kept primarily for Status Badge styles used in Table
@@ -40,7 +41,7 @@ const TaskTab = ({ isActive }) => {
     const [taskTypes, setTaskTypes] = useState([]);
     const [pagination, setPagination] = useState({
         current: 1,
-        pageSize: 1, // Matching backend page_size=1
+        pageSize: 5, // Matching backend page_size=1
         total: 0
     });
 
@@ -54,7 +55,7 @@ const TaskTab = ({ isActive }) => {
     const [customerFilter, setCustomerFilter] = useState(null);
     const [assigneeFilter, setAssigneeFilter] = useState(null);
     const [dateRange, setDateRange] = useState(null);
-    const [isActiveFilter, setIsActiveFilter] = useState('all');
+    const [isActiveFilter, setIsActiveFilter] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
 
     // Modal States
@@ -73,6 +74,8 @@ const TaskTab = ({ isActive }) => {
     const [currentTaskForDocuments, setCurrentTaskForDocuments] = useState(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedTaskForDetail, setSelectedTaskForDetail] = useState(null);
+    const [isAssigneeModalOpen, setIsAssigneeModalOpen] = useState(false);
+    const [currentTaskForAssignee, setCurrentTaskForAssignee] = useState(null);
 
     const [form] = Form.useForm();
 
@@ -150,9 +153,6 @@ const TaskTab = ({ isActive }) => {
     // Refetch on filter changes
     useEffect(() => {
         if (isActive) {
-            // Reset to page 1 on filter change
-            // We need to distinguish between Page Change and Filter Change.
-            // Usually best to call fetchData({ page: 1 }) when filters change.
             fetchData({ page: 1 });
         }
     }, [debouncedSearchText, statusFilter, customerFilter, assigneeFilter, isActiveFilter, dateRange]);
@@ -265,6 +265,32 @@ const TaskTab = ({ isActive }) => {
         setIsModalOpen(true);
     };
 
+    // Assignee handlers
+    const handleOpenAssigneeModal = (record) => {
+        setCurrentTaskForAssignee(record);
+        setIsAssigneeModalOpen(true);
+    };
+
+    const handleAddAssignee = async (taskId, userId) => {
+        try {
+            await addTaskAssignee(taskId, userId);
+            message.success('İcraçı əlavə edildi');
+            fetchData();
+        } catch (error) {
+            handleApiError(error, 'İcraçı əlavə edilmədi');
+        }
+    };
+
+    const handleJoinTask = async (record) => {
+        try {
+            await joinTask(record.id);
+            message.success('İcraya qoşuldunuz');
+            fetchData();
+        } catch (error) {
+            handleApiError(error, 'İcraya qoşulmaq mümkün olmadı');
+        }
+    };
+
     return (
         <div>
             <TaskToolbar
@@ -311,6 +337,8 @@ const TaskTab = ({ isActive }) => {
                     setCurrentTaskForDocuments(record);
                     setIsDocumentModalOpen(true);
                 }}
+                onAddAssignee={handleOpenAssigneeModal}
+                onJoinTask={handleJoinTask}
             />
 
             <TaskModal
@@ -374,6 +402,14 @@ const TaskTab = ({ isActive }) => {
                 onCancel={() => setIsDetailModalOpen(false)}
                 task={selectedTaskForDetail}
                 services={services}
+            />
+
+            <AssigneeModal
+                open={isAssigneeModalOpen}
+                onCancel={() => setIsAssigneeModalOpen(false)}
+                task={currentTaskForAssignee}
+                users={users}
+                onAddAssignee={handleAddAssignee}
             />
         </div>
     );

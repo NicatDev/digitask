@@ -22,11 +22,9 @@ class Task(models.Model):
     note = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.TODO)
     
-    assigned_to = models.ForeignKey(
+    assigned_to = models.ManyToManyField(
         settings.AUTH_USER_MODEL, 
-        on_delete=models.SET_NULL, 
         related_name="assigned_tasks", 
-        null=True, 
         blank=True
     )
     group = models.ForeignKey(Group, on_delete=models.PROTECT, related_name="tasks")
@@ -42,7 +40,6 @@ class Task(models.Model):
         indexes = [
             models.Index(fields=['status']),
             models.Index(fields=['customer']),
-            models.Index(fields=['assigned_to']),
             models.Index(fields=['group']),
         ]
     

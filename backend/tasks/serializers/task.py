@@ -1,9 +1,12 @@
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
 import json
 from ..models import Task, TaskService, TaskServiceValue, Column, Service, TaskProduct, TaskType
 from .product import TaskProductSerializer
 from documents.serializers import TaskDocumentSerializer
 from .task_type import TaskTypeSerializer
+
+User = get_user_model()
 
 
 class TaskServiceValueSerializer(serializers.ModelSerializer):
@@ -136,7 +139,8 @@ class TaskSerializer(serializers.ModelSerializer):
     customer_coordinates = serializers.JSONField(source='customer.address_coordinates', read_only=True)
     customer_phone = serializers.CharField(source='customer.phone_number', read_only=True)
     customer_register_number = serializers.CharField(source='customer.register_number', read_only=True)
-    assigned_to_name = serializers.SerializerMethodField()
+    assigned_to = serializers.PrimaryKeyRelatedField(many=True, queryset=User.objects.all(), required=False)
+    assigned_to_names = serializers.SerializerMethodField()
     group_name = serializers.CharField(source='group.name', read_only=True)
     region_name = serializers.CharField(source='group.region.name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
@@ -153,7 +157,7 @@ class TaskSerializer(serializers.ModelSerializer):
             'id', 'customer', 'customer_name', 'customer_address', 'customer_coordinates',
             'customer_phone', 'customer_register_number',
             'title', 'note', 'status', 'status_display',
-            'assigned_to', 'assigned_to_name',
+            'assigned_to', 'assigned_to_names',
             'group', 'group_name', 'region_name', 'is_active', 
             'task_type', 'task_type_details',
             'services', 'task_services', 'task_products', 'task_documents', 'created_at', 'updated_at'
@@ -162,12 +166,15 @@ class TaskSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         services = validated_data.pop('services', [])
+        assigned_users = validated_data.pop('assigned_to', [])
         task = Task.objects.create(**validated_data)
         task.services.set(services)
+        task.assigned_to.set(assigned_users)
         return task
     
     def update(self, instance, validated_data):
         services = validated_data.pop('services', None)
+        assigned_users = validated_data.pop('assigned_to', None)
         
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -176,14 +183,20 @@ class TaskSerializer(serializers.ModelSerializer):
         if services is not None:
              instance.services.set(services)
         
+        if assigned_users is not None:
+            instance.assigned_to.set(assigned_users)
+        
         return instance
 
-
-    def get_assigned_to_name(self, obj):
-        if not obj.assigned_to:
-            return None
-        full_name = obj.assigned_to.get_full_name()
-        return full_name if full_name else obj.assigned_to.username
+    def get_assigned_to_names(self, obj):
+        users = obj.assigned_to.all()
+        if not users:
+            return []
+        result = []
+        for user in users:
+            full_name = user.get_full_name()
+            result.append(full_name if full_name else user.username)
+        return result
 
 
 class TaskStatusUpdateSerializer(serializers.Serializer):

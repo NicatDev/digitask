@@ -46,7 +46,7 @@ class DashboardStatsView(views.APIView):
         type_stats = Task.objects.values('task_type__name', 'task_type__color').annotate(count=Count('id'))
 
         # By User (Top 5) - All Time
-        user_stats = Task.objects.exclude(assigned_to=None).values(
+        user_stats = Task.objects.filter(assigned_to__isnull=False).values(
             'assigned_to__username', 
             'assigned_to__first_name', 
             'assigned_to__last_name',

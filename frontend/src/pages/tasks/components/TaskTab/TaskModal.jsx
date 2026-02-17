@@ -70,10 +70,16 @@ const TaskModal = ({
                         </Form.Item>
                     </Col>
                     <Col span={12}>
-                        <Form.Item name="assigned_to" label="Təyin et">
-                            <Select allowClear showSearch optionFilterProp="children">
+                        <Form.Item name="assigned_to" label="İcraçılar">
+                            <Select
+                                mode="multiple"
+                                allowClear
+                                showSearch
+                                optionFilterProp="children"
+                                placeholder="İcraçıları seçin"
+                            >
                                 {users.filter(u => u.is_active).map(u => (
-                                    <Option key={u.id} value={u.id}>{u.username}</Option>
+                                    <Option key={u.id} value={u.id}>{u.first_name} {u.last_name}</Option>
                                 ))}
                             </Select>
                         </Form.Item>

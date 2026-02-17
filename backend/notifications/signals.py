@@ -33,10 +33,10 @@ def notification_post_save(sender, instance, created, **kwargs):
                 event
             )
         
-        # If it's a task related notification, send to the assignee
-        if instance.related_task and instance.related_task.assigned_to:
-            user_id = instance.related_task.assigned_to.id
-            async_to_sync(channel_layer.group_send)(
-                f'user_notifications_{user_id}',
-                event
-            )
+        # If it's a task related notification, send to all assignees
+        if instance.related_task:
+            for user in instance.related_task.assigned_to.all():
+                async_to_sync(channel_layer.group_send)(
+                    f'user_notifications_{user.id}',
+                    event
+                )

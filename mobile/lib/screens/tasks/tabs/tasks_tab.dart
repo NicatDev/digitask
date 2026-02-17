@@ -31,7 +31,7 @@ class _TasksTabState extends State<TasksTab> {
   String? _statusFilter;
   int? _customerFilter;
   int? _assigneeFilter;
-  String _activeFilter = 'all'; // all, active, inactive
+  String _activeFilter = 'active'; // all, active, inactive
   DateTimeRange? _dateRange;
 
   @override

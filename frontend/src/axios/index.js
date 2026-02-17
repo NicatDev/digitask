@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Determine if we're in production
-const isProduction = window.location.hostname === 'new.digitask.store' ||
+const isProduction = true || window.location.hostname === 'new.digitask.store' ||
     window.location.hostname === 'digitask.store' ||
     window.location.hostname === 'app.digitask.store';
 
