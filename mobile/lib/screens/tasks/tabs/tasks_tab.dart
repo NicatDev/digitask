@@ -287,6 +287,7 @@ class _TasksTabState extends State<TasksTab> {
                                   return TaskCard(
                                     task: _tasks[index],
                                     allServices: _services,
+                                    allUsers: _users,
                                     onEdit: () => _openTaskForm(_tasks[index]),
                                     onRefresh: () => _fetchTasks(refresh: true),
                                     onAccept: () => _acceptTask(_tasks[index]['id']),

@@ -6,7 +6,7 @@ class TaskFormModal extends StatefulWidget {
   final Map<String, dynamic>? task;
   final List<dynamic> customers;
   final List<dynamic> users;
-  final List<dynamic> groups; // Added
+  final List<dynamic> groups;
   final List<dynamic> taskTypes;
   final List<dynamic> services;
   final VoidCallback onSuccess;
@@ -16,7 +16,7 @@ class TaskFormModal extends StatefulWidget {
     this.task,
     required this.customers,
     required this.users,
-    required this.groups, // Added
+    required this.groups,
     required this.taskTypes,
     required this.services,
     required this.onSuccess,
@@ -30,13 +30,12 @@ class _TaskFormModalState extends State<TaskFormModal> {
   final _formKey = GlobalKey<FormState>();
   
   late TextEditingController _titleCtrl;
-  late TextEditingController _noteCtrl; // Renamed from desc
+  late TextEditingController _noteCtrl;
   
   int? _customerId;
-  int? _assigneeId;
-  int? _groupId; // Added
+  List<int> _assigneeIds = [];
+  int? _groupId;
   int? _taskTypeId;
-  // DateTime? _deadline; // Removed
   String _status = 'todo';
   bool _isActive = true;
   List<int> _selectedServices = [];
@@ -46,7 +45,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
   final List<Map<String, String>> _statuses = [
     {'value': 'todo', 'label': 'To Do'},
     {'value': 'in_progress', 'label': 'In Progress'},
-    {'value': 'arrived', 'label': 'Arrived'}, // Order fixed
+    {'value': 'arrived', 'label': 'Arrived'},
     {'value': 'done', 'label': 'Done'},
     {'value': 'pending', 'label': 'Pending'},
     {'value': 'rejected', 'label': 'Rejected'},
@@ -57,7 +56,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
     super.initState();
     final t = widget.task;
     _titleCtrl = TextEditingController(text: t?['title'] ?? '');
-    _noteCtrl = TextEditingController(text: t?['note'] ?? ''); // Changed
+    _noteCtrl = TextEditingController(text: t?['note'] ?? '');
     
     _customerId = t?['customer'];
     
@@ -65,10 +64,9 @@ class _TaskFormModalState extends State<TaskFormModal> {
        _groupId = t['group'] is Map ? t['group']['id'] : t['group'];
     }
 
-    // Handle if assigned_to is object or int
-    _assigneeId = t?['assigned_to'];
-    if (t != null && t['assigned_to'] is Map) {
-       _assigneeId = t['assigned_to']['id'];
+    // Handle assigned_to as list of IDs (M2M)
+    if (t != null && t['assigned_to'] is List) {
+      _assigneeIds = List<int>.from(t['assigned_to']);
     }
 
     _taskTypeId = t?['task_type'];
@@ -91,17 +89,15 @@ class _TaskFormModalState extends State<TaskFormModal> {
     try {
       final data = {
         'title': _titleCtrl.text,
-        'note': _noteCtrl.text, // Changed
+        'note': _noteCtrl.text,
         'status': _status,
         'is_active': _isActive,
         'customer': _customerId,
-        'group': _groupId, // Added
-        'assigned_to': _assigneeId,
+        'group': _groupId,
+        'assigned_to': _assigneeIds,
         'task_type': _taskTypeId,
         'services': _selectedServices,
       };
-      
-      // Removed end_date
 
       if (widget.task == null) {
         await ApiClient().dio.post('/tasks/tasks/', data: data);
@@ -116,7 +112,6 @@ class _TaskFormModalState extends State<TaskFormModal> {
       }
     } catch (e) {
       if (mounted) {
-        // ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
         setState(() => _isSaving = false);
       }
     }
@@ -149,7 +144,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _noteCtrl,
-                    decoration: const InputDecoration(labelText: 'Note'), // Changed
+                    decoration: const InputDecoration(labelText: 'Note'),
                     maxLines: 3,
                   ),
                   const SizedBox(height: 16),
@@ -176,7 +171,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Group (Added)
+                  // Group
                   DropdownButtonFormField<int>(
                     value: _groupId,
                     decoration: const InputDecoration(labelText: 'Group/Zone'),
@@ -185,7 +180,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
                       child: Text(g['name'] ?? 'Unnamed'),
                     )).toList(),
                     onChanged: (v) => setState(() => _groupId = v),
-                    validator: (v) => v == null ? 'Required' : null, // Group is usually mandatory
+                    validator: (v) => v == null ? 'Required' : null,
                   ),
                   const SizedBox(height: 16),
 
@@ -201,15 +196,31 @@ class _TaskFormModalState extends State<TaskFormModal> {
                   ),
                    const SizedBox(height: 16),
 
-                  // Assignee
-                  DropdownButtonFormField<int>(
-                    value: _assigneeId,
-                    decoration: const InputDecoration(labelText: 'Assignee'),
-                    items: widget.users.map((u) => DropdownMenuItem<int>(
-                      value: u['id'], 
-                      child: Text('${u['first_name']} ${u['last_name']}'),
-                    )).toList(),
-                    onChanged: (v) => setState(() => _assigneeId = v),
+                  // Assignees (Multi-select with chips)
+                  const Text('İcraçılar', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: widget.users.where((u) => u['is_active'] == true).map((u) {
+                      final isSelected = _assigneeIds.contains(u['id']);
+                      final name = '${u['first_name'] ?? ''} ${u['last_name'] ?? ''}'.trim();
+                      return FilterChip(
+                        label: Text(name.isNotEmpty ? name : (u['email'] ?? 'User')),
+                        selected: isSelected,
+                        onSelected: (val) {
+                          setState(() {
+                            if (val) {
+                              _assigneeIds.add(u['id']);
+                            } else {
+                              _assigneeIds.remove(u['id']);
+                            }
+                          });
+                        },
+                        selectedColor: Colors.blue.shade100,
+                        checkmarkColor: Colors.blue,
+                      );
+                    }).toList(),
                   ),
 
                    const SizedBox(height: 16),
@@ -235,11 +246,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
                      }).toList(),
                    ),
 
-                   // Removed Deadline
-
                    const SizedBox(height: 16),
-                   // Removed is_active
-
                 ],
               ),
             ),

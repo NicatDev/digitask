@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/core/api/api_client.dart';
+import 'package:mobile/core/services/chat_service.dart';
+import 'package:mobile/models/user_model.dart';
 import 'package:mobile/screens/tasks/widgets/interaction_modals.dart' hide SurveyModal, FilesModal, ProductsModal;
 import 'package:mobile/screens/tasks/widgets/survey_modal.dart';
 import 'package:mobile/screens/tasks/widgets/files_modal.dart';
 import 'package:mobile/screens/tasks/widgets/products_modal.dart';
 import 'package:mobile/screens/tasks/widgets/task_detail_modal.dart';
+import 'package:mobile/screens/tasks/widgets/assignee_modal.dart';
 
 class TaskCard extends StatelessWidget {
   final Map<String, dynamic> task;
   final List<dynamic> allServices;
+  final List<dynamic> allUsers;
   final VoidCallback onEdit;
   final VoidCallback onRefresh;
   final VoidCallback? onAccept;
@@ -20,6 +24,7 @@ class TaskCard extends StatelessWidget {
     super.key,
     required this.task,
     required this.allServices,
+    required this.allUsers,
     required this.onEdit,
     required this.onRefresh,
     this.onAccept,
@@ -28,15 +33,25 @@ class TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Format Date (Created At)
+    // Format Date
     final dateStr = task['created_at'] != null 
         ? DateFormat('dd MMM yyyy').format(DateTime.parse(task['created_at']))
         : '';
     
-    // Status Color (unchanged logic)
+    // Status Color & English labels
     Color statusColor = Colors.grey;
-    String statusLabel = task['status'] ?? 'todo';
-    switch (statusLabel) {
+    final String statusKey = task['status'] ?? 'todo';
+    const statusLabels = {
+      'todo': 'TO DO',
+      'in_progress': 'IN PROGRESS',
+      'review': 'REVIEW',
+      'done': 'DONE',
+      'arrived': 'ARRIVED',
+      'pending': 'PENDING',
+      'rejected': 'REJECTED',
+    };
+    final String statusLabel = statusLabels[statusKey] ?? statusKey.toUpperCase();
+    switch (statusKey) {
       case 'todo': statusColor = Colors.grey; break;
       case 'in_progress': statusColor = Colors.blue; break;
       case 'review': statusColor = Colors.orange; break;
@@ -46,26 +61,11 @@ class TaskCard extends StatelessWidget {
       case 'rejected': statusColor = Colors.red[900]!; break;
     }
 
-    // Avatar logic (unchanged)
-    String? avatarUrl;
-    String initials = 'U';
-    
-    if (task['assigned_to_detail'] != null && task['assigned_to_detail'] is Map) {
-         final user = task['assigned_to_detail'];
-         // ... (existing logic if detail provided, but serializer usually provides flat fields or nested)
-         // Serializer says: `assigned_to` is FK (ID), `assigned_to_name` is string.
-         // Wait, serializer DOES NOT send user object with avatar. Only `assigned_to` (id) and `assigned_to_name`.
-         // I cannot show avatar unless I fetch user list and match ID, or if I rely on checking `_users` list in parent?
-         // TaskCard doesn't have list of users.
-         // I will SKIP avatar image for now or use initials from `assigned_to_name` if possible.
-         // `assigned_to_name` is available.
-    }
-
-    // Clean up Avatar logic to use name initials if avatar not available
-    final String assigneeName = task['assigned_to_name'] ?? 'Unassigned';
-    if (assigneeName != 'Unassigned') {
-        initials = assigneeName.isNotEmpty ? assigneeName[0].toUpperCase() : 'U';
-    }
+    // Multi-assignee: assigned_to is now a list of IDs, assigned_to_names is a list of strings
+    final List<dynamic> assigneeIds = task['assigned_to'] is List ? task['assigned_to'] : [];
+    final List<dynamic> assigneeNames = task['assigned_to_names'] is List ? task['assigned_to_names'] : [];
+    final currentUser = ChatService().currentUser.value;
+    final bool isCurrentUserAssignee = currentUser != null && assigneeIds.contains(currentUser.id);
 
     return Card(
       color: Colors.white,
@@ -101,7 +101,7 @@ class TaskCard extends StatelessWidget {
                     border: Border.all(color: statusColor),
                   ),
                   child: Text(
-                    (task['status_display'] ?? statusLabel).toUpperCase(), // Use display name from backend if avail
+                    statusLabel,
                     style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -177,6 +177,7 @@ class TaskCard extends StatelessWidget {
               ),
 
             const SizedBox(height: 4),
+            // Date + Assignees row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -190,11 +191,36 @@ class TaskCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (assigneeName != 'Unassigned')
-                  CircleAvatar(
-                    radius: 12,
-                    backgroundColor: Colors.blue.shade100,
-                    child: Text(initials, style: const TextStyle(fontSize: 10, color: Colors.blue)),
+                // Assignees avatars - tap to open assignee modal
+                if (assigneeNames.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => _openAssigneeModal(context, assigneeIds, assigneeNames, isCurrentUserAssignee),
+                    child: Row(
+                      children: [
+                        ...assigneeNames.take(3).map((name) {
+                          final initial = (name as String).isNotEmpty ? name[0].toUpperCase() : 'U';
+                          return Padding(
+                            padding: const EdgeInsets.only(left: 2),
+                            child: CircleAvatar(
+                              radius: 12,
+                              backgroundColor: Colors.blue.shade100,
+                              child: Text(initial, style: const TextStyle(fontSize: 10, color: Colors.blue)),
+                            ),
+                          );
+                        }),
+                        if (assigneeNames.length > 3)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 2),
+                            child: CircleAvatar(
+                              radius: 12,
+                              backgroundColor: Colors.grey.shade200,
+                              child: Text('+${assigneeNames.length - 3}', style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                            ),
+                          ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.people, size: 16, color: Colors.blue.shade300),
+                      ],
+                    ),
                   ),
               ],
             ),
@@ -205,8 +231,12 @@ class TaskCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                if (task['assigned_to'] == null || task['assigned_to_name'] == null)
-                  _buildActionBtn(context, Icons.person_add, Colors.teal, onAccept ?? () {}),
+                // Assignee button: "İcraya qoşul" or "İcraçı əlavə et" 
+                _buildActionBtn(context, 
+                  isCurrentUserAssignee ? Icons.person_add : Icons.group_add, 
+                  isCurrentUserAssignee ? Colors.teal : Colors.blue, 
+                  () => _openAssigneeModal(context, assigneeIds, assigneeNames, isCurrentUserAssignee),
+                ),
                 
                 // Edit Button - Disabled if not writer
                 _buildActionBtn(
@@ -216,15 +246,21 @@ class TaskCard extends StatelessWidget {
                     isWriter ? onEdit : null
                 ),
                 
-                _buildActionBtn(context, Icons.sync_alt, Colors.orange, () {
+                // Status change - only for assignees
+                _buildActionBtn(context, Icons.sync_alt, 
+                    isCurrentUserAssignee ? Colors.orange : Colors.grey.shade300, 
+                    isCurrentUserAssignee ? () {
                   showModalBottomSheet(
                     context: context, 
                     isScrollControlled: true,
                     useSafeArea: true,
                     builder: (_) => StatusModal(task: task, onSuccess: onRefresh)
                   );
-                }),
-                _buildActionBtn(context, Icons.assignment, Colors.purple, () {
+                } : null),
+                // Survey/Anket - only for assignees
+                _buildActionBtn(context, Icons.assignment, 
+                    isCurrentUserAssignee ? Colors.purple : Colors.grey.shade300, 
+                    isCurrentUserAssignee ? () {
                   showModalBottomSheet(
                     context: context, 
                     isScrollControlled: true, 
@@ -235,20 +271,45 @@ class TaskCard extends StatelessWidget {
                       onSuccess: onRefresh,
                     )
                   );
-                }),
-                _buildActionBtn(context, Icons.attach_file, Colors.grey, () {
+                } : null),
+                // Files - only for assignees
+                _buildActionBtn(context, Icons.attach_file, 
+                    isCurrentUserAssignee ? Colors.grey : Colors.grey.shade300, 
+                    isCurrentUserAssignee ? () {
                    showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => FilesModal(task: task, onSuccess: onRefresh));
-                }),
-                 _buildActionBtn(context, Icons.shopping_bag, Colors.green, () {
+                } : null),
+                // Products - only for assignees
+                 _buildActionBtn(context, Icons.shopping_bag, 
+                    isCurrentUserAssignee ? Colors.green : Colors.grey.shade300, 
+                    isCurrentUserAssignee ? () {
                    showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => ProductsModal(task: task, onSuccess: onRefresh));
-                }),
-                 _buildActionBtn(context, Icons.delete, Colors.red, () {
+                } : null),
+                // Delete - only for assignees
+                 _buildActionBtn(context, Icons.delete, 
+                    isCurrentUserAssignee ? Colors.red : Colors.grey.shade300, 
+                    isCurrentUserAssignee ? () {
                    showDialog(context: context, builder: (_) => DeleteTaskDialog(taskId: task['id'], onSuccess: onRefresh));
-                }),
+                } : null),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _openAssigneeModal(BuildContext context, List<dynamic> assigneeIds, List<dynamic> assigneeNames, bool isCurrentUserAssignee) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => AssigneeModal(
+        task: task,
+        allUsers: allUsers,
+        assigneeIds: assigneeIds,
+        assigneeNames: assigneeNames,
+        isCurrentUserAssignee: isCurrentUserAssignee,
+        onRefresh: onRefresh,
       ),
     );
   }

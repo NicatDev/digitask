@@ -68,7 +68,7 @@ class TaskDetailModal extends StatelessWidget {
                     _sectionTitle('Tapşırıq Məlumatları'),
                     _infoRow('Status', task['status_display'] ?? task['status'] ?? '-'),
                     _infoRow('Qeyd', task['note'] ?? '-'),
-                    _infoRow('Təyin edilən', task['assigned_to_name'] ?? 'Təyin olunmayıb'),
+                    _infoRow('İcraçılar', _formatAssigneeNames(task)),
                     _infoRow('Qrup', task['group_name'] ?? '-'),
                     _infoRow('Region', task['region_name'] ?? '-'),
                     _infoRow('Tapşırıq Tipi', task['task_type_details']?['name'] ?? '-'),
@@ -123,6 +123,14 @@ class TaskDetailModal extends StatelessWidget {
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue),
       ),
     );
+  }
+
+  String _formatAssigneeNames(Map<String, dynamic> task) {
+    final names = task['assigned_to_names'];
+    if (names is List && names.isNotEmpty) {
+      return names.join(', ');
+    }
+    return 'Təyin olunmayıb';
   }
 
   Widget _infoRow(String label, String value) {
