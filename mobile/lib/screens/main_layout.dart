@@ -15,6 +15,7 @@ import 'dashboard/dashboard_screen.dart';
 import 'documents/documents_screen.dart';
 import 'package:mobile/screens/tasks/tasks_screen.dart';
 import 'package:mobile/screens/warehouse/warehouse_screen.dart';
+import 'package:mobile/models/user_model.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -47,7 +48,8 @@ class _MainLayoutState extends State<MainLayout> {
     try {
       final response = await ApiClient().dio.get('/users/me/');
       if (response.statusCode == 200) {
-        ChatService().setCurrentUser(response.data['id']); // Update ChatService
+        final user = User.fromJson(response.data);
+        ChatService().setCurrentUser(user); // Update ChatService with full user object
         
         // Start Location Tracking
         if (kIsWeb) {
@@ -289,6 +291,91 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   Widget _buildNavItem(int index, IconData icon, IconData activeIcon, String label) {
+    if (index == 2) {
+       // Tasks Tab Permission Check
+       final user = ChatService().currentUser.value;
+       final hasAccess = user != null && (user.isTaskReader || user.isTaskWriter);
+       
+       if (!hasAccess) {
+          final isSelected = _currentIndex == index;
+          return Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: Colors.grey.withOpacity(0.3),
+                ),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey.withOpacity(0.3),
+                  ),
+                ),
+              ],
+            ),
+          );
+       }
+    }
+    
+    // Documents Tab (Index 1) Permission Check
+    if (index == 1) {
+       final user = ChatService().currentUser.value;
+       final hasAccess = user != null && (user.isDocumentReader || user.isDocumentWriter);
+       
+       if (!hasAccess) {
+          return Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: Colors.grey.withOpacity(0.3),
+                ),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey.withOpacity(0.3),
+                  ),
+                ),
+              ],
+            ),
+          );
+       }
+    }
+
+    // Warehouse Tab (Index 3) Permission Check
+    if (index == 3) {
+       final user = ChatService().currentUser.value;
+       final hasAccess = user != null && (user.isWarehouseReader || user.isWarehouseWriter);
+       
+       if (!hasAccess) {
+          return Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: Colors.grey.withOpacity(0.3),
+                ),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey.withOpacity(0.3),
+                  ),
+                ),
+              ],
+            ),
+          );
+       }
+    }
+
     final isSelected = _currentIndex == index;
     return InkWell(
       onTap: () => setState(() => _currentIndex = index),

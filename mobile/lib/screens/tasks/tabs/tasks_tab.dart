@@ -4,6 +4,8 @@ import 'package:mobile/screens/tasks/widgets/task_card.dart';
 import 'package:mobile/screens/tasks/widgets/task_form.dart';
 import 'package:mobile/screens/tasks/widgets/task_filters.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile/core/services/chat_service.dart';
+import 'package:mobile/models/user_model.dart';
 
 class TasksTab extends StatefulWidget {
   const TasksTab({super.key});
@@ -248,10 +250,18 @@ class _TasksTabState extends State<TasksTab> {
                 style: IconButton.styleFrom(backgroundColor: Colors.white),
               ),
               const SizedBox(width: 4),
-              IconButton( // Add Task
-                icon: const Icon(Icons.add, color: Colors.blue),
-                onPressed: () => _openTaskForm(),
-                style: IconButton.styleFrom(backgroundColor: Colors.white),
+              
+              // Add Task Button - Visible but disabled if not writer
+              ValueListenableBuilder<User?>(
+                valueListenable: ChatService().currentUser,
+                builder: (context, user, child) {
+                  final isWriter = user?.isTaskWriter ?? false;
+                  return IconButton( 
+                    icon: Icon(Icons.add, color: isWriter ? Colors.blue : Colors.grey),
+                    onPressed: isWriter ? () => _openTaskForm() : null,
+                    style: IconButton.styleFrom(backgroundColor: Colors.white),
+                  );
+                }
               ),
             ],
           ),
@@ -273,12 +283,14 @@ class _TasksTabState extends State<TasksTab> {
                                 itemCount: _tasks.length,
                                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                                 itemBuilder: (ctx, index) {
+                                  final isWriter = ChatService().currentUser.value?.isTaskWriter ?? false;
                                   return TaskCard(
                                     task: _tasks[index],
                                     allServices: _services,
                                     onEdit: () => _openTaskForm(_tasks[index]),
                                     onRefresh: () => _fetchTasks(refresh: true),
                                     onAccept: () => _acceptTask(_tasks[index]['id']),
+                                    isWriter: isWriter,
                                   );
                                 },
                               ),

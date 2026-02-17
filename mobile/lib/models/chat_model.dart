@@ -1,3 +1,5 @@
+import 'package:mobile/models/user_model.dart';
+
 class ChatGroup {
   final int id;
   final String name;
@@ -10,6 +12,7 @@ class ChatGroup {
   final String? lastMessage;
   final String? lastMessageSender;
   final DateTime? lastMessageAt;
+  final List<User>? members;
 
   ChatGroup({
     required this.id,
@@ -23,6 +26,7 @@ class ChatGroup {
     this.lastMessage,
     this.lastMessageSender,
     this.lastMessageAt,
+    this.members,
   });
 
   factory ChatGroup.fromJson(Map<String, dynamic> json) {
@@ -50,6 +54,9 @@ class ChatGroup {
       lastMessageAt: json['last_message'] is Map && json['last_message']['created_at'] != null
           ? DateTime.parse(json['last_message']['created_at']) 
           : null,
+      members: json['members'] != null 
+          ? (json['members'] as List).map((m) => User.fromJson(m['user'] ?? m)).toList() 
+          : [],
     );
   }
 }

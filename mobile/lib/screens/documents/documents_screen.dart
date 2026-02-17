@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
+import 'package:mobile/core/services/chat_service.dart';
+import 'package:mobile/models/user_model.dart';
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -157,10 +159,16 @@ class _ActiveDocumentsTabState extends State<ActiveDocumentsTab> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddDocumentModal,
-        backgroundColor: Colors.blue,
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: ValueListenableBuilder<User?>(
+        valueListenable: ChatService().currentUser,
+        builder: (context, user, child) {
+          final isWriter = user?.isDocumentWriter ?? false;
+          return FloatingActionButton(
+            onPressed: isWriter ? _showAddDocumentModal : null,
+            backgroundColor: isWriter ? Colors.blue : Colors.grey,
+            child: const Icon(Icons.add, color: Colors.white),
+          );
+        }
       ),
       body: Column(
         children: [
@@ -195,10 +203,12 @@ class _ActiveDocumentsTabState extends State<ActiveDocumentsTab> {
                                 itemCount: _documents.length,
                                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                                 itemBuilder: (ctx, index) {
+                                  final isWriter = ChatService().currentUser.value?.isDocumentWriter ?? false;
                                   return DocumentCard(
                                     doc: _documents[index], 
-                                    onArchive: () => _showArchiveModal(_documents[index]),
+                                    onArchive: isWriter ? () => _showArchiveModal(_documents[index]) : null,
                                     showArchiveBtn: true,
+                                    isWriter: isWriter,
                                   );
                                 },
                               ),
@@ -521,10 +531,16 @@ class _ShelvesTabState extends State<ShelvesTab> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent, // Inherit from parent
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showShelfModal(),
-        backgroundColor: Colors.blue,
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: ValueListenableBuilder<User?>(
+        valueListenable: ChatService().currentUser,
+        builder: (context, user, child) {
+          final isWriter = user?.isDocumentWriter ?? false;
+          return FloatingActionButton(
+            onPressed: isWriter ? () => _showShelfModal() : null,
+            backgroundColor: isWriter ? Colors.blue : Colors.grey,
+            child: const Icon(Icons.add, color: Colors.white),
+          );
+        }
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -576,9 +592,16 @@ class _ShelvesTabState extends State<ShelvesTab> {
                               ],
                             ),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () => _showShelfModal(shelf: shelf),
+                          // Edit Shelf
+                          ValueListenableBuilder<User?>(
+                            valueListenable: ChatService().currentUser,
+                            builder: (context, user, child) {
+                              final isWriter = user?.isDocumentWriter ?? false;
+                              return IconButton(
+                                icon: Icon(Icons.edit, color: isWriter ? Colors.blue : Colors.grey),
+                                onPressed: isWriter ? () => _showShelfModal(shelf: shelf) : null,
+                              );
+                            }
                           ),
                         ],
                       ),
@@ -593,8 +616,15 @@ class DocumentCard extends StatelessWidget {
   final dynamic doc;
   final VoidCallback? onArchive;
   final bool showArchiveBtn;
+  final bool isWriter;
 
-  const DocumentCard({super.key, required this.doc, this.onArchive, this.showArchiveBtn = false});
+  const DocumentCard({
+    super.key, 
+    required this.doc, 
+    this.onArchive, 
+    this.showArchiveBtn = false,
+    this.isWriter = false,
+  });
 
   Future<void> _launchUrl(String? urlString) async {
     if (urlString == null) return;
@@ -696,12 +726,8 @@ class DocumentCard extends StatelessWidget {
             ),
             if (showArchiveBtn)
               IconButton(
-                icon: const Icon(Icons.archive_outlined, color: Colors.orange),
-                onPressed: () {
-                  // Do not open URL when clicking archive
-                  // Event bubbling might be an issue, but IconButton handles its own tap
-                  if (onArchive != null) onArchive!();
-                },
+                icon: Icon(Icons.archive_outlined, color: onArchive != null ? Colors.orange : Colors.grey),
+                onPressed: onArchive,
               ),
           ],
         ),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:mobile/core/services/chat_service.dart';
+import 'package:mobile/models/user_model.dart';
 import 'package:mobile/screens/warehouse/widgets/location_picker_modal.dart';
 import 'package:mobile/screens/warehouse/widgets/warehouse_card.dart';
 
@@ -242,10 +244,16 @@ class _WarehousesTabState extends State<WarehousesTab> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddWarehouseModal,
-        backgroundColor: Colors.blue,
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: ValueListenableBuilder<User?>(
+        valueListenable: ChatService().currentUser,
+        builder: (context, user, child) {
+          final isWriter = user?.isWarehouseWriter ?? false;
+          return FloatingActionButton(
+            onPressed: isWriter ? _showAddWarehouseModal : null,
+            backgroundColor: isWriter ? Colors.blue : Colors.grey,
+            child: const Icon(Icons.add, color: Colors.white),
+          );
+        }
       ),
       body: Column(
         children: [
@@ -296,10 +304,11 @@ class _WarehousesTabState extends State<WarehousesTab> {
                                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                                 itemBuilder: (ctx, index) {
                                   final warehouse = _warehouses[index] as Map<String, dynamic>;
+                                  final isWriter = ChatService().currentUser.value?.isWarehouseWriter ?? false;
                                   return WarehouseCard(
                                     warehouse: warehouse,
-                                    onEdit: () => _showEditWarehouseModal(warehouse),
-                                    onDelete: () => _deleteWarehouse(warehouse['id']),
+                                    onEdit: isWriter ? () => _showEditWarehouseModal(warehouse) : null,
+                                    onDelete: isWriter ? () => _deleteWarehouse(warehouse['id']) : null,
                                     onLocation: _hasValidCoordinates(warehouse) ? () => _showLocationModal(warehouse) : null,
                                   );
                                 },

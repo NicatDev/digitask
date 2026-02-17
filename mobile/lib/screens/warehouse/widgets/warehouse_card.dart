@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 class WarehouseCard extends StatelessWidget {
   final Map<String, dynamic> warehouse;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
   final VoidCallback? onLocation;
 
-  const WarehouseCard({super.key, required this.warehouse, required this.onEdit, required this.onDelete, this.onLocation});
+  const WarehouseCard({super.key, required this.warehouse, this.onEdit, this.onDelete, this.onLocation});
 
   @override
   Widget build(BuildContext context) {
@@ -69,12 +69,12 @@ class WarehouseCard extends StatelessWidget {
                   tooltip: 'View Location',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.orange),
+                  icon: Icon(Icons.edit, color: onEdit != null ? Colors.orange : Colors.grey),
                   onPressed: onEdit,
                   tooltip: 'Edit',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
+                  icon: Icon(Icons.delete, color: onDelete != null ? Colors.red : Colors.grey),
                   onPressed: onDelete,
                   tooltip: 'Delete',
                 ),
