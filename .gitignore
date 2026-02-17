@@ -47,3 +47,5 @@ yarn-error.log*
 # Migrations
 **/migrations/*.py
 !**/migrations/__init__.py
+**/__pycache__/
+*.pyc
