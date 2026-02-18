@@ -276,12 +276,12 @@ class _ActiveDocumentsTabState extends State<ActiveDocumentsTab> {
                                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                                 itemBuilder: (ctx, index) {
                                   final isWriter = ChatService().currentUser.value?.isDocumentWriter ?? false;
-                                  return DocumentCard(
-                                    doc: _documents[index], 
-                                    onArchive: isWriter ? () => _showArchiveModal(_documents[index]) : null,
-                                    onDelete: isWriter ? () => _deleteDocument(_documents[index]['id']) : null,
-                                    showArchiveBtn: true,
-                                    isWriter: isWriter,
+                                    return DocumentCard(
+                                      doc: _documents[index], 
+                                      onArchive: isWriter ? () => _showArchiveModal(_documents[index]) : null,
+                                      onDelete: () => _deleteDocument(_documents[index]['id']),
+                                      showArchiveBtn: true,
+                                      isWriter: isWriter,
                                   );
                                 },
                               ),
@@ -542,7 +542,7 @@ class _ArchiveDocumentsTabState extends State<ArchiveDocumentsTab> {
                                 return DocumentCard(
                                   doc: _documents[index], 
                                   showArchiveBtn: false,
-                                  onDelete: isWriter ? () => _deleteDocument(_documents[index]['id']) : null,
+                                  onDelete: () => _deleteDocument(_documents[index]['id']),
                                   isWriter: isWriter,
                                 );
                               },
@@ -759,10 +759,9 @@ class _ShelvesTabState extends State<ShelvesTab> {
                                           icon: Icon(Icons.edit, color: isWriter ? Colors.blue : Colors.grey),
                                           onPressed: isWriter ? () => _showShelfModal(shelf: shelf) : null,
                                         ),
-                                        if (isWriter)
-                                          IconButton(
-                                            icon: const Icon(Icons.delete, color: Colors.red),
-                                            onPressed: () {
+                                        IconButton(
+                                            icon: Icon(Icons.delete, color: isWriter ? Colors.red : Colors.grey),
+                                            onPressed: isWriter ? () {
                                               showDialog(
                                                 context: context,
                                                 builder: (ctx) => AlertDialog(
@@ -782,7 +781,7 @@ class _ShelvesTabState extends State<ShelvesTab> {
                                                   ],
                                                 ),
                                               );
-                                            },
+                                            } : null,
                                           ),
                                       ],
                                     );
@@ -923,10 +922,9 @@ class DocumentCard extends StatelessWidget {
                     icon: Icon(Icons.archive_outlined, color: onArchive != null ? Colors.orange : Colors.grey),
                     onPressed: onArchive,
                   ),
-                if (onDelete != null)
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 22),
-                    onPressed: () {
+                IconButton(
+                    icon: Icon(Icons.delete_outline, color: isWriter ? Colors.red : Colors.grey, size: 22),
+                    onPressed: isWriter ? () {
                       showDialog(
                         context: context,
                         builder: (ctx) => AlertDialog(
@@ -946,7 +944,7 @@ class DocumentCard extends StatelessWidget {
                           ],
                         ),
                       );
-                    },
+                    } : null,
                   ),
               ],
             ),

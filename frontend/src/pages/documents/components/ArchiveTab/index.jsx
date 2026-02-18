@@ -134,11 +134,9 @@ const ArchiveTab = ({ isActive }) => {
             key: 'actions',
             width: 100,
             render: (_, record) => (
-                hasPermission(user, PERMISSIONS.DOCUMENT_WRITER) && (
-                    <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => handleDelete(record.id)}>
-                        <Button type="link" size="small" danger icon={<DeleteOutlined />}>Sil</Button>
-                    </Popconfirm>
-                )
+                <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => handleDelete(record.id)} disabled={!hasPermission(user, PERMISSIONS.DOCUMENT_WRITER)}>
+                    <Button type="link" size="small" danger icon={<DeleteOutlined />} disabled={!hasPermission(user, PERMISSIONS.DOCUMENT_WRITER)}>Sil</Button>
+                </Popconfirm>
             )
         }
     ];
