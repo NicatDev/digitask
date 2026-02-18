@@ -31,7 +31,31 @@ class TaskViewSet(viewsets.ModelViewSet):
             'task_documents'
         ).order_by('-created_at')
         
-        # Filter by status
+        user = self.request.user
+        
+        # Visibility rules — privileged users see everything
+        role = getattr(user, 'role', None)
+        is_privileged = (
+            (role and role.is_task_writer) or
+            (role and role.is_admin) or
+            (role and role.is_super_admin) or
+            user.is_superuser
+        )
+        
+        if not is_privileged:
+            # Regular users see:
+            # 1) All TODO tasks (unaccepted, visible to everyone)
+            # 2) Tasks where they are in assigned_to
+            # But ALWAYS exclude done/rejected tasks where they are assigned
+            queryset = queryset.filter(
+                models.Q(status='todo') |  # all TODO tasks
+                models.Q(assigned_to=user)  # tasks assigned to me
+            ).exclude(
+                assigned_to=user,
+                status__in=['done', 'rejected']
+            )
+        
+        # Filter by status (query param)
         task_status = self.request.query_params.get('status')
         if task_status:
             queryset = queryset.filter(status=task_status)
@@ -46,7 +70,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         if group:
             queryset = queryset.filter(group_id=group)
         
-        # Filter by assigned_to (M2M)
+        # Filter by assigned_to (M2M) — query param
         assigned_to = self.request.query_params.get('assigned_to')
         if assigned_to:
             queryset = queryset.filter(assigned_to__id=assigned_to)
