@@ -1,0 +1,49 @@
+.reportsPage {
+    padding: 24px;
+
+    .userInfo {
+        display: flex;
+        flex-direction: column;
+
+        .userName {
+            font-weight: 500;
+        }
+
+        .userEmail {
+            font-size: 12px;
+            color: #8c8c8c;
+        }
+    }
+
+    .resourcePath {
+        font-family: monospace;
+        background: #f0f0f0;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+
+    .expandedRow {
+        background: #fafafa;
+        padding: 16px;
+        border-radius: 8px;
+
+        .jsonPayload {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            margin-top: 8px;
+            max-height: 300px;
+        }
+    }
+}
+
+@media (max-width: 576px) {
+    .reportsPage {
+        padding: 12px;
+    }
+}

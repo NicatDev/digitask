@@ -12,6 +12,7 @@ import LiveMap from './pages/live-map';
 import NotificationsPage from './pages/notifications';
 import DocumentsPage from './pages/documents';
 import ProfilePage from './pages/profile';
+import ReportsPage from './pages/reports';
 import PerformancePage from './pages/performance';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
@@ -70,6 +71,14 @@ const App = () => {
                 }
               />
               <Route path="/chat" element={<ChatPage />} />
+              <Route
+                path="/reports"
+                element={
+                  <ProtectedRoute requiredPermissions={['is_admin', 'is_super_admin']}>
+                    <ReportsPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/map"
                 element={

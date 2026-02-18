@@ -42,6 +42,7 @@ Project name is "Digitask". Logo is "logo.svg".
 
 ## Backend Rules
 use jwt for authentication
+dont do migrations. never makemigration and migrate
 ### Tech Stack
 - MUST use **Django + Django REST Framework (DRF)** for APIs.
 - MUST use **Django Channels** for:

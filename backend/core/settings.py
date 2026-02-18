@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'dashboard',
     'performance',
     'documents',
+    'audit',
 ]
 
 ASGI_APPLICATION = 'core.asgi.application'
@@ -80,7 +81,9 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'audit.middleware.AuditLoggingMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'

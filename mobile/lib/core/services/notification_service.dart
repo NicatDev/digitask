@@ -92,15 +92,24 @@ class NotificationService {
         },
         onError: (error) {
           print('WebSocket Error: $error');
-          // Simple reconnect logic could go here
+          _reconnect();
         },
         onDone: () {
           print('WebSocket Closed');
+          _reconnect();
         },
       );
     } catch (e) {
       print('WebSocket Connection Error: $e');
+      _reconnect();
     }
+  }
+
+  void _reconnect() {
+    Future.delayed(const Duration(seconds: 5), () {
+      print('Attempting to reconnect WebSocket...');
+      connect();
+    });
   }
 
   void _handleMessage(dynamic message) {
