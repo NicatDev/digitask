@@ -27,7 +27,7 @@ class Task(models.Model):
         related_name="assigned_tasks", 
         blank=True
     )
-    group = models.ForeignKey(Group, on_delete=models.PROTECT, related_name="tasks")
+    group = models.ForeignKey(Group, on_delete=models.SET_NULL, related_name="tasks", null=True, blank=True)
     
     services = models.ManyToManyField(Service, blank=True, related_name="tasks")
     

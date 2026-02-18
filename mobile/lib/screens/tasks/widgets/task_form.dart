@@ -180,7 +180,6 @@ class _TaskFormModalState extends State<TaskFormModal> {
                       child: Text(g['name'] ?? 'Unnamed'),
                     )).toList(),
                     onChanged: (v) => setState(() => _groupId = v),
-                    validator: (v) => v == null ? 'Required' : null,
                   ),
                   const SizedBox(height: 16),
 

@@ -61,7 +61,7 @@ const TaskModal = ({
 
                 <Row gutter={16}>
                     <Col span={12}>
-                        <Form.Item name="group" label="Qrup" rules={[{ required: true }]}>
+                        <Form.Item name="group" label="Qrup">
                             <Select showSearch optionFilterProp="children">
                                 {groups.map(g => (
                                     <Option key={g.id} value={g.id}>{g.region_name} - {g.name}</Option>
