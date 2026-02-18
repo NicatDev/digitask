@@ -154,10 +154,15 @@ class NotificationService {
       channelDescription: 'Notifications from DigiTask App',
       importance: Importance.max,
       priority: Priority.high,
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('@drawable/ic_notification_large'),
     );
     
     const NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
+        NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+      iOS: DarwinNotificationDetails(),
+    );
 
     await _localNotifications.show(
       id,

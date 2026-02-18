@@ -980,7 +980,7 @@ class _ArchiveModalState extends State<ArchiveModal> {
 
   Future<void> _fetchShelves() async {
     try {
-      final response = await ApiClient().dio.get('/documents/shelves/');
+      final response = await ApiClient().dio.get('/documents/shelves/', queryParameters: {'is_active': 'true'});
       if (response.statusCode == 200) {
         setState(() {
           final data = response.data;

@@ -69,7 +69,7 @@ const ArchiveTab = ({ isActive }) => {
 
     const fetchShelves = async () => {
         try {
-            const res = await getShelves();
+            const res = await getShelves({ is_active: 'true' });
             setShelves(res.data.results || res.data);
         } catch (error) {
             console.error(error);

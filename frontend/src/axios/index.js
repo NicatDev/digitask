@@ -40,18 +40,27 @@ axiosInstance.interceptors.request.use(
     }
 );
 
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+
+    failedQueue = [];
+};
+
 axiosInstance.interceptors.response.use(
     (response) => {
         return response;
     },
     async (error) => {
         const originalRequest = error.config;
-
-        const redirectToLogin = () => {
-            if (window.location.pathname !== '/login') {
-                window.location.href = '/login';
-            }
-        };
 
         if (typeof error.response === 'undefined') {
             alert(
@@ -64,53 +73,59 @@ axiosInstance.interceptors.response.use(
 
         if (
             error.response.status === 401 &&
-            originalRequest.url === baseURL + 'token/refresh/'
+            !originalRequest._retry
         ) {
-            redirectToLogin();
-            return Promise.reject(error);
-        }
-        if (
-            error.response.data.code === 'token_not_valid' &&
-            error.response.status === 401 &&
-            error.response.statusText === 'Unauthorized'
-        ) {
+            if (originalRequest.url.includes('/token/refresh/')) {
+                window.location.href = '/login';
+                return Promise.reject(error);
+            }
+
+            if (isRefreshing) {
+                return new Promise(function (resolve, reject) {
+                    failedQueue.push({ resolve, reject });
+                }).then(token => {
+                    originalRequest.headers['Authorization'] = 'Bearer ' + token;
+                    return axiosInstance(originalRequest);
+                }).catch(err => {
+                    return Promise.reject(err);
+                });
+            }
+
+            originalRequest._retry = true;
+            isRefreshing = true;
+
             const refreshToken = localStorage.getItem('refresh_token');
 
             if (refreshToken) {
-                try {
-                    const tokenParts = JSON.parse(atob(refreshToken.split('.')[1]));
-                    const now = Math.ceil(Date.now() / 1000);
+                return axios.post(baseURL + 'token/refresh/', { refresh: refreshToken })
+                    .then((response) => {
+                        const { access, refresh } = response.data;
 
-                    if (tokenParts.exp > now) {
-                        return axiosInstance
-                            .post('/token/refresh/', { refresh: refreshToken })
-                            .then((response) => {
-                                localStorage.setItem('access_token', response.data.access);
-                                localStorage.setItem('refresh_token', response.data.refresh);
+                        localStorage.setItem('access_token', access);
+                        if (refresh) {
+                            localStorage.setItem('refresh_token', refresh);
+                        }
 
-                                axiosInstance.defaults.headers['Authorization'] =
-                                    'Bearer ' + response.data.access;
-                                originalRequest.headers['Authorization'] =
-                                    'Bearer ' + response.data.access;
+                        axiosInstance.defaults.headers['Authorization'] = 'Bearer ' + access;
+                        originalRequest.headers['Authorization'] = 'Bearer ' + access;
 
-                                return axiosInstance(originalRequest);
-                            })
-                            .catch((err) => {
-                                console.log(err);
-                                redirectToLogin();
-                            });
-                    } else {
-                        redirectToLogin();
-                    }
-                } catch (err) {
-                    redirectToLogin();
-                }
+                        processQueue(null, access);
+                        isRefreshing = false;
+
+                        return axiosInstance(originalRequest);
+                    })
+                    .catch((err) => {
+                        processQueue(err, null);
+                        isRefreshing = false;
+                        window.location.href = '/login';
+                        return Promise.reject(err);
+                    });
             } else {
-                redirectToLogin();
+                window.location.href = '/login';
+                return Promise.reject(error);
             }
         }
 
-        // specific error handling done elsewhere
         return Promise.reject(error);
     }
 );

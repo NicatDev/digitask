@@ -130,6 +130,8 @@ class ChatService {
       _channel!.sink.add(jsonEncode({
         'message': content,
       }));
+      // Mark as read after sending so our own message doesn't count as unread
+      await markAsRead(groupId);
     } else {
       // Fallback or initialization error
       print('WebSocket not connected for this group');
@@ -256,11 +258,16 @@ class ChatService {
   }
   
   void disconnect() {
+      final groupId = _currentGroupId;
       if (_channel != null) {
           _channel!.sink.close();
           _channel = null;
       }
       _currentGroupId = null;
+      // Mark messages as read when leaving chat to prevent stale unread counts
+      if (groupId != null) {
+          markAsRead(groupId);
+      }
   }
 
   void _handleMessage(dynamic message) {
@@ -332,6 +339,10 @@ class ChatService {
           // If we are currently in this chat, ignore global notification 
           // (because specific WS handles it, or we shouldn't increment unread)
           if (_currentGroupId == groupId) return;
+          
+          // If I am the sender, don't increment unread count
+          final int? senderId = data['sender_id'];
+          if (senderId != null && currentUserId != null && senderId == currentUserId) return;
           
           final List<ChatGroup> currentGroups = List.from(groups.value);
           final index = currentGroups.indexWhere((g) => g.id == groupId);
