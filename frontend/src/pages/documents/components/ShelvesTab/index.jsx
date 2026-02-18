@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, message, Popconfirm, Tag, Space, Grid } from 'antd';
+import { Table, Button, Modal, Form, Input, message, Popconfirm, Tag, Space, Select, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getShelves, createShelf, updateShelf, deleteShelf } from '../../../../axios/api/tasks';
 import { handleApiError } from '../../../../utils/errorHandler';
 import styles from './style.module.scss';
+
+const { Option } = Select;
 
 const ShelvesTab = ({ isActive }) => {
     const [data, setData] = useState([]);
@@ -19,6 +21,9 @@ const ShelvesTab = ({ isActive }) => {
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
 
+    // Status filter
+    const [statusFilter, setStatusFilter] = useState('true'); // default: Aktiv
+
     const screens = Grid.useBreakpoint();
 
     useEffect(() => {
@@ -29,7 +34,11 @@ const ShelvesTab = ({ isActive }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await getShelves({ search: debouncedSearchText });
+            const params = { search: debouncedSearchText };
+            if (statusFilter !== 'all') {
+                params.is_active = statusFilter;
+            }
+            const response = await getShelves(params);
             setData(response.data.results || response.data);
         } catch (error) {
             handleApiError(error, 'Rəfləri yükləmək mümkün olmadı');
@@ -42,7 +51,7 @@ const ShelvesTab = ({ isActive }) => {
         if (isActive) {
             fetchData();
         }
-    }, [isActive, debouncedSearchText]);
+    }, [isActive, debouncedSearchText, statusFilter]);
 
     const openModal = (item = null) => {
         setEditingItem(item);
@@ -134,6 +143,15 @@ const ShelvesTab = ({ isActive }) => {
                     onChange={(e) => setSearchText(e.target.value)}
                     style={{ width: screens.md ? 300 : '100%' }}
                 />
+                <Select
+                    value={statusFilter}
+                    onChange={(v) => setStatusFilter(v)}
+                    style={{ width: 130 }}
+                >
+                    <Option value="true">Aktiv</Option>
+                    <Option value="all">Hamısı</Option>
+                    <Option value="false">Deaktiv</Option>
+                </Select>
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
                     Yeni Rəf
                 </Button>

@@ -56,6 +56,40 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
   }
 }
 
+// ==================== STATUS FILTER WIDGET ====================
+class StatusFilterDropdown extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  const StatusFilterDropdown({super.key, required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isDense: true,
+          items: const [
+            DropdownMenuItem(value: 'true', child: Text('Aktiv')),
+            DropdownMenuItem(value: 'all', child: Text('Hamısı')),
+            DropdownMenuItem(value: 'false', child: Text('Deaktiv')),
+          ],
+          onChanged: (v) {
+            if (v != null) onChanged(v);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+// ==================== ACTIVE DOCUMENTS TAB ====================
 class ActiveDocumentsTab extends StatefulWidget {
   const ActiveDocumentsTab({super.key});
 
@@ -68,6 +102,7 @@ class _ActiveDocumentsTabState extends State<ActiveDocumentsTab> {
   List<dynamic> _documents = [];
   bool _isLoading = true;
   String _searchQuery = '';
+  String _statusFilter = 'true'; // default: Aktiv
   int _currentPage = 1;
   bool _hasNextPage = true;
 
@@ -90,13 +125,18 @@ class _ActiveDocumentsTabState extends State<ActiveDocumentsTab> {
     }
     
     try {
+      final params = <String, dynamic>{
+        'search': _searchQuery,
+        'confirmed': 'false',
+        'page': _currentPage,
+      };
+      if (_statusFilter != 'all') {
+        params['is_active'] = _statusFilter;
+      }
+
       final response = await ApiClient().dio.get(
         '/documents/documents/',
-        queryParameters: {
-          'search': _searchQuery,
-          'confirmed': 'false',
-          'page': _currentPage,
-        },
+        queryParameters: params,
       );
 
       if (response.statusCode == 200) {
@@ -137,6 +177,24 @@ class _ActiveDocumentsTabState extends State<ActiveDocumentsTab> {
     _fetchDocuments(refresh: true);
   }
 
+  Future<void> _deleteDocument(int id) async {
+    try {
+      await ApiClient().dio.delete('/documents/documents/$id/');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Document deleted')),
+        );
+        _fetchDocuments(refresh: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
   void _showArchiveModal(dynamic doc) {
     showModalBottomSheet(
       context: context,
@@ -174,20 +232,34 @@ class _ActiveDocumentsTabState extends State<ActiveDocumentsTab> {
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'Search...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                    decoration: InputDecoration(
+                      hintText: 'Search...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
                 ),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-              ),
+                const SizedBox(width: 8),
+                StatusFilterDropdown(
+                  value: _statusFilter,
+                  onChanged: (v) {
+                    setState(() => _statusFilter = v);
+                    _fetchDocuments(refresh: true);
+                  },
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -207,6 +279,7 @@ class _ActiveDocumentsTabState extends State<ActiveDocumentsTab> {
                                   return DocumentCard(
                                     doc: _documents[index], 
                                     onArchive: isWriter ? () => _showArchiveModal(_documents[index]) : null,
+                                    onDelete: isWriter ? () => _deleteDocument(_documents[index]['id']) : null,
                                     showArchiveBtn: true,
                                     isWriter: isWriter,
                                   );
@@ -257,6 +330,7 @@ class _ActiveDocumentsTabState extends State<ActiveDocumentsTab> {
   }
 }
 
+// ==================== ARCHIVE DOCUMENTS TAB ====================
 class ArchiveDocumentsTab extends StatefulWidget {
   const ArchiveDocumentsTab({super.key});
 
@@ -270,6 +344,7 @@ class _ArchiveDocumentsTabState extends State<ArchiveDocumentsTab> {
   List<dynamic> _shelves = [];
   bool _isLoading = true;
   String _searchQuery = '';
+  String _statusFilter = 'true'; // default: Aktiv
   int? _selectedShelfId;
   int _currentPage = 1;
   bool _hasNextPage = true;
@@ -320,6 +395,9 @@ class _ArchiveDocumentsTabState extends State<ArchiveDocumentsTab> {
       if (_selectedShelfId != null) {
         params['shelf'] = _selectedShelfId.toString();
       }
+      if (_statusFilter != 'all') {
+        params['is_active'] = _statusFilter;
+      }
 
       final response = await ApiClient().dio.get(
         '/documents/documents/',
@@ -362,6 +440,24 @@ class _ArchiveDocumentsTabState extends State<ArchiveDocumentsTab> {
     _fetchDocuments(refresh: true);
   }
 
+  Future<void> _deleteDocument(int id) async {
+    try {
+      await ApiClient().dio.delete('/documents/documents/$id/');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Document deleted')),
+        );
+        _fetchDocuments(refresh: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -370,20 +466,34 @@ class _ArchiveDocumentsTabState extends State<ArchiveDocumentsTab> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              TextField(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
-                decoration: InputDecoration(
-                  hintText: 'Search archive...',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      decoration: InputDecoration(
+                        hintText: 'Search archive...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
                   ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                ),
+                  const SizedBox(width: 8),
+                  StatusFilterDropdown(
+                    value: _statusFilter,
+                    onChanged: (v) {
+                      setState(() => _statusFilter = v);
+                      _fetchDocuments(refresh: true);
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
@@ -428,9 +538,12 @@ class _ArchiveDocumentsTabState extends State<ArchiveDocumentsTab> {
                               itemCount: _documents.length,
                               separatorBuilder: (_, __) => const SizedBox(height: 12),
                               itemBuilder: (ctx, index) {
+                                final isWriter = ChatService().currentUser.value?.isDocumentWriter ?? false;
                                 return DocumentCard(
                                   doc: _documents[index], 
                                   showArchiveBtn: false,
+                                  onDelete: isWriter ? () => _deleteDocument(_documents[index]['id']) : null,
+                                  isWriter: isWriter,
                                 );
                               },
                             ),
@@ -478,6 +591,7 @@ class _ArchiveDocumentsTabState extends State<ArchiveDocumentsTab> {
   }
 }
 
+// ==================== SHELVES TAB ====================
 class ShelvesTab extends StatefulWidget {
   const ShelvesTab({super.key});
 
@@ -488,6 +602,7 @@ class ShelvesTab extends StatefulWidget {
 class _ShelvesTabState extends State<ShelvesTab> {
   List<dynamic> _shelves = [];
   bool _isLoading = true;
+  String _statusFilter = 'true'; // default: Aktiv
 
   @override
   void initState() {
@@ -498,7 +613,11 @@ class _ShelvesTabState extends State<ShelvesTab> {
   Future<void> _fetchShelves() async {
     setState(() => _isLoading = true);
     try {
-      final response = await ApiClient().dio.get('/documents/shelves/');
+      final params = <String, dynamic>{};
+      if (_statusFilter != 'all') {
+        params['is_active'] = _statusFilter;
+      }
+      final response = await ApiClient().dio.get('/documents/shelves/', queryParameters: params);
        if (response.statusCode == 200) {
         setState(() {
           final data = response.data;
@@ -527,10 +646,28 @@ class _ShelvesTabState extends State<ShelvesTab> {
     );
   }
 
+  Future<void> _deleteShelf(int id) async {
+    try {
+      await ApiClient().dio.delete('/documents/shelves/$id/');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Shelf deleted')),
+        );
+        _fetchShelves();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent, // Inherit from parent
+      backgroundColor: Colors.transparent,
       floatingActionButton: ValueListenableBuilder<User?>(
         valueListenable: ChatService().currentUser,
         builder: (context, user, child) {
@@ -542,79 +679,132 @@ class _ShelvesTabState extends State<ShelvesTab> {
           );
         }
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _shelves.isEmpty
-              ? const Center(child: Text('No shelves found'))
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _shelves.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (ctx, index) {
-                    final shelf = _shelves[index];
-                    return Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(Icons.shelves, color: Colors.orange),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  shelf['name'] ?? 'Unnamed Shelf',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                ),
-                                if (shelf['location'] != null && shelf['location'].toString().isNotEmpty)
-                                  Text(
-                                    shelf['location'],
-                                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          // Edit Shelf
-                          ValueListenableBuilder<User?>(
-                            valueListenable: ChatService().currentUser,
-                            builder: (context, user, child) {
-                              final isWriter = user?.isDocumentWriter ?? false;
-                              return IconButton(
-                                icon: Icon(Icons.edit, color: isWriter ? Colors.blue : Colors.grey),
-                                onPressed: isWriter ? () => _showShelfModal(shelf: shelf) : null,
-                              );
-                            }
-                          ),
-                        ],
-                      ),
-                    );
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                StatusFilterDropdown(
+                  value: _statusFilter,
+                  onChanged: (v) {
+                    setState(() => _statusFilter = v);
+                    _fetchShelves();
                   },
                 ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _shelves.isEmpty
+                    ? const Center(child: Text('No shelves found'))
+                    : ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _shelves.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (ctx, index) {
+                          final shelf = _shelves[index];
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(Icons.shelves, color: Colors.orange),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        shelf['name'] ?? 'Unnamed Shelf',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
+                                      if (shelf['location'] != null && shelf['location'].toString().isNotEmpty)
+                                        Text(
+                                          shelf['location'],
+                                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                // Edit Shelf
+                                ValueListenableBuilder<User?>(
+                                  valueListenable: ChatService().currentUser,
+                                  builder: (context, user, child) {
+                                    final isWriter = user?.isDocumentWriter ?? false;
+                                    return Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(Icons.edit, color: isWriter ? Colors.blue : Colors.grey),
+                                          onPressed: isWriter ? () => _showShelfModal(shelf: shelf) : null,
+                                        ),
+                                        if (isWriter)
+                                          IconButton(
+                                            icon: const Icon(Icons.delete, color: Colors.red),
+                                            onPressed: () {
+                                              showDialog(
+                                                context: context,
+                                                builder: (ctx) => AlertDialog(
+                                                  title: const Text('Silmək istədiyinizə əminsiniz?'),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(ctx),
+                                                      child: const Text('Xeyr'),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () {
+                                                        Navigator.pop(ctx);
+                                                        _deleteShelf(shelf['id']);
+                                                      },
+                                                      child: const Text('Bəli', style: TextStyle(color: Colors.red)),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                      ],
+                                    );
+                                  }
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ],
+      ),
     );
   }
 }
 
+// ==================== DOCUMENT CARD ====================
 class DocumentCard extends StatelessWidget {
   final dynamic doc;
   final VoidCallback? onArchive;
+  final VoidCallback? onDelete;
   final bool showArchiveBtn;
   final bool isWriter;
 
@@ -622,6 +812,7 @@ class DocumentCard extends StatelessWidget {
     super.key, 
     required this.doc, 
     this.onArchive, 
+    this.onDelete,
     this.showArchiveBtn = false,
     this.isWriter = false,
   });
@@ -717,18 +908,48 @@ class DocumentCard extends StatelessWidget {
                      Padding(
                        padding: const EdgeInsets.only(top: 4.0),
                        child: Text(
-                        '${doc['shelf_name']}', // Display only Ref name
+                        '${doc['shelf_name']}',
                         style: const TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold),
                                          ),
                      ),
                 ],
               ),
             ),
-            if (showArchiveBtn)
-              IconButton(
-                icon: Icon(Icons.archive_outlined, color: onArchive != null ? Colors.orange : Colors.grey),
-                onPressed: onArchive,
-              ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (showArchiveBtn)
+                  IconButton(
+                    icon: Icon(Icons.archive_outlined, color: onArchive != null ? Colors.orange : Colors.grey),
+                    onPressed: onArchive,
+                  ),
+                if (onDelete != null)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 22),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Silmək istədiyinizə əminsiniz?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Xeyr'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                onDelete!();
+                              },
+                              child: const Text('Bəli', style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
           ],
         ),
       ),
@@ -736,6 +957,7 @@ class DocumentCard extends StatelessWidget {
   }
 }
 
+// ==================== ARCHIVE MODAL ====================
 class ArchiveModal extends StatefulWidget {
   final int documentId;
   final VoidCallback onSuccess;
@@ -869,6 +1091,7 @@ class _ArchiveModalState extends State<ArchiveModal> {
   }
 }
 
+// ==================== SHELF MODAL ====================
 class ShelfModal extends StatefulWidget {
   final Map<String, dynamic>? shelf;
   final VoidCallback onSuccess;
@@ -965,6 +1188,7 @@ class _ShelfModalState extends State<ShelfModal> {
   }
 }
 
+// ==================== ADD DOCUMENT MODAL ====================
 class AddDocumentModal extends StatefulWidget {
   final VoidCallback onSuccess;
 
@@ -985,7 +1209,7 @@ class _AddDocumentModalState extends State<AddDocumentModal> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.any,
       allowMultiple: false,
-      withData: true, // Important for web - loads bytes into memory
+      withData: true,
     );
 
     if (result != null && result.files.isNotEmpty) {
@@ -1009,7 +1233,6 @@ class _AddDocumentModalState extends State<AddDocumentModal> {
     try {
       MultipartFile multipartFile;
       
-      // Use bytes for web, path for mobile
       if (_selectedFile!.bytes != null) {
         multipartFile = MultipartFile.fromBytes(
           _selectedFile!.bytes!,

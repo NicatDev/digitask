@@ -47,6 +47,11 @@ class TaskDocumentViewSet(viewsets.ModelViewSet):
         if shelf:
             queryset = queryset.filter(shelf_id=shelf)
         
+        # Filter by is_active
+        is_active = self.request.query_params.get('is_active')
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+        
         # Search by title
         search = self.request.query_params.get('search')
         if search:
@@ -58,6 +63,13 @@ class TaskDocumentViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+    
+    def destroy(self, request, *args, **kwargs):
+        """Soft delete - set is_active to False."""
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
     @action(detail=True, methods=['post'])
     def archive(self, request, pk=None):

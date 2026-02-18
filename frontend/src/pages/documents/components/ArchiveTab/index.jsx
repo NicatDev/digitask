@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Input, Select, Grid, Tag } from 'antd';
-import { FileOutlined } from '@ant-design/icons';
-import { getTaskDocuments, getShelves } from '../../../../axios/api/tasks';
+import { Table, Button, Input, Select, Grid, Tag, Space, Popconfirm, message } from 'antd';
+import { FileOutlined, DeleteOutlined } from '@ant-design/icons';
+import { getTaskDocuments, getShelves, deleteTaskDocument } from '../../../../axios/api/tasks';
 import { handleApiError } from '../../../../utils/errorHandler';
+import { useAuth } from '../../../../context/AuthContext';
+import { hasPermission, PERMISSIONS } from '../../../../utils/permissions';
 import styles from './style.module.scss';
 
 const { Option } = Select;
@@ -11,11 +13,13 @@ const ArchiveTab = ({ isActive }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [shelves, setShelves] = useState([]);
+    const { user } = useAuth();
 
     // Filters
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
     const [shelfFilter, setShelfFilter] = useState(null);
+    const [statusFilter, setStatusFilter] = useState('true'); // default: Aktiv
 
     // Pagination
     const [pagination, setPagination] = useState({
@@ -40,6 +44,9 @@ const ArchiveTab = ({ isActive }) => {
                 page: params.page || pagination.current
             };
             if (shelfFilter) queryParams.shelf = shelfFilter;
+            if (statusFilter !== 'all') {
+                queryParams.is_active = statusFilter;
+            }
             const response = await getTaskDocuments(queryParams);
             const responseData = response.data;
 
@@ -74,10 +81,20 @@ const ArchiveTab = ({ isActive }) => {
             fetchData({ page: 1 });
             fetchShelves();
         }
-    }, [isActive, debouncedSearchText, shelfFilter]);
+    }, [isActive, debouncedSearchText, shelfFilter, statusFilter]);
 
     const handleTableChange = (newPagination) => {
         fetchData({ page: newPagination.current });
+    };
+
+    const handleDelete = async (id) => {
+        try {
+            await deleteTaskDocument(id);
+            message.success('Sənəd silindi');
+            fetchData();
+        } catch (error) {
+            handleApiError(error, 'Sənəd silinmədi');
+        }
     };
 
     const columns = [
@@ -111,6 +128,18 @@ const ArchiveTab = ({ isActive }) => {
             dataIndex: 'created_at',
             key: 'created_at',
             render: (date) => new Date(date).toLocaleDateString('az-AZ')
+        },
+        {
+            title: 'Əməliyyat',
+            key: 'actions',
+            width: 100,
+            render: (_, record) => (
+                hasPermission(user, PERMISSIONS.DOCUMENT_WRITER) && (
+                    <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => handleDelete(record.id)}>
+                        <Button type="link" size="small" danger icon={<DeleteOutlined />}>Sil</Button>
+                    </Popconfirm>
+                )
+            )
         }
     ];
 
@@ -132,6 +161,15 @@ const ArchiveTab = ({ isActive }) => {
                     {shelves.map(s => (
                         <Option key={s.id} value={s.id}>{s.name}</Option>
                     ))}
+                </Select>
+                <Select
+                    value={statusFilter}
+                    onChange={(v) => setStatusFilter(v)}
+                    style={{ width: 130 }}
+                >
+                    <Option value="true">Aktiv</Option>
+                    <Option value="all">Hamısı</Option>
+                    <Option value="false">Deaktiv</Option>
                 </Select>
                 <Button onClick={fetchData}>Yenilə</Button>
             </div>

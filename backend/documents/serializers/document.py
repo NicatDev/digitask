@@ -14,7 +14,7 @@ class TaskDocumentSerializer(serializers.ModelSerializer):
             'id', 'task', 'task_title', 'stock_movement', 'action', 'shelf', 'shelf_name',
             'title', 'file', 'file_url', 
             'confirmed', 'confirmed_by', 'confirmed_by_name', 'confirmed_at',
-            'created_at'
+            'is_active', 'created_at'
         ]
         read_only_fields = ['id', 'created_at', 'confirmed_by', 'confirmed_at']
     

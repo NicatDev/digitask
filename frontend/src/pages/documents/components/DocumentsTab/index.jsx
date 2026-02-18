@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Input, message, Modal, Select, Tag, Space, Grid } from 'antd';
-import { FilterOutlined, FileOutlined, InboxOutlined, PlusOutlined } from '@ant-design/icons';
-import { getTaskDocuments, archiveDocument, getShelves } from '../../../../axios/api/tasks';
+import { Table, Button, Input, message, Modal, Select, Tag, Space, Grid, Popconfirm } from 'antd';
+import { FilterOutlined, FileOutlined, InboxOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { getTaskDocuments, archiveDocument, getShelves, deleteTaskDocument } from '../../../../axios/api/tasks';
 import { handleApiError } from '../../../../utils/errorHandler';
 import { useAuth } from '../../../../context/AuthContext';
 import { hasPermission, PERMISSIONS } from '../../../../utils/permissions';
@@ -19,6 +19,9 @@ const DocumentsTab = ({ isActive }) => {
     // Search
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
+
+    // Status filter
+    const [statusFilter, setStatusFilter] = useState('true'); // default: Aktiv
 
     // Pagination
     const [pagination, setPagination] = useState({
@@ -51,6 +54,9 @@ const DocumentsTab = ({ isActive }) => {
                 search: debouncedSearchText,
                 page: params.page || pagination.current
             };
+            if (statusFilter !== 'all') {
+                queryParams.is_active = statusFilter;
+            }
             const response = await getTaskDocuments(queryParams);
             const responseData = response.data;
 
@@ -85,7 +91,7 @@ const DocumentsTab = ({ isActive }) => {
             fetchData({ page: 1 });
             fetchShelves();
         }
-    }, [isActive, debouncedSearchText]);
+    }, [isActive, debouncedSearchText, statusFilter]);
 
     const handleTableChange = (newPagination) => {
         fetchData({ page: newPagination.current });
@@ -112,6 +118,16 @@ const DocumentsTab = ({ isActive }) => {
             handleApiError(error, 'Arxivə keçirmək mümkün olmadı');
         } finally {
             setArchiving(false);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        try {
+            await deleteTaskDocument(id);
+            message.success('Sənəd silindi');
+            fetchData();
+        } catch (error) {
+            handleApiError(error, 'Sənəd silinmədi');
         }
     };
 
@@ -143,18 +159,25 @@ const DocumentsTab = ({ isActive }) => {
 
         {
             title: 'Əməliyyat',
-            key: 'action',
-            width: 150,
+            key: 'actions',
+            width: 200,
             render: (_, record) => (
-                <Button
-                    type="primary"
-                    size="small"
-                    icon={<InboxOutlined />}
-                    onClick={() => openArchiveModal(record)}
-                    disabled={!hasPermission(user, PERMISSIONS.DOCUMENT_WRITER)}
-                >
-                    Arxivə keçir
-                </Button>
+                <Space>
+                    <Button
+                        type="primary"
+                        size="small"
+                        icon={<InboxOutlined />}
+                        onClick={() => openArchiveModal(record)}
+                        disabled={!hasPermission(user, PERMISSIONS.DOCUMENT_WRITER)}
+                    >
+                        Arxivə keçir
+                    </Button>
+                    {hasPermission(user, PERMISSIONS.DOCUMENT_WRITER) && (
+                        <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => handleDelete(record.id)}>
+                            <Button type="link" size="small" danger icon={<DeleteOutlined />}>Sil</Button>
+                        </Popconfirm>
+                    )}
+                </Space>
             )
         }
     ];
@@ -167,6 +190,15 @@ const DocumentsTab = ({ isActive }) => {
                     onChange={(e) => setSearchText(e.target.value)}
                     style={{ width: screens.md ? 300 : '100%' }}
                 />
+                <Select
+                    value={statusFilter}
+                    onChange={(v) => setStatusFilter(v)}
+                    style={{ width: 130 }}
+                >
+                    <Option value="true">Aktiv</Option>
+                    <Option value="all">Hamısı</Option>
+                    <Option value="false">Deaktiv</Option>
+                </Select>
                 <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
                     <Button onClick={fetchData}>Yenilə</Button>
                     {hasPermission(user, PERMISSIONS.DOCUMENT_WRITER) && (

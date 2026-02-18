@@ -176,7 +176,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
                         : null,
                     optionsBuilder: (TextEditingValue textEditingValue) {
                       final query = textEditingValue.text.toLowerCase();
-                      return widget.customers.where((c) {
+                      return widget.customers.cast<Map<String, dynamic>>().where((c) {
                         final name = (c['full_name'] ?? '').toString().toLowerCase();
                         final regNum = (c['register_number'] ?? '').toString().toLowerCase();
                         return name.contains(query) || regNum.contains(query);
