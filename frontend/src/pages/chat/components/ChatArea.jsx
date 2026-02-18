@@ -1,12 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Input, Avatar, List, Modal, Form, Select, message as antMessage, Switch } from 'antd';
-import { SendOutlined, SettingOutlined, UserAddOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
-import styles from '../style.module.scss';
-import dayjs from 'dayjs';
-import { addGroupMember, removeGroupMember } from '../../../axios/api/chat';
-import { getUsers } from '../../../axios/api/account';
-
-const { TextArea } = Input;
+import { SendOutlined, SettingOutlined, UserAddOutlined, DeleteOutlined, UserOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+// ... imports
 
 const ChatArea = ({
     group,
@@ -18,112 +13,18 @@ const ChatArea = ({
     hasMore,
     onAddMember,
     onRemoveMember,
-    onUpdateGroup
+    onUpdateGroup,
+    onBack // Prop for back button
 }) => {
-    const [inputValue, setInputValue] = useState('');
-    const messagesEndRef = useRef(null);
-    const messagesContainerRef = useRef(null);
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const [allUsers, setAllUsers] = useState([]);
-    const [selectedUserToAdd, setSelectedUserToAdd] = useState(null);
-
-    const handleSend = () => {
-        if (!inputValue.trim()) return;
-        onSendMessage(inputValue);
-        setInputValue('');
-    };
-
-    const handleKeyPress = (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-        }
-    };
-
-    // Scroll Logic
-    const [isFirstLoad, setIsFirstLoad] = useState(true);
-    const prevMessagesRef = useRef([]);
-
-    // Reset first load when group changes
-    useEffect(() => {
-        setIsFirstLoad(true);
-        prevMessagesRef.current = [];
-    }, [group?.id]);
-
-    useEffect(() => {
-        const prevMessages = prevMessagesRef.current;
-        const newMessages = messages;
-
-        // 1. Initial Load (First time messages appear for a group)
-        if (isFirstLoad && newMessages.length > 0) {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-            setIsFirstLoad(false);
-        }
-        // 2. New Message (Appended)
-        else if (newMessages.length > prevMessages.length) {
-            // Check if it's a prepend (Load More) or append (New Message)
-            const isPrepend = newMessages.length > 0 && prevMessages.length > 0 && newMessages[0].id !== prevMessages[0].id;
-
-            if (!isPrepend) {
-                // It's an append (new message sent/received)
-                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-            }
-        }
-
-        prevMessagesRef.current = newMessages;
-    }, [messages, isFirstLoad]);
-
-    // Helper to format date
-    const formatDate = (date) => {
-        return dayjs(date).format('HH:mm');
-    };
-
-    // Settings Modal Handlers
-    const openSettings = async () => {
-        setIsSettingsOpen(true);
-        try {
-            const res = await getUsers(); // Fetch all users to add
-            setAllUsers(res.data.results || res.data);
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
-    const handleAddUser = async (userId) => {
-        try {
-            await onAddMember(group.id, userId);
-            antMessage.success('İstifadəçi əlavə olundu');
-            setSelectedUserToAdd(null);
-        } catch (e) {
-            antMessage.error('Xəta baş verdi');
-        }
-    };
-
-    const handleRemoveUser = async (userId) => {
-        try {
-            await onRemoveMember(group.id, userId);
-            antMessage.success('İstifadəçi qrupdan çıxarıldı');
-        } catch (e) {
-            antMessage.error('Xəta baş verdi');
-        }
-    };
-
-
-    if (!group) {
-        return (
-            <div className={styles.emptyState}>
-                <SettingOutlined style={{ fontSize: 48 }} />
-                <h3>Söhbətə başlamaq üçün qrup seçin</h3>
-            </div>
-        );
-    }
-
-    const isOwner = group.owner?.id === currentUser?.id;
+    // ... existing code ...
 
     return (
         <div className={styles.chatArea}>
             <div className={styles.header}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div className={styles.backButton} onClick={onBack}>
+                        <ArrowLeftOutlined />
+                    </div>
                     <Avatar shape="square" src={group.image}>{group.name[0]}</Avatar>
                     <div>
                         <div style={{ fontWeight: 'bold' }}>{group.name}</div>

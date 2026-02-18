@@ -253,36 +253,45 @@ const ChatPage = () => {
 
     return (
         <div className={styles.container}>
-            <GroupList
-                groups={groups}
-                selectedGroupId={selectedGroupId}
-                onSelectGroup={setSelectedGroupId}
-                onAddGroup={handleAddGroup}
-                onDeleteGroup={handleDeleteGroup}
-            />
-            <ChatArea
-                group={selectedGroupDetails}
-                messages={messages}
-                currentUser={currentUser}
-                onSendMessage={handleSendMessage}
-                loading={loadingMessages}
-                onLoadMore={handleLoadMore}
-                hasMore={hasMore}
-                onAddMember={handleAddMember}
-                onRemoveMember={handleRemoveMember}
-                onUpdateGroup={async (id, data) => {
-                    try {
-                        // assuming updateChatGroup exists and imported
-                        const { updateChatGroup } = await import('../../axios/api/chat');
-                        await updateChatGroup(id, data);
-                        loadGroupDetails(id); // Refresh details
-                        message.success("Tənzimləmə yeniləndi");
-                    } catch (e) {
-                        message.error("Xəta");
-                    }
-                }}
-            // Pagination props can be added here
-            />
+            <div className={`${styles.sidebar} ${!selectedGroupId ? styles.active : ''}`}>
+                <GroupList
+                    groups={groups}
+                    selectedGroupId={selectedGroupId}
+                    onSelectGroup={setSelectedGroupId}
+                    onAddGroup={handleAddGroup}
+                    onDeleteGroup={handleDeleteGroup}
+                />
+            </div>
+            <div className={`${styles.chatArea} ${selectedGroupId ? styles.active : ''}`}>
+                {selectedGroupId ? (
+                    <ChatArea
+                        group={selectedGroupDetails}
+                        messages={messages}
+                        currentUser={currentUser}
+                        onSendMessage={handleSendMessage}
+                        loading={loadingMessages}
+                        onLoadMore={handleLoadMore}
+                        hasMore={hasMore}
+                        onAddMember={handleAddMember}
+                        onRemoveMember={handleRemoveMember}
+                        onBack={() => setSelectedGroupId(null)}
+                        onUpdateGroup={async (id, data) => {
+                            try {
+                                const { updateChatGroup } = await import('../../axios/api/chat');
+                                await updateChatGroup(id, data);
+                                loadGroupDetails(id);
+                                message.success("Tənzimləmə yeniləndi");
+                            } catch (e) {
+                                message.error("Xəta");
+                            }
+                        }}
+                    />
+                ) : (
+                    <div className={styles.emptyState}>
+                        <p>Söhbətə başlamaq üçün qrup seçin</p>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

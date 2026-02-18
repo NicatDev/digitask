@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layout, Menu, Drawer } from 'antd';
-import { TeamOutlined, ShopOutlined, SettingOutlined, FileTextOutlined, GlobalOutlined, BellOutlined, FolderOutlined, HomeOutlined, BarChartOutlined } from '@ant-design/icons';
+import { TeamOutlined, ShopOutlined, SettingOutlined, FileTextOutlined, GlobalOutlined, BellOutlined, FolderOutlined, HomeOutlined, BarChartOutlined, SolutionOutlined } from '@ant-design/icons';
 import styles from './style.module.scss';
 import logo from '../../../assets/logo.svg';
 import { hasPermission } from '../../../utils/permissions';
@@ -51,6 +51,12 @@ const AppSider = ({ collapsed, mobileOpen, setMobileOpen, location, navigate }) 
             icon: <FolderOutlined />,
             label: 'Sənədlər',
             permission: ['is_document_reader', 'is_document_writer']
+        },
+        {
+            key: '/reports',
+            icon: <SolutionOutlined />,
+            label: 'Hesabatlar',
+            permission: ['is_admin', 'is_super_admin']
         },
         {
             key: '/admin',

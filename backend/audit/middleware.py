@@ -28,13 +28,19 @@ class AuditLoggingMiddleware:
 
             # Extract Payload
             payload = None
-            if request.body:
-                try:
-                    payload = json.loads(request.body.decode('utf-8'))
-                except:
-                    # Capture raw if json fails, or just ignore
-                    # payload = str(request.body) 
-                    pass
+            try:
+                # Try to get body without triggering RawPostDataException
+                # If DRF has already read it, it might be in _body
+                if hasattr(request, '_body'):
+                    body = request._body
+                else:
+                    body = request.body
+                
+                if body:
+                    payload = json.loads(body.decode('utf-8'))
+            except Exception:
+                # If we can't read the body (e.g. file upload or already read stream), just skip payload
+                pass
             
             # Create Log
             # We use a try-except block to avoid breaking the response if logging fails
