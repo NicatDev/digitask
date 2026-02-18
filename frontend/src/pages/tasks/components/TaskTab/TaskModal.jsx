@@ -50,9 +50,21 @@ const TaskModal = ({
                     </Col>
                     <Col span={8}>
                         <Form.Item name="customer" label="Müştəri" rules={[{ required: true }]}>
-                            <Select showSearch optionFilterProp="children">
+                            <Select
+                                showSearch
+                                filterOption={(input, option) => {
+                                    const customer = customers.find(c => c.id === option.value);
+                                    if (!customer) return false;
+                                    const searchText = input.toLowerCase();
+                                    const name = (customer.full_name || '').toLowerCase();
+                                    const regNum = (customer.register_number || '').toLowerCase();
+                                    return name.includes(searchText) || regNum.includes(searchText);
+                                }}
+                            >
                                 {customers.filter(c => c.is_active).map(c => (
-                                    <Option key={c.id} value={c.id}>{c.full_name}</Option>
+                                    <Option key={c.id} value={c.id}>
+                                        {c.full_name}{c.register_number ? ` - ${c.register_number}` : ''}
+                                    </Option>
                                 ))}
                             </Select>
                         </Form.Item>

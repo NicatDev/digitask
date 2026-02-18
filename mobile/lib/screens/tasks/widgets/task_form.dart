@@ -82,6 +82,17 @@ class _TaskFormModalState extends State<TaskFormModal> {
     }
   }
 
+  String _getCustomerLabel(int customerId) {
+    final c = widget.customers.firstWhere(
+      (c) => c['id'] == customerId,
+      orElse: () => <String, dynamic>{},
+    );
+    if (c.isEmpty) return '';
+    final name = c['full_name'] ?? 'Unnamed';
+    final regNum = c['register_number'];
+    return regNum != null ? '$name - $regNum' : name;
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
@@ -158,16 +169,62 @@ class _TaskFormModalState extends State<TaskFormModal> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Customer
-                  DropdownButtonFormField<int>(
-                    value: _customerId,
-                    decoration: const InputDecoration(labelText: 'Customer'),
-                    items: widget.customers.map((c) => DropdownMenuItem<int>(
-                      value: c['id'], 
-                      child: Text(c['full_name'] ?? 'Unnamed', overflow: TextOverflow.ellipsis),
-                    )).toList(),
-                    onChanged: (v) => setState(() => _customerId = v),
-                    validator: (v) => v == null ? 'Required' : null,
+                  // Customer (searchable by name and register number)
+                  Autocomplete<Map<String, dynamic>>(
+                    initialValue: _customerId != null
+                        ? TextEditingValue(text: _getCustomerLabel(_customerId!))
+                        : null,
+                    optionsBuilder: (TextEditingValue textEditingValue) {
+                      final query = textEditingValue.text.toLowerCase();
+                      return widget.customers.where((c) {
+                        final name = (c['full_name'] ?? '').toString().toLowerCase();
+                        final regNum = (c['register_number'] ?? '').toString().toLowerCase();
+                        return name.contains(query) || regNum.contains(query);
+                      });
+                    },
+                    displayStringForOption: (c) {
+                      final name = c['full_name'] ?? 'Unnamed';
+                      final regNum = c['register_number'];
+                      return regNum != null ? '$name - $regNum' : name;
+                    },
+                    onSelected: (c) => setState(() => _customerId = c['id']),
+                    fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+                      return TextFormField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        decoration: const InputDecoration(
+                          labelText: 'Customer',
+                          suffixIcon: Icon(Icons.search),
+                        ),
+                        validator: (v) => _customerId == null ? 'Required' : null,
+                      );
+                    },
+                    optionsViewBuilder: (context, onSelected, options) {
+                      return Align(
+                        alignment: Alignment.topLeft,
+                        child: Material(
+                          elevation: 4,
+                          borderRadius: BorderRadius.circular(8),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 200),
+                            child: ListView.builder(
+                              padding: EdgeInsets.zero,
+                              shrinkWrap: true,
+                              itemCount: options.length,
+                              itemBuilder: (context, index) {
+                                final c = options.elementAt(index);
+                                final name = c['full_name'] ?? 'Unnamed';
+                                final regNum = c['register_number'];
+                                return ListTile(
+                                  title: Text(regNum != null ? '$name - $regNum' : name),
+                                  onTap: () => onSelected(c),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
 
