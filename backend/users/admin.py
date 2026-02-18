@@ -4,16 +4,51 @@ from .models import User, Role, Region, Group, UserLocation, LocationHistory
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('username', 'email', 'role', 'is_active', 'address', 'address_coordinates')
+    list_display = ('username', 'email', 'role', 'group', 'is_active', 'phone_number', 'date_joined')
     fieldsets = BaseUserAdmin.fieldsets + (
-        ('Custom Fields', {'fields': ('role', 'address', 'address_coordinates')}),
+        ('Custom Fields', {'fields': ('role', 'group', 'phone_number', 'avatar', 'address', 'address_coordinates')}),
     )
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
-        ('Custom Fields', {'fields': ('role', 'address', 'address_coordinates')}),
+        ('Custom Fields', {'fields': ('role', 'group', 'phone_number', 'avatar', 'address', 'address_coordinates')}),
     )
+    search_fields = ('username', 'email', 'first_name', 'last_name', 'phone_number')
+    list_filter = ('role', 'group', 'is_active', 'is_staff', 'date_joined')
+    list_per_page = 20
+    date_hierarchy = 'date_joined'
 
-admin.site.register(Role)
-admin.site.register(Region)
-admin.site.register(Group)
-admin.site.register(UserLocation)
-admin.site.register(LocationHistory)
+@admin.register(Role)
+class RoleAdmin(admin.ModelAdmin):
+    list_display = ('name', 'description', 'is_active')
+    search_fields = ('name', 'description')
+    list_filter = ('is_active',)
+    list_per_page = 20
+
+@admin.register(Group)
+class GroupAdmin(admin.ModelAdmin):
+    list_display = ('name', 'owner', 'created_at')
+    search_fields = ('name', 'owner__username', 'owner__email')
+    list_filter = ('created_at',)
+    list_per_page = 20
+    date_hierarchy = 'created_at'
+
+@admin.register(Region)
+class RegionAdmin(admin.ModelAdmin):
+    list_display = ('name', 'description')
+    search_fields = ('name', 'description')
+    list_per_page = 20
+
+@admin.register(UserLocation)
+class UserLocationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'timestamp')
+    search_fields = ('user__username', 'user__email')
+    list_filter = ('timestamp',)
+    list_per_page = 50
+    date_hierarchy = 'timestamp'
+
+@admin.register(LocationHistory)
+class LocationHistoryAdmin(admin.ModelAdmin):
+    list_display = ('user', 'timestamp')
+    search_fields = ('user__username', 'user__email')
+    list_filter = ('timestamp',)
+    list_per_page = 50
+    date_hierarchy = 'timestamp'

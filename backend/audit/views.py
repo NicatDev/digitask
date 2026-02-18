@@ -1,4 +1,4 @@
-from rest_framework import serializers, viewsets, filters
+from rest_framework import serializers, viewsets, filters, permissions
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import AuditLog
 
@@ -13,11 +13,13 @@ class AuditLogSerializer(serializers.ModelSerializer):
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = AuditLog.objects.all()
     serializer_class = AuditLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = {
         'created_at': ['date', 'gte', 'lte'],
         'method': ['exact'],
         'action': ['exact'],
+        'user': ['exact'],
     }
     search_fields = ['path', 'payload', 'user__first_name', 'user__last_name', 'user__email']
     ordering_fields = ['created_at']

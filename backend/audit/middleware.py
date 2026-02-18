@@ -43,7 +43,6 @@ class AuditLoggingMiddleware:
                 pass
             
             # Create Log
-            # We use a try-except block to avoid breaking the response if logging fails
             try:
                 AuditLog.objects.create(
                     user=user,
@@ -53,7 +52,8 @@ class AuditLoggingMiddleware:
                     ip_address=ip,
                     payload=payload
                 )
+                print(f"AUDIT LOG CREATED: {request.method} {request.path} - User: {user}")
             except Exception as e:
-                print(f"Failed to create audit log: {e}")
+                print(f"FAILED TO CREATE AUDIT LOG: {e}")
 
         return response
