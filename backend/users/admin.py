@@ -25,29 +25,29 @@ class RoleAdmin(admin.ModelAdmin):
 
 @admin.register(Group)
 class GroupAdmin(admin.ModelAdmin):
-    list_display = ('name', 'owner', 'created_at')
-    search_fields = ('name', 'owner__username', 'owner__email')
-    list_filter = ('created_at',)
+    list_display = ('name', 'region', 'description', 'is_active')
+    search_fields = ('name', 'region__name', 'description')
+    list_filter = ('region', 'is_active')
     list_per_page = 20
-    date_hierarchy = 'created_at'
 
 @admin.register(Region)
 class RegionAdmin(admin.ModelAdmin):
-    list_display = ('name', 'description')
-    search_fields = ('name', 'description')
+    list_display = ('name', 'is_active')
+    search_fields = ('name',)
+    list_filter = ('is_active',)
     list_per_page = 20
 
 @admin.register(UserLocation)
 class UserLocationAdmin(admin.ModelAdmin):
-    list_display = ('user', 'timestamp')
+    list_display = ('user', 'is_online', 'last_seen')
     search_fields = ('user__username', 'user__email')
-    list_filter = ('timestamp',)
+    list_filter = ('is_online', 'last_seen')
     list_per_page = 50
-    date_hierarchy = 'timestamp'
+    date_hierarchy = 'last_seen'
 
 @admin.register(LocationHistory)
 class LocationHistoryAdmin(admin.ModelAdmin):
-    list_display = ('user', 'timestamp')
+    list_display = ('user', 'timestamp', 'latitude', 'longitude')
     search_fields = ('user__username', 'user__email')
     list_filter = ('timestamp',)
     list_per_page = 50
