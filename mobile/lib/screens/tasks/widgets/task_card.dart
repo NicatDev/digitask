@@ -284,12 +284,11 @@ class TaskCard extends StatelessWidget {
                     isCurrentUserAssignee ? () {
                    showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => ProductsModal(task: task, onSuccess: onRefresh));
                 } : null),
-                // Delete - only for assignees
-                 _buildActionBtn(context, Icons.delete, 
-                    isCurrentUserAssignee ? Colors.red : Colors.grey.shade300, 
-                    isCurrentUserAssignee ? () {
+                // Delete - only for privileged users (task_writer, admin, super_admin)
+                if (isWriter || (currentUser?.isAdmin ?? false) || (currentUser?.isSuperAdmin ?? false))
+                 _buildActionBtn(context, Icons.delete, Colors.red, () {
                    showDialog(context: context, builder: (_) => DeleteTaskDialog(taskId: task['id'], onSuccess: onRefresh));
-                } : null),
+                }),
               ],
             ),
           ],

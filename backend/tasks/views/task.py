@@ -79,8 +79,6 @@ class TaskViewSet(viewsets.ModelViewSet):
         is_active = self.request.query_params.get('is_active')
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
-        else:
-            queryset = queryset.filter(is_active=True)
         
         # Filter by date range
         date_from = self.request.query_params.get('date_from')
@@ -117,7 +115,19 @@ class TaskViewSet(viewsets.ModelViewSet):
         )
     
     def destroy(self, request, *args, **kwargs):
-        """Soft delete - set is_active to False."""
+        """Soft delete - set is_active to False. Only privileged users can delete."""
+        role = getattr(request.user, 'role', None)
+        is_privileged = (
+            (role and role.is_task_writer) or
+            (role and role.is_admin) or
+            (role and role.is_super_admin) or
+            request.user.is_superuser
+        )
+        if not is_privileged:
+            return Response(
+                {'error': 'You do not have permission to delete tasks.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         instance = self.get_object()
         instance.is_active = False
         instance.save()

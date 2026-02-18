@@ -10,6 +10,8 @@ class User {
   final bool isDocumentWriter;
   final bool isWarehouseReader;
   final bool isWarehouseWriter;
+  final bool isAdmin;
+  final bool isSuperAdmin;
 
   User({
     required this.id,
@@ -23,6 +25,8 @@ class User {
     this.isDocumentWriter = false,
     this.isWarehouseReader = false,
     this.isWarehouseWriter = false,
+    this.isAdmin = false,
+    this.isSuperAdmin = false,
   });
 
   String get fullName {
@@ -43,6 +47,8 @@ class User {
       isDocumentWriter: json['is_document_writer'] ?? false,
       isWarehouseReader: json['is_warehouse_reader'] ?? false,
       isWarehouseWriter: json['is_warehouse_writer'] ?? false,
+      isAdmin: json['is_admin'] ?? false,
+      isSuperAdmin: json['is_super_admin'] ?? false,
     );
   }
 }

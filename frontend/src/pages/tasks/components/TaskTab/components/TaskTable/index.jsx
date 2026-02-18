@@ -232,9 +232,11 @@ const TaskTable = ({
                     <Button type="link" size="small" onClick={() => onDocumentAdd(record)}>
                         <FileAddOutlined /> ({record.task_documents?.length || 0})
                     </Button>
-                    <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => onDelete(record.id)} disabled={disableActions}>
-                        <Button type="link" size="small" danger disabled={disableActions}>Sil</Button>
-                    </Popconfirm>
+                    {(user?.is_task_writer || user?.is_admin || user?.is_super_admin) && (
+                        <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => onDelete(record.id)} disabled={disableActions}>
+                            <Button type="link" size="small" danger disabled={disableActions}>Sil</Button>
+                        </Popconfirm>
+                    )}
                 </Space>
             ),
         },
