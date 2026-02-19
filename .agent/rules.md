@@ -76,6 +76,8 @@ must modern and interactive design
 ---
 
 ## Realtime Requirements Summary
+- **Never run migrations**: The user explicitly requested not to run `python manage.py migrate` during tasks. Only create migration files if needed, but do not apply them.
+- **Concise Responses**: Keep artifacts and messages concise.
 - Chat:
   - MUST be group-based (no direct messages unless requested).
   - MUST use WebSocket on frontend + Django Channels on backend.
