@@ -96,8 +96,9 @@ const ReportsPage = () => {
                         </div>
                     );
                 }
-                const parts = (text || '').split('/').filter(Boolean);
-                const resource = parts.length > 1 ? parts[1] : text;
+                const path = record.path || '';
+                const parts = path.split('/').filter(Boolean);
+                const resource = parts.length > 1 ? parts[1] : path;
                 return <span className={styles.resourcePath}>{(resource || '').toUpperCase()}</span>;
             }
         },
