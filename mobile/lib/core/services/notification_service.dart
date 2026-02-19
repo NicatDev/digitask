@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -64,9 +65,18 @@ class NotificationService {
     connect();
   }
 
+  Timer? _reconnectTimer;
+  bool _isConnecting = false;
+
   Future<void> connect() async {
+    if (_isConnecting) return;
+    _isConnecting = true;
+    
     final token = await _storage.read(key: 'access_token');
-    if (token == null) return;
+    if (token == null) {
+        _isConnecting = false;
+        return;
+    }
 
     // Construct WebSocket URL from AppConstants.baseUrl
     final uri = Uri.parse(AppConstants.baseUrl);
@@ -77,6 +87,7 @@ class NotificationService {
     final wsUrl = '$wsScheme://$host$portPart/ws/notifications/';
     
     try {
+      print('Connecting to Notification Socket: $wsUrl');
       _channel = WebSocketChannel.connect(
         Uri.parse('$wsUrl?token=$token'),
       );
@@ -87,24 +98,36 @@ class NotificationService {
         },
         onError: (error) {
           print('WebSocket Error: $error');
-          _reconnect();
+          _scheduleReconnect();
         },
         onDone: () {
           print('WebSocket Closed');
-          _reconnect();
+          _scheduleReconnect();
         },
       );
+      print('Notification Socket Connected');
     } catch (e) {
       print('WebSocket Connection Error: $e');
-      _reconnect();
+      _scheduleReconnect();
+    } finally {
+        _isConnecting = false;
     }
   }
 
-  void _reconnect() {
-    Future.delayed(const Duration(seconds: 5), () {
+  void _scheduleReconnect() {
+    if (_reconnectTimer?.isActive ?? false) return;
+    
+    print('Scheduling reconnect in 5 seconds...');
+    _reconnectTimer = Timer(const Duration(seconds: 5), () {
       print('Attempting to reconnect WebSocket...');
       connect();
     });
+  }
+
+  void disconnect() {
+    _reconnectTimer?.cancel();
+    _channel?.sink.close();
+    _channel = null;
   }
 
   void _handleMessage(dynamic message) {
@@ -219,7 +242,5 @@ class NotificationService {
     }
   }
 
-  void disconnect() {
-    _channel?.sink.close();
-  }
+
 }

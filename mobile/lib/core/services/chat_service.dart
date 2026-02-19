@@ -210,15 +210,42 @@ class ChatService {
   }
 
 
+  Timer? _reconnectTimer;
+  bool _isConnecting = false;
+
+  void _scheduleReconnect() {
+    if (_reconnectTimer?.isActive ?? false) return;
+    if (_currentGroupId == null) return; // Don't reconnect if we left the chat
+
+    print('Scheduling chat reconnect in 5 seconds...');
+    _reconnectTimer = Timer(const Duration(seconds: 5), () {
+      print('Attempting to reconnect Chat WebSocket...');
+      if (_currentGroupId != null) {
+          connectToGroup(_currentGroupId!);
+      }
+    });
+  }
+
   // Connect to Specific Group Chat
   Future<void> connectToGroup(int groupId) async {
-    if (_currentGroupId == groupId && _channel != null) return;
+    if (_isConnecting) return;
+    // If we are already connected to this group, return
+    if (_currentGroupId == groupId && _channel != null && _channel!.closeCode == null) return;
     
-    disconnect();
+    _isConnecting = true;
+    
+    // Clean up previous connection if switching groups
+    if (_currentGroupId != null && _currentGroupId != groupId) {
+        disconnect();
+    }
+    
     _currentGroupId = groupId;
     
     final token = await _storage.read(key: 'access_token');
-    if (token == null) return;
+    if (token == null) {
+        _isConnecting = false;
+        return;
+    }
     
     // Construct WebSocket URL from AppConstants.baseUrl
     final uri = Uri.parse(AppConstants.baseUrl);
@@ -229,6 +256,7 @@ class ChatService {
     final wsUrl = '$wsScheme://$host$portPart/ws/chat/groups/$groupId/';
     
     try {
+      print('Connecting to Chat Socket: $wsUrl');
       _channel = WebSocketChannel.connect(
         Uri.parse('$wsUrl?token=$token'),
       );
@@ -239,26 +267,35 @@ class ChatService {
         },
         onError: (error) {
           print('Chat WebSocket Error: $error');
+          _scheduleReconnect();
         },
         onDone: () {
             print('Chat WebSocket Closed');
-            // Don't nullify _currentGroupId here blindly if we are switching? 
-            // Actually onDone happens when WE close it too.
-            // If we rely on disconnect() to nullify, it's fine.
+            _scheduleReconnect();
         },
       );
+      print('Chat Socket Connected');
+      
+      // Fetch latest messages on connect/reconnect to ensure sync
+      fetchMessages(groupId, page: 1);
+      
     } catch (e) {
       print('Chat WebSocket Connection Error: $e');
+      _scheduleReconnect();
+    } finally {
+        _isConnecting = false;
     }
   }
   
   void disconnect() {
+      _reconnectTimer?.cancel();
       final groupId = _currentGroupId;
       if (_channel != null) {
           _channel!.sink.close();
           _channel = null;
       }
       _currentGroupId = null;
+      _isConnecting = false;
       // Mark messages as read when leaving chat to prevent stale unread counts
       if (groupId != null) {
           markAsRead(groupId);
@@ -331,9 +368,15 @@ class ChatService {
       try {
           final int groupId = data['group_id'];
           
-          // If we are currently in this chat, ignore global notification 
-          // (because specific WS handles it, or we shouldn't increment unread)
-          if (_currentGroupId == groupId) return;
+          // If we are currently in this chat
+          if (_currentGroupId == groupId) {
+              // If socket is disconnected, fetch messages to sync what we missed
+              if (_channel == null || _channel!.closeCode != null) {
+                  print('Global notification received for current group but socket disconnected. Fetching messages...');
+                  fetchMessages(groupId, page: 1);
+              }
+              return;
+          }
           
           // If I am the sender, don't increment unread count
           final int? senderId = data['sender_id'];
