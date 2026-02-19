@@ -133,7 +133,7 @@ const ReportsPage = () => {
                     pagination={{
                         current: currentPage,
                         total: total,
-                        pageSize: 10, // Default Django pagination usually
+                        pageSize: 20,
                         showSizeChanger: false
                     }}
                     loading={loading}
