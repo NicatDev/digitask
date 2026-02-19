@@ -1,4 +1,5 @@
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from .utils import set_current_user
 
 class AuditLoggingMiddleware:
     def __init__(self, get_response):
