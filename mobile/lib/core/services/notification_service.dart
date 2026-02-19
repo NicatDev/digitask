@@ -72,11 +72,6 @@ class NotificationService {
     final uri = Uri.parse(AppConstants.baseUrl);
     String host = uri.host;
     
-    // For Android emulator in debug mode, replace localhost with 10.0.2.2
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android && host == '127.0.0.1') {
-      host = '10.0.2.2';
-    }
-    
     final wsScheme = uri.scheme == 'https' ? 'wss' : 'ws';
     final portPart = (uri.port != 80 && uri.port != 443 && uri.hasPort) ? ':${uri.port}' : '';
     final wsUrl = '$wsScheme://$host$portPart/ws/notifications/';

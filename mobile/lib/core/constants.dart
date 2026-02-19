@@ -8,9 +8,7 @@ class AppConstants {
       return 'https://app.digitask.store/api';
     } else {
       // Development - Local debug
-      return kIsWeb 
-          ? 'https://app.digitask.store/api' 
-          : 'http://10.0.2.2:8000/api';
+      return 'https://app.digitask.store/api';
     }
   }
   

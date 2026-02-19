@@ -22,11 +22,6 @@ Future<String?> _getWebSocketUrl() async {
   final uri = Uri.parse(AppConstants.baseUrl);
   String host = uri.host;
   
-  // For Android emulator in debug mode, replace localhost with 10.0.2.2
-  if (!kIsWeb && Platform.isAndroid && host == '127.0.0.1') {
-    host = '10.0.2.2';
-  }
-  
   final wsScheme = uri.scheme == 'https' ? 'wss' : 'ws';
   
   // Build WebSocket URL - include port only if it's explicitly set (not default 80/443)

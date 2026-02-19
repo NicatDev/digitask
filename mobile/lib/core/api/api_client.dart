@@ -15,8 +15,8 @@ class ApiClient {
     dio = Dio(
       BaseOptions(
         baseUrl: AppConstants.baseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -31,6 +31,11 @@ class ApiClient {
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
+          
+          print('API Request: ${options.method} ${options.baseUrl}${options.path}');
+          print('API Timeout: ${options.connectTimeout}');
+          print('API Headers: ${options.headers}');
+          
           return handler.next(options);
         },
         onError: (DioException e, handler) async {
