@@ -253,17 +253,18 @@ const ChatPage = () => {
 
     return (
         <div className={styles.container}>
-            <div className={`${styles.sidebar} ${!selectedGroupId ? styles.active : ''}`}>
-                <GroupList
-                    groups={groups}
-                    selectedGroupId={selectedGroupId}
-                    onSelectGroup={setSelectedGroupId}
-                    onAddGroup={handleAddGroup}
-                    onDeleteGroup={handleDeleteGroup}
-                />
-            </div>
-            <div className={`${styles.chatArea} ${selectedGroupId ? styles.active : ''}`}>
-                {selectedGroupId ? (
+            {!selectedGroupId ? (
+                <div className={styles.groupListContainer}>
+                    <GroupList
+                        groups={groups}
+                        selectedGroupId={selectedGroupId}
+                        onSelectGroup={setSelectedGroupId}
+                        onAddGroup={handleAddGroup}
+                        onDeleteGroup={handleDeleteGroup}
+                    />
+                </div>
+            ) : (
+                <div className={styles.chatAreaContainer}>
                     <ChatArea
                         group={selectedGroupDetails}
                         messages={messages}
@@ -274,7 +275,11 @@ const ChatPage = () => {
                         hasMore={hasMore}
                         onAddMember={handleAddMember}
                         onRemoveMember={handleRemoveMember}
-                        onBack={() => setSelectedGroupId(null)}
+                        onBack={() => {
+                            setSelectedGroupId(null);
+                            setSelectedGroupDetails(null);
+                            setMessages([]);
+                        }}
                         onUpdateGroup={async (id, data) => {
                             try {
                                 const { updateChatGroup } = await import('../../axios/api/chat');
@@ -286,12 +291,8 @@ const ChatPage = () => {
                             }
                         }}
                     />
-                ) : (
-                    <div className={styles.emptyState}>
-                        <p>Söhbətə başlamaq üçün qrup seçin</p>
-                    </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 };

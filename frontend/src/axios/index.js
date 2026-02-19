@@ -75,6 +75,11 @@ axiosInstance.interceptors.response.use(
             error.response.status === 401 &&
             !originalRequest._retry
         ) {
+            // Prevent infinite loop: if already on login page, don't refresh
+            if (window.location.pathname === '/login') {
+                return Promise.reject(error);
+            }
+
             if (originalRequest.url.includes('/token/refresh/')) {
                 window.location.href = '/login';
                 return Promise.reject(error);

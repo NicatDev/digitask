@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Input, Avatar, List, Modal, Form, Select, message as antMessage, Switch } from 'antd';
 import { SendOutlined, SettingOutlined, UserAddOutlined, DeleteOutlined, UserOutlined, ArrowLeftOutlined } from '@ant-design/icons';
-// ... imports
+import styles from '../style.module.scss';
+
+const { TextArea } = Input;
 
 const ChatArea = ({
     group,
@@ -16,7 +18,74 @@ const ChatArea = ({
     onUpdateGroup,
     onBack // Prop for back button
 }) => {
-    // ... existing code ...
+    const [inputValue, setInputValue] = useState('');
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [allUsers, setAllUsers] = useState([]);
+    const [selectedUserToAdd, setSelectedUserToAdd] = useState(null);
+    const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null);
+
+    const isOwner = currentUser && group && group.owner && (
+        (typeof group.owner === 'object' ? group.owner.id : group.owner) === currentUser.id
+    );
+
+    useEffect(() => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages]);
+
+    useEffect(() => {
+        if (isSettingsOpen) {
+            fetchUsers();
+        }
+    }, [isSettingsOpen]);
+
+    const fetchUsers = async () => {
+        try {
+            const { getUsers } = await import('../../../axios/api/account');
+            const res = await getUsers();
+            setAllUsers(res.data.results || res.data);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleSend = () => {
+        if (!inputValue.trim()) return;
+        onSendMessage(inputValue);
+        setInputValue('');
+    };
+
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const openSettings = () => {
+        setIsSettingsOpen(true);
+    };
+
+    const handleAddUser = (userId) => {
+        if (onAddMember) onAddMember(group.id, userId);
+        setSelectedUserToAdd(null);
+    };
+
+    const handleRemoveUser = (userId) => {
+        if (onRemoveMember) onRemoveMember(group.id, userId);
+    };
+
+    if (!group) {
+        return <div className={styles.chatArea} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Yuklənir...</div>;
+    }
 
     return (
         <div className={styles.chatArea}>
@@ -32,7 +101,9 @@ const ChatArea = ({
                     </div>
                 </div>
                 {isOwner && (
-                    <Button icon={<SettingOutlined />} onClick={openSettings}>Tənzimləmələr</Button>
+                    <Button icon={<SettingOutlined />} onClick={openSettings}>
+                        <span className={styles.settingsText}>Tənzimləmələr</span>
+                    </Button>
                 )}
             </div>
 
