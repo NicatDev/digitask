@@ -159,7 +159,7 @@ class NotificationService {
       importance: Importance.max,
       priority: Priority.high,
       icon: '@drawable/ic_notification',
-      largeIcon: DrawableResourceAndroidBitmap('@drawable/ic_notification_large'),
+      // largeIcon: DrawableResourceAndroidBitmap('@drawable/ic_notification_large'), // Commented out to debug release build
     );
     
     const NotificationDetails platformChannelSpecifics =
