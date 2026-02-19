@@ -1,12 +1,21 @@
-import json
-from .models import AuditLog
-from .utils import set_current_user
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 class AuditLoggingMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
+        # Attempt to authenticate via JWT if not already authenticated
+        if not request.user.is_authenticated:
+            try:
+                jwt_auth = JWTAuthentication()
+                auth_result = jwt_auth.authenticate(request)
+                if auth_result:
+                    user, token = auth_result
+                    request.user = user
+            except Exception:
+                pass
+
         # Set current user in thread local
         user = request.user if request.user.is_authenticated else None
         set_current_user(user)
