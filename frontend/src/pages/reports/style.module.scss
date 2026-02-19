@@ -1,6 +1,6 @@
 .reportsPage {
     padding: 24px;
-
+ 
     .userInfo {
         display: flex;
         flex-direction: column;
@@ -44,6 +44,25 @@
 
 @media (max-width: 576px) {
     .reportsPage {
-        padding: 12px;
+        padding: 0px;
     }
+    :global {
+     .ant-card-head-wrapper {
+            flex-direction: column !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+       
+}
+:global {
+    .ant-card-extra{
+            margin-inline-start:0px !important;
+            margin-bottom:10px;
+        }
+       .ant-card-body{
+        padding:0px !important;
+       }
+}
+
 }
