@@ -45,14 +45,16 @@ const ReportsPage = () => {
         setSelectedDate(date);
     };
 
-    const formatAction = (method) => {
+    const formatAction = (action) => {
         const map = {
-            'POST': { text: 'Yaratdı', color: 'green' },
-            'PUT': { text: 'Yenilədi', color: 'orange' },
-            'PATCH': { text: 'Yenilədi', color: 'orange' },
+            'POST': { text: 'Yaratdı (HTTP)', color: 'green' },
+            'CREATE': { text: 'Yaratdı', color: 'green' },
+            'PUT': { text: 'Yenilədi (HTTP)', color: 'orange' },
+            'PATCH': { text: 'Yenilədi (HTTP)', color: 'orange' },
+            'UPDATE': { text: 'Yenilədi', color: 'orange' },
             'DELETE': { text: 'Sildi', color: 'red' },
         };
-        return map[method] || { text: method, color: 'default' };
+        return map[action] || { text: action, color: 'default' };
     };
 
     const columns = [
@@ -77,40 +79,76 @@ const ReportsPage = () => {
             title: 'Əməliyyat',
             key: 'action',
             render: (_, record) => {
-                const { text, color } = formatAction(record.method);
+                const { text, color } = formatAction(record.action || record.method);
                 return <Tag color={color}>{text}</Tag>;
             },
-            width: 120,
+            width: 150,
         },
         {
-            title: 'Resurs',
-            dataIndex: 'path',
-            key: 'path',
-            render: (text) => {
-                // Simple extraction for readability, e.g., /api/tasks/ -> Tasks
-                const parts = text.split('/').filter(Boolean);
-                const resource = parts.length > 1 ? parts[1] : text;
-                return <span className={styles.resourcePath}>{resource.toUpperCase()}</span>;
+            title: 'Model / Resurs',
+            key: 'resource',
+            render: (_, record) => {
+                if (record.resource_type) {
+                    return (
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <Tag color="geekblue">{record.resource_type}</Tag>
+                            {record.resource_id && <span style={{ fontSize: 10, color: '#999' }}>ID: {record.resource_id}</span>}
+                        </div>
+                    );
+                }
+                const parts = (record.path || '').split('/').filter(Boolean);
+                const resource = parts.length > 1 ? parts[1] : record.path;
+                return <span className={styles.resourcePath}>{(resource || '').toUpperCase()}</span>;
             }
         },
         {
-            title: 'IP Ünvanı',
+            title: 'IP',
             dataIndex: 'ip_address',
             key: 'ip_address',
-            width: 140,
+            width: 130,
         },
     ];
+
+    const renderChanges = (changes, action) => {
+        if (!changes) return <span style={{ color: '#999' }}>Heç bir məlumat yoxdur</span>;
+
+        if (action === 'UPDATE') {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {Object.entries(changes).map(([field, diff]) => (
+                        <div key={field} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+                            <strong style={{ minWidth: 100 }}>{field}:</strong>
+                            <span style={{ background: '#ffeef0', padding: '2px 6px', borderRadius: 4, textDecoration: 'line-through', color: '#cf1322' }}>
+                                {String(diff.old)}
+                            </span>
+                            <span>→</span>
+                            <span style={{ background: '#f6ffed', padding: '2px 6px', borderRadius: 4, color: '#389e0d' }}>
+                                {String(diff.new)}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        // For Create / Delete, show as JSON or Key-Value list
+        return (
+            <pre className={styles.jsonPayload}>
+                {JSON.stringify(changes, null, 2)}
+            </pre>
+        );
+    };
 
     const expandedRowRender = (record) => {
         return (
             <div className={styles.expandedRow}>
-                <p><strong>Tam Yol:</strong> {record.path}</p>
-                <p><strong>Metod:</strong> {record.method}</p>
-                <div>
-                    <strong>Məlumat (Payload):</strong>
-                    <pre className={styles.jsonPayload}>
-                        {record.payload ? JSON.stringify(record.payload, null, 2) : 'Boş'}
-                    </pre>
+                {record.path && <p><strong>Tam Yol:</strong> {record.path}</p>}
+
+                <div style={{ marginTop: 10 }}>
+                    <h4 style={{ marginBottom: 8, color: '#1890ff' }}>
+                        {record.action === 'UPDATE' ? 'Dəyişikliklər (Əvvəlki → Yeni)' : 'Məlumat Detalları'}
+                    </h4>
+                    {renderChanges(record.changes || record.payload, record.action)}
                 </div>
             </div>
         );
