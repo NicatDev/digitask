@@ -25,6 +25,11 @@ class Notification(models.Model):
         blank=True,
         related_name='notifications'
     )
+    target_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name='targeted_notifications'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     
     # ManyToMany to track who has read this notification

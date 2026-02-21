@@ -78,6 +78,38 @@ class ChatConsumer(AsyncWebsocketConsumer):
              raise Exception("Only owner can send messages in this group.")
 
         message = Message.objects.create(group=group, sender=self.user, content=content)
+        
+        # Initialize unread status for all members EXCEPT the sender
+        from .models import GroupMembership, MessageReadStatus
+        from notifications.models import Notification
+        
+        memberships = GroupMembership.objects.filter(group=group).select_related('user')
+        for membership in memberships:
+            if membership.user != self.user:
+                MessageReadStatus.objects.create(message=message, user=membership.user)
+                
+                # Check unread count for Rule 3 & 4
+                unread_count = MessageReadStatus.objects.filter(
+                    message__group=group, 
+                    user=membership.user, 
+                    read_at__isnull=True
+                ).count()
+                
+                if unread_count == 1:
+                    notif = Notification.objects.create(
+                        title=f"{group.name} qrupunda yeni mesajınız var",
+                        message=f"{self.user.get_full_name() or self.user.username}: {content[:50]}...",
+                        notification_type=Notification.NotificationType.GENERAL, # Or a specific CHAT type if you prefer
+                    )
+                    notif.target_users.add(membership.user)
+                elif unread_count == 20:
+                    notif = Notification.objects.create(
+                        title=f"{group.name} qrupunda 20 oxunmamış mesajınız var",
+                        message="Zəhmət olmasa qrupa daxil olub mesajları idarə edin.",
+                        notification_type=Notification.NotificationType.GENERAL,
+                    )
+                    notif.target_users.add(membership.user)
+
         return message
 
 

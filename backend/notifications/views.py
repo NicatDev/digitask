@@ -2,8 +2,8 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Notification
 from .serializers import NotificationSerializer
+from django.db.models import Q
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
@@ -13,9 +13,12 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        """Return notifications not read by the current user."""
+        """Return notifications not read by the current user and targeted at them."""
         user = self.request.user
-        return Notification.objects.exclude(read_by=user).order_by('-created_at')
+        qs = Notification.objects.exclude(read_by=user).filter(
+            Q(target_users=user) | Q(target_users__isnull=True)
+        )
+        return qs.order_by('-created_at')
     
     @action(detail=False, methods=['post'])
     def mark_read(self, request):
@@ -28,8 +31,10 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         if notification_ids:
             notifications = Notification.objects.filter(id__in=notification_ids)
         else:
-            # Mark all unread as read
-            notifications = Notification.objects.exclude(read_by=user)
+            # Mark all unread targeted notifications as read
+            notifications = Notification.objects.exclude(read_by=user).filter(
+                Q(target_users=user) | Q(target_users__isnull=True)
+            )
         
         for notification in notifications:
             notification.read_by.add(user)
@@ -38,6 +43,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     
     @action(detail=False, methods=['get'])
     def unread_count(self, request):
-        """Get count of unread notifications."""
-        count = Notification.objects.exclude(read_by=request.user).count()
+        count = Notification.objects.exclude(read_by=request.user).filter(
+            Q(target_users=request.user) | Q(target_users__isnull=True)
+        ).count()
         return Response({'unread_count': count})

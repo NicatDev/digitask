@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { List, Avatar, Spin, Tooltip, Badge } from 'antd';
 import { UserOutlined, CheckCircleOutlined, ClockCircleOutlined, FolderOutlined } from '@ant-design/icons';
 import { getDashboardStats } from '../../../../axios/api/dashboard';
+import { getBaseUrl } from '../../../../axios';
 import styles from './style.module.scss';
 
 const TopUsersList = () => {
@@ -46,7 +47,7 @@ const TopUsersList = () => {
                                     {item['assigned_to__avatar'] ? (
                                         <Avatar
                                             size={48}
-                                            src={`${(window.location.hostname === 'new.digitask.store' || window.location.hostname === 'digitask.store' || window.location.hostname === 'app.digitask.store') ? 'https://app.digitask.store' : 'http://127.0.0.1:8000'}/media/${item['assigned_to__avatar']}`}
+                                            src={`${getBaseUrl()}/media/${item['assigned_to__avatar']}`}
                                         />
                                     ) : (
                                         <Avatar size={48} icon={<UserOutlined />} style={{ backgroundColor: '#fde3cf', color: '#f56a00' }} />
