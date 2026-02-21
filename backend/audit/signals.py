@@ -3,7 +3,7 @@ from django.dispatch import receiver
 from django.apps import apps
 from django.forms.models import model_to_dict
 from .models import AuditLog
-from .utils import get_current_user
+from .utils import get_current_user, get_current_ip
 from django.conf import settings
 import json
 from django.core.serializers.json import DjangoJSONEncoder
@@ -53,6 +53,7 @@ def audit_post_save(sender, instance, created, **kwargs):
         return
 
     user = get_current_user()
+    ip = get_current_ip()
     
     if created:
         action = 'CREATE'
@@ -73,6 +74,7 @@ def audit_post_save(sender, instance, created, **kwargs):
             action=action,
             resource_type=sender.__name__,
             resource_id=str(instance.pk),
+            ip_address=ip,
             changes=changes
         )
     except Exception as e:
@@ -84,6 +86,7 @@ def audit_post_delete(sender, instance, **kwargs):
         return
 
     user = get_current_user()
+    ip = get_current_ip()
     changes = serialize_instance(instance)
 
     try:
@@ -92,6 +95,7 @@ def audit_post_delete(sender, instance, **kwargs):
             action='DELETE',
             resource_type=sender.__name__,
             resource_id=str(instance.pk),
+            ip_address=ip,
             changes=changes
         )
     except Exception as e:

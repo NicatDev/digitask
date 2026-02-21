@@ -1,5 +1,7 @@
+import json
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .utils import set_current_user
+from .utils import set_current_user, set_current_ip
+from .models import AuditLog
 
 class AuditLoggingMiddleware:
     def __init__(self, get_response):
@@ -17,9 +19,20 @@ class AuditLoggingMiddleware:
             except Exception:
                 pass
 
-        # Set current user in thread local
-        user = request.user if request.user.is_authenticated else None
+        # Try to extract IP
+        ip = None
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0].strip()
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+
+        # Set current user and IP in thread local
+        user = getattr(request, 'user', None)
+        if user and not user.is_authenticated:
+            user = None
         set_current_user(user)
+        set_current_ip(ip)
 
         # Process request
         response = self.get_response(request)
@@ -35,13 +48,7 @@ class AuditLoggingMiddleware:
              # Exclude specific paths
             if any(path in request.path for path in ['/admin/', '/static/', '/media/', '/auth/', '/token/']):
                 return response
-            
-            # Extract IP
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            if x_forwarded_for:
-                ip = x_forwarded_for.split(',')[0]
-            else:
-                ip = request.META.get('REMOTE_ADDR')
+            # IP is already extracted at the start of request
 
             # Extract Payload
             payload = None

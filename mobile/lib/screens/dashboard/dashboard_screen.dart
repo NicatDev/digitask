@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:mobile/core/api/api_client.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -61,13 +62,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       dynamic payload;
       if (data is Map<String, dynamic> && data.containsKey('image') && data['image'] != null) {
+        XFile imageFile = data['image'];
+        MultipartFile multipartFile;
+        
+        if (kIsWeb) {
+          final bytes = await imageFile.readAsBytes();
+          multipartFile = MultipartFile.fromBytes(bytes, filename: imageFile.name);
+        } else {
+          multipartFile = await MultipartFile.fromFile(imageFile.path, filename: imageFile.name);
+        }
+
         payload = FormData.fromMap({
           'title': data['title'],
           'description': data['description'],
           'event_type': data['event_type'],
           'date': data['date'],
           'is_active': data['is_active'],
-          'image': await MultipartFile.fromFile(data['image'].path, filename: data['image'].path.split('/').last),
+          'image': multipartFile,
         });
       } else {
         payload = data;
@@ -344,8 +355,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.5,
-        minChildSize: 0.4,
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
         maxChildSize: 0.9,
         expand: false,
         builder: (_, controller) => SingleChildScrollView(
@@ -397,18 +408,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ],
               ),
-              if (event['image'] != null) ...[
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    event['image'],
-                    width: double.infinity,
-                    height: 200,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ],
               const SizedBox(height: 16),
               Text(
                 event['title'] ?? 'No Title',
@@ -436,6 +435,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: const TextStyle(fontSize: 16, height: 1.5, color: Colors.black87),
               ),
               const SizedBox(height: 32),
+              if (event['image'] != null) ...[
+                Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      event['image'],
+                      width: MediaQuery.of(context).size.width * 0.7, // 70% of screen width
+                      fit: BoxFit.contain, // Maintain aspect ratio without cropping
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
             ],
           ),
         ),
@@ -454,7 +466,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        height: 200, // Fixed height for background image cards
+        padding: const EdgeInsets.all(4), // Padding creates the "border" effect
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -466,55 +479,107 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            if (event['image'] != null)
-              Expanded(
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    image: DecorationImage(
-                      image: NetworkImage(event['image']),
-                      fit: BoxFit.cover,
-                    ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (event['image'] != null)
+                Image.network(
+                  event['image'],
+                  fit: BoxFit.cover,
+                )
+              else
+                Container(
+                  color: Colors.grey[100],
+                  child: const Center(
+                    child: Icon(Icons.event, size: 48, color: Colors.grey),
+                  ),
+                ),
+              // Dark gradient overlay for text readability
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.3),
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.7),
+                    ],
                   ),
                 ),
               ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    event['event_type_display'] ?? 'Event',
-                    style: const TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.bold),
-                  ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            event['event_type_display'] ?? 'Event',
+                            style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        // Stroked Time Text
+                        Stack(
+                          children: [
+                            Text(time, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, foreground: Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = Colors.black)),
+                            Text(time, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Stroked Title Text
+                        Stack(
+                          children: [
+                            Text(
+                              event['title'] ?? 'No Title',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, foreground: Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = Colors.black),
+                            ),
+                            Text(
+                              event['title'] ?? 'No Title',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 14, color: Colors.white),
+                            const SizedBox(width: 4),
+                            // Stroked Date Text
+                            Stack(
+                              children: [
+                                Text('$day $month', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, foreground: Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = Colors.black)),
+                                Text('$day $month', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                Text(time, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-              ],
-            ),
-            Text(
-              event['title'] ?? 'No Title',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Row(
-              children: [
-                const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text('$day $month', style: const TextStyle(color: Colors.grey, fontSize: 13)),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -535,14 +600,14 @@ class _AddEventFormState extends State<AddEventForm> {
   String _eventType = 'meeting'; // Default
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
-  File? _selectedImage;
+  XFile? _selectedImage;
   
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() {
-        _selectedImage = File(pickedFile.path);
+        _selectedImage = pickedFile;
       });
     }
   }
@@ -590,7 +655,9 @@ class _AddEventFormState extends State<AddEventForm> {
                   child: _selectedImage != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: Image.file(_selectedImage!, fit: BoxFit.cover),
+                          child: kIsWeb
+                              ? Image.network(_selectedImage!.path, fit: BoxFit.cover)
+                              : Image.file(File(_selectedImage!.path), fit: BoxFit.cover),
                         )
                       : const Column(
                           mainAxisAlignment: MainAxisAlignment.center,

@@ -15,6 +15,7 @@ const EventModal = ({ open, onCancel, onSuccess }) => {
             submitData.append('title', values.title);
             if (values.description) submitData.append('description', values.description);
             submitData.append('event_type', values.event_type);
+            submitData.append('is_active', 'true');
             if (values.date) submitData.append('date', values.date.toISOString());
 
             if (values.image && values.image.fileList.length > 0) {
@@ -42,7 +43,13 @@ const EventModal = ({ open, onCancel, onSuccess }) => {
             destroyOnClose
             className={styles.eventModal}
         >
-            <Form form={form} onFinish={onFinish} layout="vertical" initialValues={{ event_type: 'announcement' }}>
+            <Form
+                form={form}
+                onFinish={onFinish}
+                layout="vertical"
+                initialValues={{ event_type: 'announcement', is_active: true }}
+                style={{ maxHeight: '60vh', overflowY: 'auto', overflowX: 'hidden', paddingRight: '8px' }}
+            >
                 <Form.Item name="title" label="Başlıq" rules={[{ required: true }]}>
                     <Input />
                 </Form.Item>

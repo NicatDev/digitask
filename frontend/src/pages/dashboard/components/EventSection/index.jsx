@@ -133,41 +133,40 @@ const EventSection = () => {
                             className={styles.eventCard}
                             hoverable
                             onClick={(e) => handleEventClick(e, event)}
-                            title={
-                                <Tooltip title={event.title} placement="topLeft">
-                                    <span style={{ cursor: 'default' }}>
-                                        {event.title?.length > 25 ? `${event.title.slice(0, 25)}...` : event.title}
-                                    </span>
-                                </Tooltip>
-                            }
-                            cover={
-                                event.image ? (
-                                    <img
-                                        alt={event.title}
-                                        src={event.image}
-                                        style={{ height: 160, objectFit: 'cover' }}
-                                    />
-                                ) : null
-                            }
-                            extra={
-                                <div className={styles.cardHeaderRight}>
-                                    <Tag color={colorType}>
-                                        {event.event_type_display || getTypeLabel(event.event_type)}
-                                    </Tag>
-                                </div>
-                            }
                         >
-                            <p className={styles.description}>{event.description}</p>
+                            <div className={styles.cardInternalWrapper}>
+                                <div className={styles.cardLeftContent}>
+                                    <div className={styles.cardHeader}>
+                                        <Tooltip title={event.title} placement="topLeft">
+                                            <div className={styles.cardTitle}>
+                                                {event.title?.length > 25 ? `${event.title.slice(0, 25)}...` : event.title}
+                                            </div>
+                                        </Tooltip>
+                                        <Tag color={colorType} style={{ margin: 0 }}>
+                                            {event.event_type_display || getTypeLabel(event.event_type)}
+                                        </Tag>
+                                    </div>
+                                    <p className={styles.description}>{event.description}</p>
 
-                            <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 10 }}>
-                                <div className={styles.dateText}>
-                                    <CalendarOutlined />
-                                    {new Date(event.date).toLocaleDateString()}
+                                    <div className={styles.cardFooter}>
+                                        <div className={styles.dateText}>
+                                            <CalendarOutlined />
+                                            {new Date(event.date).toLocaleDateString()}
+                                        </div>
+
+                                        <Tooltip title={event.description} overlayInnerStyle={{ maxWidth: '300px' }}>
+                                            <InfoCircleOutlined style={{ color: '#1890ff', fontSize: '18px' }} />
+                                        </Tooltip>
+                                    </div>
                                 </div>
-
-                                <Tooltip title={event.description} overlayInnerStyle={{ maxWidth: '300px' }}>
-                                    <InfoCircleOutlined style={{ color: '#1890ff', fontSize: '18px' }} />
-                                </Tooltip>
+                                {event.image && (
+                                    <div className={styles.cardRightImage}>
+                                        <img
+                                            alt={event.title}
+                                            src={event.image}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </Card>
                     );
