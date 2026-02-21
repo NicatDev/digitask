@@ -70,6 +70,15 @@ const EventDetailModal = ({ open, onCancel, event, onSuccess }) => {
             ]}
         >
             <div className={styles.detailsContainer}>
+                {event.image && (
+                    <div className={styles.detailRow} style={{ marginBottom: 16 }}>
+                        <img
+                            alt={event.title}
+                            src={event.image}
+                            style={{ width: '100%', maxHeight: 300, objectFit: 'cover', borderRadius: 8 }}
+                        />
+                    </div>
+                )}
                 <div className={styles.detailRow}>
                     <Title level={4} style={{ margin: 0 }}>{event.title}</Title>
                     <div>

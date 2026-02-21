@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Modal, Form, Input, Button, Select, DatePicker, message } from 'antd';
+import { Modal, Form, Input, Button, Select, DatePicker, message, Upload } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import { createEvent } from '../../../../axios/api/dashboard';
 import styles from './style.module.scss';
 
@@ -10,11 +11,16 @@ const EventModal = ({ open, onCancel, onSuccess }) => {
     const onFinish = async (values) => {
         setLoading(true);
         try {
-            // Format date to ISO string if it exists
-            const submitData = {
-                ...values,
-                date: values.date ? values.date.toISOString() : null
-            };
+            const submitData = new FormData();
+            submitData.append('title', values.title);
+            if (values.description) submitData.append('description', values.description);
+            submitData.append('event_type', values.event_type);
+            if (values.date) submitData.append('date', values.date.toISOString());
+
+            if (values.image && values.image.fileList.length > 0) {
+                submitData.append('image', values.image.fileList[0].originFileObj);
+            }
+
             await createEvent(submitData);
             message.success('Tədbir yaradıldı');
             form.resetFields();
@@ -54,6 +60,18 @@ const EventModal = ({ open, onCancel, onSuccess }) => {
                 </Form.Item>
                 <Form.Item name="date" label="Tarix" rules={[{ required: true }]}>
                     <DatePicker showTime />
+                </Form.Item>
+                <Form.Item name="image" label="Şəkil">
+                    <Upload
+                        beforeUpload={() => false}
+                        maxCount={1}
+                        listType="picture-card"
+                    >
+                        <div>
+                            <PlusOutlined />
+                            <div style={{ marginTop: 8 }}>Yüklə</div>
+                        </div>
+                    </Upload>
                 </Form.Item>
                 <Button type="primary" htmlType="submit" loading={loading} block>
                     Təsdiqlə

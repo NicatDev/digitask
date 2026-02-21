@@ -140,6 +140,15 @@ const EventSection = () => {
                                     </span>
                                 </Tooltip>
                             }
+                            cover={
+                                event.image ? (
+                                    <img
+                                        alt={event.title}
+                                        src={event.image}
+                                        style={{ height: 160, objectFit: 'cover' }}
+                                    />
+                                ) : null
+                            }
                             extra={
                                 <div className={styles.cardHeaderRight}>
                                     <Tag color={colorType}>

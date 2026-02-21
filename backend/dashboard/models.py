@@ -12,6 +12,7 @@ class Event(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     event_type = models.CharField(max_length=20, choices=Type.choices, default=Type.ANNOUNCEMENT)
+    image = models.ImageField(upload_to='events/', null=True, blank=True)
     date = models.DateTimeField(default=timezone.now)
     is_active = models.BooleanField(default=True)
     

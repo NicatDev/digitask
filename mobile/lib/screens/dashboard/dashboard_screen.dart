@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -55,9 +57,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _createEvent(Map<String, dynamic> data) async {
+  Future<void> _createEvent(dynamic data) async {
     try {
-      await ApiClient().dio.post('/dashboard/events/', data: data);
+      dynamic payload;
+      if (data is Map<String, dynamic> && data.containsKey('image') && data['image'] != null) {
+        payload = FormData.fromMap({
+          'title': data['title'],
+          'description': data['description'],
+          'event_type': data['event_type'],
+          'date': data['date'],
+          'is_active': data['is_active'],
+          'image': await MultipartFile.fromFile(data['image'].path, filename: data['image'].path.split('/').last),
+        });
+      } else {
+        payload = data;
+      }
+      await ApiClient().dio.post('/dashboard/events/', data: payload);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Event created successfully')),
@@ -382,6 +397,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ],
               ),
+              if (event['image'] != null) ...[
+                const SizedBox(height: 16),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    event['image'],
+                    width: double.infinity,
+                    height: 200,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Text(
                 event['title'] ?? 'No Title',
@@ -443,6 +470,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            if (event['image'] != null)
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    image: DecorationImage(
+                      image: NetworkImage(event['image']),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -494,6 +535,17 @@ class _AddEventFormState extends State<AddEventForm> {
   String _eventType = 'meeting'; // Default
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
+  File? _selectedImage;
+  
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _selectedImage = File(pickedFile.path);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -524,6 +576,31 @@ class _AddEventFormState extends State<AddEventForm> {
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  width: double.infinity,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: _selectedImage != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(_selectedImage!, fit: BoxFit.cover),
+                        )
+                      : const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_photo_alternate, size: 40, color: Colors.grey),
+                            SizedBox(height: 8),
+                            Text('Tədbir şəkli əlavə et (İstəyə bağlı)', style: TextStyle(color: Colors.grey)),
+                          ],
+                        ),
+                ),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
@@ -596,6 +673,7 @@ class _AddEventFormState extends State<AddEventForm> {
                         'event_type': _eventType,
                         'date': dt.toIso8601String(),
                         'is_active': true,
+                        if (_selectedImage != null) 'image': _selectedImage,
                       });
                     }
                   },
