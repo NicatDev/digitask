@@ -29,4 +29,5 @@ class User(AbstractUser):
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     address = models.CharField(max_length=255, blank=True, null=True)
     address_coordinates = models.JSONField(blank=True, null=True)
+    fcm_token = models.CharField(max_length=512, blank=True, null=True)
     # Soft delete for User is usually handled by is_active=False

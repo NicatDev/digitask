@@ -69,46 +69,53 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_message(self, group_id, content):
-        from .models import Message, ChatGroup
+        from .models import Message, ChatGroup, GroupMembership, MessageReadStatus
+        from notifications.firebase import send_fcm_to_user
+        
         group = ChatGroup.objects.get(id=group_id)
         
         # Permission check
         if group.only_owner_can_send and group.owner != self.user:
-             # Ideally raise error that can be caught and sent back
              raise Exception("Only owner can send messages in this group.")
 
         message = Message.objects.create(group=group, sender=self.user, content=content)
         
-        # Initialize unread status for all members EXCEPT the sender
-        from .models import GroupMembership, MessageReadStatus
-        from notifications.models import Notification
+        sender_name = self.user.get_full_name() or self.user.username
         
+        # Send FCM push to all members EXCEPT the sender
         memberships = GroupMembership.objects.filter(group=group).select_related('user')
         for membership in memberships:
             if membership.user != self.user:
-                MessageReadStatus.objects.create(message=message, user=membership.user)
-                
-                # Check unread count for Rule 3 & 4
-                unread_count = MessageReadStatus.objects.filter(
-                    message__group=group, 
-                    user=membership.user, 
-                    read_at__isnull=True
+                # Count unread messages for this user in this group
+                unread_count = Message.objects.filter(
+                    group=group
+                ).exclude(
+                    read_statuses__user=membership.user
                 ).count()
                 
-                if unread_count == 1:
-                    notif = Notification.objects.create(
-                        title=f"{group.name} qrupunda yeni mesajınız var",
-                        message=f"{self.user.get_full_name() or self.user.username}: {content[:50]}...",
-                        notification_type=Notification.NotificationType.GENERAL, # Or a specific CHAT type if you prefer
+                fcm_data = {
+                    'type': 'chat_message',
+                    'group_id': str(group.id),
+                    'group_name': group.name,
+                    'tag': f'chat_{group.id}',  # Same tag = Android updates existing notification
+                }
+                
+                if unread_count <= 5:
+                    # Individual notification for each message (1-5)
+                    send_fcm_to_user(
+                        membership.user.id,
+                        group.name,
+                        f"{sender_name}: {content[:100]}",
+                        data=fcm_data
                     )
-                    notif.target_users.add(membership.user)
-                elif unread_count == 20:
-                    notif = Notification.objects.create(
-                        title=f"{group.name} qrupunda 20 oxunmamış mesajınız var",
-                        message="Zəhmət olmasa qrupa daxil olub mesajları idarə edin.",
-                        notification_type=Notification.NotificationType.GENERAL,
+                elif unread_count % 5 == 0:
+                    # Grouped notification every 5 messages
+                    send_fcm_to_user(
+                        membership.user.id,
+                        group.name,
+                        f"Bu qrupdan {unread_count} oxunmamış mesajınız var",
+                        data=fcm_data
                     )
-                    notif.target_users.add(membership.user)
 
         return message
 
@@ -123,11 +130,6 @@ class LocationConsumer(AsyncWebsocketConsumer):
             return
             
         self.room_group_name = 'live_tracking'
-        
-        # Add to tracking group (everyone joins to receive updates? Or only admins?)
-        # For now, everyone joins so they can see each other if needed, or we restrict in frontend.
-        # Ideally, only admins should receive "all" updates.
-        # But let's keep it simple: Everyone joins.
         
         await self.channel_layer.group_add(
             self.room_group_name,
@@ -177,13 +179,9 @@ class LocationConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def update_online_status(self, is_online):
         from users.models import UserLocation
-        # Create profile if not exists
         loc, _ = UserLocation.objects.get_or_create(user=self.user)
         loc.is_online = is_online
         loc.save()
-        
-        # Notify group about status change?
-        # Maybe later.
 
     @database_sync_to_async
     def save_location(self, lat, lng):
@@ -197,7 +195,7 @@ class LocationConsumer(AsyncWebsocketConsumer):
         loc.is_online = True
         loc.save()
 
-        # 2. Check overlap logic (20m rule) for History
+        # 2. Check overlap logic (10m rule) for History
         last_history = LocationHistory.objects.filter(user=self.user).order_by('-timestamp').first()
         
         should_save_history = True
@@ -214,9 +212,8 @@ class LocationConsumer(AsyncWebsocketConsumer):
             c = 2 * atan2(sqrt(a), sqrt(1 - a))
             distance = R * c
             
-            if distance < 20: # Meters
+            if distance < 10: # Changed from 20m to 10m
                 should_save_history = False
         
         if should_save_history:
             LocationHistory.objects.create(user=self.user, latitude=lat, longitude=lng)
-

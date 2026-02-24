@@ -3,6 +3,10 @@ from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from .models import Notification
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def send_notification_ws(instance, target_users=None):
     channel_layer = get_channel_layer()
@@ -25,41 +29,62 @@ def send_notification_ws(instance, target_users=None):
                 f'user_notifications_{user_id}',
                 event
             )
-    elif instance.notification_type == Notification.NotificationType.GENERAL:
+    else:
+        # Broadcast to all connected users via general notifications channel
         async_to_sync(channel_layer.group_send)(
             'general_notifications',
             event
         )
 
-@receiver(post_save, sender=Notification)
-def notification_post_save(sender, instance, created, **kwargs):
-    """
-    Signal to send websocket notification when a Notification object is created WITHOUT target users.
-    If it has target_users, the m2m_changed signal will handle it instead.
-    """
-    # Only process completely new GENERAL notifications that might not hit m2m_changed
-    if created and instance.notification_type == Notification.NotificationType.GENERAL:
-        # We don't know if target_users will be populated yet, but if it's GENERAL and 
-        # meant for everyone, we can broadcast it. If it's targeted, m2m_changed takes over.
-        # To avoid duplicate sends on pure GENERAL, we check if it's being sent from dashboard event creation.
-        # Actually, if target_users is meant to be empty for GENERAL, this is the only place it fires.
-        pass # Better to let the caller explicitly set target_users or leave it for generic broadcasting.
 
-# Note: Django's related manager doesn't trigger m2m_changed if it's empty during creation.
-# So we need a comprehensive way to broadcast. Let's send on post_save for GENERAL and m2m for TARGETED.
+def send_notification_fcm(instance, target_users=None):
+    """Send FCM push notification alongside WebSocket."""
+    from .firebase import send_fcm_to_users, send_fcm_to_all
+
+    fcm_data = {
+        'type': 'notification',
+        'notification_id': str(instance.id),
+        'notification_type': instance.notification_type,
+    }
+    if instance.related_task:
+        fcm_data['task_id'] = str(instance.related_task.id)
+
+    try:
+        if target_users:
+            send_fcm_to_users(
+                list(target_users),
+                instance.title,
+                instance.message,
+                data=fcm_data
+            )
+        else:
+            # General notification → send to all
+            send_fcm_to_all(
+                instance.title,
+                instance.message,
+                data=fcm_data
+            )
+    except Exception as e:
+        logger.error('FCM notification error: %s', e)
+
 
 @receiver(post_save, sender=Notification)
-def broadcast_general_notification(sender, instance, created, **kwargs):
-    if created and instance.notification_type == Notification.NotificationType.GENERAL:
-         send_notification_ws(instance, target_users=None)
+def broadcast_notification_on_create(sender, instance, created, **kwargs):
+    """Broadcast notification via WS+FCM when created without target_users.
+    Notifications WITH target_users are handled by notification_targets_changed signal.
+    """
+    if created and not instance.target_users.exists():
+        send_notification_ws(instance, target_users=None)
+        send_notification_fcm(instance, target_users=None)
+
 
 @receiver(m2m_changed, sender=Notification.target_users.through)
 def notification_targets_changed(sender, instance, action, pk_set, **kwargs):
-    """
-    Signal to send websocket notification when target_users are added to a Notification.
-    """
+    """Send websocket + FCM notification when target_users are added."""
     if action == "post_add" and pk_set:
         send_notification_ws(instance, target_users=pk_set)
+        send_notification_fcm(instance, target_users=pk_set)
+
 
 from tasks.models import Task
 from django.contrib.auth import get_user_model
@@ -85,7 +110,9 @@ def task_assignment_changed(sender, instance, action, pk_set, **kwargs):
                 notification_type=Notification.NotificationType.TASK_ASSIGNED,
                 related_task=instance
             )
-            # Notification created without target_users -> broadcasted as general via broadcast_general_notification signal
+            # TASK_ASSIGNED is not GENERAL, so broadcast_general won't fire.
+            # We need to send it explicitly to new assignees.
+            notification.target_users.set(instance.assigned_to.all())
         else:
             # Rule 2: There were already assignees. Send targeted to all of them.
             notification = Notification.objects.create(
@@ -94,5 +121,5 @@ def task_assignment_changed(sender, instance, action, pk_set, **kwargs):
                 notification_type=Notification.NotificationType.TASK_ASSIGNED,
                 related_task=instance
             )
-            # Adding target_users triggers notification_targets_changed which broadcasts via WebSocket
+            # Adding target_users triggers notification_targets_changed which broadcasts via WebSocket + FCM
             notification.target_users.set(instance.assigned_to.all())

@@ -63,3 +63,13 @@ class UserViewSet(BaseSoftDeleteViewSet):
         request.user.save()
         return Response({'status': 'Parol uğurla dəyişdirildi'})
 
+    @action(detail=False, methods=['post'], url_path='register-fcm-token')
+    def register_fcm_token(self, request):
+        """Register FCM token for push notifications."""
+        token = request.data.get('fcm_token')
+        if not token:
+            return Response({'error': 'fcm_token is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        request.user.fcm_token = token
+        request.user.save(update_fields=['fcm_token'])
+        return Response({'status': 'FCM token registered'})

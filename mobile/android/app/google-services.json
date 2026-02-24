@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "656216418148",
+    "project_id": "digigroup-11ad6",
+    "storage_bucket": "digigroup-11ad6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:656216418148:android:a8c3d56423a18114c6fc71",
+        "android_client_info": {
+          "package_name": "com.digigroup.android"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAq7zMKXVECu5bvMQzru4_nXeU1AiT77tM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

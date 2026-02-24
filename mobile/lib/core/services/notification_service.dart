@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/constants.dart';
 import 'package:mobile/models/notification_model.dart';
@@ -38,7 +39,6 @@ class NotificationService {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@drawable/ic_notification');
     
-    // Note: iOS permissions are requested in main.dart, but we need config here
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings();
 
@@ -51,7 +51,6 @@ class NotificationService {
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         // Handle notification tap
-        // We'll implement navigation later if needed
       },
     );
 
@@ -61,8 +60,65 @@ class NotificationService {
     await fetchNotifications();
     await fetchUnreadCount();
     
-    // Connect WebSocket
+    // Register FCM token
+    await _registerFcmToken();
+    
+    // Listen for foreground FCM messages
+    _setupFcmForegroundListener();
+    
+    // Connect WebSocket (for real-time in-app updates)
     connect();
+  }
+
+  /// Register FCM token with the backend
+  Future<void> _registerFcmToken() async {
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) {
+        print('FCM Token: $fcmToken');
+        await ApiClient().dio.post('/users/register-fcm-token/', data: {
+          'fcm_token': fcmToken,
+        });
+        print('FCM token registered with backend');
+      }
+      
+      // Listen for token refresh
+      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+        try {
+          await ApiClient().dio.post('/users/register-fcm-token/', data: {
+            'fcm_token': newToken,
+          });
+          print('FCM token refreshed and registered');
+        } catch (e) {
+          print('Error registering refreshed FCM token: $e');
+        }
+      });
+    } catch (e) {
+      print('Error registering FCM token: $e');
+    }
+  }
+
+  /// Listen for FCM messages while app is in foreground
+  void _setupFcmForegroundListener() {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      final notification = message.notification;
+      if (notification != null) {
+        _showLocalNotification(
+          id: notification.hashCode,
+          title: notification.title ?? 'DigiTask',
+          body: notification.body ?? '',
+          tag: message.data['tag'],
+        );
+      }
+      
+      // Update unread count for non-chat notifications
+      final type = message.data['type'];
+      if (type == 'notification') {
+        unreadCount.value++;
+        // Refetch to update list
+        fetchNotifications();
+      }
+    });
   }
 
   Timer? _reconnectTimer;
@@ -134,7 +190,7 @@ class NotificationService {
     try {
       final data = jsonDecode(message);
       
-      // Handle Chat Notification
+      // Handle Chat Notification (for in-app real-time updates)
       if (data['chat_notification'] != null) {
           ChatService().handleGlobalNotification(data['chat_notification']);
       }
@@ -143,17 +199,13 @@ class NotificationService {
         final notificationData = data['notification'];
         
         if (notificationData != null) {
-          // Show Local Notification
-          _showLocalNotification(
-            id: notificationData['id'] ?? 0, // Fallback id
-            title: notificationData['title'] ?? 'DigiTask',
-            body: notificationData['message'] ?? '',
-          );
-
+          // Don't show local notification here — FCM handles it.
+          // Just update in-app state.
+          
           // Update Unread Count
           unreadCount.value++;
           
-          // Add to list (if we want to update list in real-time)
+          // Add to list (real-time update)
           try {
              final newNotification = NotificationModel.fromJson(notificationData);
              final currentList = List<NotificationModel>.from(notifications.value);
@@ -173,8 +225,9 @@ class NotificationService {
     required int id,
     required String title,
     required String body,
+    String? tag,
   }) async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+    final AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
       'digitask_notifications',
       'DigiTask Notifications',
@@ -182,13 +235,13 @@ class NotificationService {
       importance: Importance.max,
       priority: Priority.high,
       icon: '@drawable/ic_notification',
-      // largeIcon: DrawableResourceAndroidBitmap('@drawable/ic_notification_large'), // Commented out to debug release build
+      tag: tag,
     );
     
-    const NotificationDetails platformChannelSpecifics =
+    final NotificationDetails platformChannelSpecifics =
         NotificationDetails(
       android: androidPlatformChannelSpecifics,
-      iOS: DarwinNotificationDetails(),
+      iOS: const DarwinNotificationDetails(),
     );
 
     await _localNotifications.show(
@@ -226,17 +279,7 @@ class NotificationService {
     try {
       await ApiClient().dio.post('/notifications/mark_read/');
       unreadCount.value = 0;
-      // Mark all local objects as read
-      final currentList = notifications.value.map((n) {
-         // Since NotificationModel is immutable, we'd strictly need to create new objects
-         // But for simple display, maybe just refetch or assume read
-         return n; 
-      }).toList();
-       // actually, backend update is done, let's just refetch to be sure or just clear unread
-       // The requirement says "Mark all as read" button.
-       // We can just set unreadCount to 0.
-       // If we track isRead per item, we might need to update that too.
-       fetchNotifications(); // optimal to refetch
+       fetchNotifications();
     } catch (e) {
       print('Error marking all as read: $e');
     }

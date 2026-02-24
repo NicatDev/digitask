@@ -154,6 +154,19 @@ class TaskViewSet(viewsets.ModelViewSet):
             if new_status == Task.Status.DONE:
                 self._deduct_task_products(task, request.user)
                 
+                # Send task completion notification
+                from notifications.models import Notification
+                notification = Notification.objects.create(
+                    title="Tapşırıq tamamlandı",
+                    message=f"{task.title} tapşırığı tamamlandı.",
+                    notification_type=Notification.NotificationType.TASK_COMPLETED,
+                    related_task=task
+                )
+                # Target all assignees
+                assignees = task.assigned_to.all()
+                if assignees.exists():
+                    notification.target_users.set(assignees)
+                
             return Response(TaskSerializer(task).data)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
