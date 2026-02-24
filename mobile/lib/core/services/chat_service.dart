@@ -7,6 +7,7 @@ import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/constants.dart';
 import 'package:mobile/models/chat_model.dart';
 import 'package:mobile/models/user_model.dart';
+import 'package:mobile/core/services/token_service.dart';
 
 class ChatService {
   static final ChatService _instance = ChatService._internal();
@@ -218,8 +219,10 @@ class ChatService {
     if (_currentGroupId == null) return; // Don't reconnect if we left the chat
 
     print('Scheduling chat reconnect in 5 seconds...');
-    _reconnectTimer = Timer(const Duration(seconds: 5), () {
+    _reconnectTimer = Timer(const Duration(seconds: 5), () async {
       print('Attempting to reconnect Chat WebSocket...');
+      // Refresh token before reconnecting
+      await TokenService.refreshAccessToken();
       if (_currentGroupId != null) {
           connectToGroup(_currentGroupId!);
       }

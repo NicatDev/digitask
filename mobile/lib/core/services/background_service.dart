@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:mobile/core/services/notification_service.dart';
 import 'package:mobile/core/services/location_service.dart';
 
 Future<void> initializeService() async {
@@ -61,10 +60,6 @@ Future<void> initializeService() async {
 Future<bool> onIosBackground(ServiceInstance service) async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
-
-  // Initialize NotificationService in background
-  final notificationService = NotificationService();
-  await notificationService.initialize();
   
   return true;
 }
@@ -74,11 +69,7 @@ void onStart(ServiceInstance service) async {
   // Only available for flutter 3.0.0 and later
   DartPluginRegistrant.ensureInitialized();
 
-  // Initialize NotificationService
-  final notificationService = NotificationService();
-  await notificationService.initialize();
-
-  // Initialize LocationService Tracking
+  // Initialize LocationService Tracking (notifications are handled by FCM now)
   await LocationService.startBackgroundTracking(service);
 
   // Bring to foreground

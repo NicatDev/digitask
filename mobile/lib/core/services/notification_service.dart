@@ -9,6 +9,7 @@ import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/constants.dart';
 import 'package:mobile/models/notification_model.dart';
 import 'package:mobile/core/services/chat_service.dart';
+import 'package:mobile/core/services/token_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -174,8 +175,10 @@ class NotificationService {
     if (_reconnectTimer?.isActive ?? false) return;
     
     print('Scheduling reconnect in 5 seconds...');
-    _reconnectTimer = Timer(const Duration(seconds: 5), () {
+    _reconnectTimer = Timer(const Duration(seconds: 5), () async {
       print('Attempting to reconnect WebSocket...');
+      // Refresh token before reconnecting
+      await TokenService.refreshAccessToken();
       connect();
     });
   }

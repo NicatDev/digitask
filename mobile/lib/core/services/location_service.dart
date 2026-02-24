@@ -11,6 +11,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart'; 
 import '../constants.dart';
+import 'package:mobile/core/services/token_service.dart';
 
 // --- SHARED LOGIC ---
 
@@ -176,7 +177,10 @@ class LocationService {
     });
     
     Timer.periodic(const Duration(seconds: 30), (timer) async {
-        if (!isConnected) await connectWebSocket();
+        if (!isConnected) {
+          await TokenService.refreshAccessToken();
+          await connectWebSocket();
+        }
     });
   }
 

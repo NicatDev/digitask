@@ -41,9 +41,7 @@ class ChatGroupViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='add-member')
     def add_member(self, request, pk=None):
         group = self.get_object()
-        if group.owner != request.user:
-            return Response({'detail': 'Only owner can add members.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         user_id = request.data.get('user_id')
         user = get_object_or_404(User, pk=user_id)
         
