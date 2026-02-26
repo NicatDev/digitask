@@ -4,13 +4,13 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status as drf_status
 from django_filters.rest_framework import DjangoFilterBackend
-from ..models import Warehouse, Product, ProductCategory, CategoryField
+from ..models import Warehouse, Product, ProductCategory, CategoryField, SerialNumberItem
 from ..serializers import (
     WarehouseSerializer, ProductSerializer,
     ProductCategorySerializer, CategoryFieldSerializer
 )
 from django.db import models
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Subquery, OuterRef
 from django.db.models.functions import Coalesce
 
 
@@ -46,9 +46,21 @@ class ProductViewSet(BaseSoftDeleteViewSet):
     filterset_fields = ['is_active', 'brand', 'category', 'has_serial_number']
 
     def get_queryset(self):
+        # Use Subquery to avoid cross-join between inventory_items and serial_items
+        serial_count_sq = SerialNumberItem.objects.filter(
+            product=OuterRef('pk')
+        ).order_by().values('product').annotate(cnt=Count('id')).values('cnt')
+
         qs = Product.objects.annotate(
-            total_stock=Coalesce(Sum('inventory_items__quantity'), 0, output_field=models.DecimalField()),
-            serial_count=Count('serial_items')
+            total_stock=Coalesce(
+                Sum('inventory_items__quantity'), 0,
+                output_field=models.DecimalField()
+            ),
+            serial_count=Coalesce(
+                Subquery(serial_count_sq),
+                0,
+                output_field=models.IntegerField()
+            )
         ).order_by('-id')
         
         # Default: show only active products unless explicitly filtered
@@ -66,7 +78,6 @@ class ProductCategoryViewSet(BaseSoftDeleteViewSet):
 
     @action(detail=True, methods=['post'], url_path='add-field')
     def add_field(self, request, pk=None):
-        """Add a dynamic field to a category."""
         category = self.get_object()
         serializer = CategoryFieldSerializer(data={
             'category': category.id,
@@ -81,7 +92,6 @@ class ProductCategoryViewSet(BaseSoftDeleteViewSet):
 
     @action(detail=True, methods=['delete'], url_path='remove-field/(?P<field_id>[^/.]+)')
     def remove_field(self, request, pk=None, field_id=None):
-        """Remove a dynamic field from a category."""
         category = self.get_object()
         try:
             field = CategoryField.objects.get(id=field_id, category=category)

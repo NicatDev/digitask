@@ -123,6 +123,7 @@ const HistoryTab = ({ isActive }) => {
         { title: 'Növ', dataIndex: 'movement_type', key: 'movement_type', render: (type) => getTypeTag(type) },
         { title: 'Anbar', dataIndex: 'warehouse_name', key: 'warehouse_name' },
         { title: 'Məhsul', dataIndex: 'product_name', key: 'product_name' },
+        { title: 'Serial Nömrə', dataIndex: 'serial_number', key: 'serial_number', render: v => v || '-' },
         {
             title: 'Dəyişim',
             key: 'delta',

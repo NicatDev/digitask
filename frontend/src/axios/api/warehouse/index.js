@@ -18,6 +18,7 @@ export const getInventory = (params) => service.get('/warehouse/inventory/', { p
 // Stock Movements
 export const getStockMovements = (params) => service.get('/warehouse/movements/', { params });
 export const adjustStock = (data) => service.post('/warehouse/movements/adjust/', data);
+export const serialAdjustStock = (data) => service.post('/warehouse/movements/serial-adjust/', data);
 
 // Categories
 export const getCategories = (params) => service.get('/warehouse/categories/', { params });
