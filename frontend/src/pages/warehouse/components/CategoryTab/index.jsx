@@ -168,6 +168,7 @@ const CategoryTab = ({ isActive }) => {
                             setIsFieldModalOpen(true);
                             fieldForm.resetFields();
                         }}
+                        disabled={!hasPermission(user, PERMISSIONS.WAREHOUSE_WRITER)}
                     >
                         Sahələr
                     </Button>
@@ -175,9 +176,10 @@ const CategoryTab = ({ isActive }) => {
                         setEditingItem(record);
                         form.setFieldsValue(record);
                         setIsCatModalOpen(true);
-                    }}>Düzəliş</Button>
-                    <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => handleDelete(record.id)}>
-                        <Button type="link" danger>Sil</Button>
+                    }} disabled={!hasPermission(user, PERMISSIONS.WAREHOUSE_WRITER)}>Düzəliş</Button>
+                    <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => handleDelete(record.id)}
+                        disabled={!hasPermission(user, PERMISSIONS.WAREHOUSE_WRITER)}>
+                        <Button type="link" danger disabled={!hasPermission(user, PERMISSIONS.WAREHOUSE_WRITER)}>Sil</Button>
                     </Popconfirm>
                 </>
             ),

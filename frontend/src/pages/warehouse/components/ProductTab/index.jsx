@@ -237,9 +237,11 @@ const ProductTab = ({ isActive }) => {
             title: 'Əməliyyat', key: 'action',
             render: (_, record) => (
                 <>
-                    <Button type="link" onClick={() => { setEditingProduct(record); setProductModalOpen(true); }}>Düzəliş</Button>
-                    <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => handleDelete(record.id)}>
-                        <Button type="link" danger>Sil</Button>
+                    <Button type="link" onClick={() => { setEditingProduct(record); setProductModalOpen(true); }}
+                        disabled={!hasPermission(user, PERMISSIONS.WAREHOUSE_WRITER)}>Düzəliş</Button>
+                    <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => handleDelete(record.id)}
+                        disabled={!hasPermission(user, PERMISSIONS.WAREHOUSE_WRITER)}>
+                        <Button type="link" danger disabled={!hasPermission(user, PERMISSIONS.WAREHOUSE_WRITER)}>Sil</Button>
                     </Popconfirm>
                 </>
             ),
