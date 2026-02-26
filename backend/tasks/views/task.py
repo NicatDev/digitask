@@ -201,6 +201,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     
     def _deduct_task_products(self, task, user):
         """Tapşırıq tamamlandıqda məhsulları anbardan çıxar."""
+        from warehouse.models import SerialNumberItem
         task_products = task.task_products.filter(is_deducted=False)
         
         with transaction.atomic():
@@ -211,7 +212,22 @@ class TaskViewSet(viewsets.ModelViewSet):
                 )
                 
                 qty_old = inventory.quantity
-                qty_new = qty_old - tp.quantity
+
+                if tp.product.has_serial_number and tp.serial_number:
+                    # Serial product: delete serial item, deduct 1
+                    try:
+                        serial_item = SerialNumberItem.objects.get(
+                            serial_number=tp.serial_number,
+                            product=tp.product,
+                            warehouse=tp.warehouse
+                        )
+                        serial_item.delete()
+                    except SerialNumberItem.DoesNotExist:
+                        pass  # Already removed somehow
+                    qty_new = qty_old - 1
+                else:
+                    # Normal product: deduct quantity
+                    qty_new = qty_old - tp.quantity
                 
                 inventory.quantity = qty_new
                 inventory.save()
@@ -225,7 +241,8 @@ class TaskViewSet(viewsets.ModelViewSet):
                     quantity_old=qty_old,
                     quantity_new=qty_new,
                     created_by=user,
-                    reference_no=f"TASK-{task.id}"
+                    reference_no=f"TASK-{task.id}",
+                    serial_number=tp.serial_number or ''
                 )
                 
                 # İşarələ ki, artıq çıxarılıb

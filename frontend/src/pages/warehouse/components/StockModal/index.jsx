@@ -7,16 +7,30 @@ const { Option } = Select;
 
 const StockModal = ({ open, onClose, product, warehouses, inventory, onSuccess }) => {
     const [form] = Form.useForm();
+    const movementType = Form.useWatch('movement_type', form);
 
     const onFinish = async (values) => {
         try {
-            await adjustStock({ ...values, product_id: product?.id });
+            const payload = { ...values, product_id: product?.id };
+            // Korreksiya direction
+            if (values.movement_type === 'adjust_increase') {
+                payload.movement_type = 'adjust';
+                payload.adjust_direction = 'increase';
+            } else if (values.movement_type === 'adjust_decrease') {
+                payload.movement_type = 'adjust';
+                payload.adjust_direction = 'decrease';
+            }
+            await adjustStock(payload);
             onSuccess();
-            onClose();
-            form.resetFields();
+            handleClose();
         } catch (e) {
             handleApiError(e, 'Stock əməliyyatı uğursuz oldu');
         }
+    };
+
+    const handleClose = () => {
+        form.resetFields();
+        onClose();
     };
 
     const getInvQty = (whId) => {
@@ -28,7 +42,7 @@ const StockModal = ({ open, onClose, product, warehouses, inventory, onSuccess }
     return (
         <Modal
             title={`Stock Əməliyyatı: ${product?.name || ''}`}
-            open={open} onCancel={() => { onClose(); form.resetFields(); }}
+            open={open} onCancel={handleClose}
             footer={null} width={500} destroyOnClose
         >
             <Form form={form} onFinish={onFinish} layout="vertical">
@@ -37,7 +51,8 @@ const StockModal = ({ open, onClose, product, warehouses, inventory, onSuccess }
                         <Option value="in">Giriş (Import)</Option>
                         <Option value="out">Çıxış (Export)</Option>
                         <Option value="transfer">Transfer</Option>
-                        <Option value="adjust">Korreksiya</Option>
+                        <Option value="adjust_increase">Korreksiya (+)</Option>
+                        <Option value="adjust_decrease">Korreksiya (−)</Option>
                         <Option value="return">Qaytarma</Option>
                     </Select>
                 </Form.Item>

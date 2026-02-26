@@ -9,7 +9,8 @@ class TaskProduct(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="task_products")
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="task_products")
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name="task_products")
-    quantity = models.DecimalField(max_digits=18, decimal_places=3)
+    quantity = models.DecimalField(max_digits=18, decimal_places=3, default=1)
+    serial_number = models.CharField(max_length=255, null=True, blank=True)
     is_deducted = models.BooleanField(default=False)  # Anbardan çıxarılıbmı?
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -21,4 +22,5 @@ class TaskProduct(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.task.title} - {self.product.name} ({self.quantity})"
+        sn = f" [{self.serial_number}]" if self.serial_number else ""
+        return f"{self.task.title} - {self.product.name}{sn} ({self.quantity})"

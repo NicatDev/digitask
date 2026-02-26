@@ -186,7 +186,7 @@ const CategoryTab = ({ isActive }) => {
 
     return (
         <div>
-            <div style={{ marginBottom: 16, background: '#fff', padding: '16px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ marginBottom: 16, background: '#fff', padding: '16px', borderRadius: '8px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                 <h3 style={{ margin: 0 }}>Məhsul Kateqoriyaları</h3>
                 <Button
                     type="primary"
@@ -209,6 +209,7 @@ const CategoryTab = ({ isActive }) => {
                 loading={loading}
                 pagination={pagination}
                 onChange={handleTableChange}
+                scroll={{ x: 600 }}
             />
 
             {/* Category Create/Edit Modal */}
@@ -236,21 +237,23 @@ const CategoryTab = ({ isActive }) => {
                 width={600}
             >
                 {/* Add field form */}
-                <Form form={fieldForm} onFinish={onAddField} layout="inline" style={{ marginBottom: 16 }}>
-                    <Form.Item name="name" rules={[{ required: true, message: 'Ad tələb olunur' }]}>
-                        <Input placeholder="Sahə adı" />
-                    </Form.Item>
-                    <Form.Item name="field_type" initialValue="string" rules={[{ required: true }]}>
-                        <Select style={{ width: 120 }}>
-                            <Option value="string">Mətn</Option>
-                            <Option value="number">Rəqəm</Option>
-                            <Option value="boolean">Bəli/Xeyr</Option>
-                            <Option value="date">Tarix</Option>
-                        </Select>
-                    </Form.Item>
-                    <Form.Item>
-                        <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>Əlavə et</Button>
-                    </Form.Item>
+                <Form form={fieldForm} onFinish={onAddField} style={{ marginBottom: 16 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                        <Form.Item name="name" rules={[{ required: true, message: 'Ad tələb olunur' }]} style={{ flex: 1, minWidth: 120, marginBottom: 0 }}>
+                            <Input placeholder="Sahə adı" />
+                        </Form.Item>
+                        <Form.Item name="field_type" initialValue="string" rules={[{ required: true }]} style={{ minWidth: 120, marginBottom: 0 }}>
+                            <Select style={{ width: '100%' }}>
+                                <Option value="string">Mətn</Option>
+                                <Option value="number">Rəqəm</Option>
+                                <Option value="boolean">Bəli/Xeyr</Option>
+                                <Option value="date">Tarix</Option>
+                            </Select>
+                        </Form.Item>
+                        <Form.Item style={{ marginBottom: 0 }}>
+                            <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>Əlavə et</Button>
+                        </Form.Item>
+                    </div>
                 </Form>
 
                 {/* Existing fields */}

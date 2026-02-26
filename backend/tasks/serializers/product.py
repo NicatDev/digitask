@@ -6,12 +6,14 @@ class TaskProductSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     product_unit = serializers.CharField(source='product.unit', read_only=True)
     warehouse_name = serializers.CharField(source='warehouse.name', read_only=True)
+    has_serial_number = serializers.BooleanField(source='product.has_serial_number', read_only=True)
 
     class Meta:
         model = TaskProduct
         fields = [
             'id', 'task', 'product', 'product_name', 'product_unit',
-            'warehouse', 'warehouse_name', 'quantity', 'is_deducted', 'created_at'
+            'warehouse', 'warehouse_name', 'quantity', 'serial_number',
+            'has_serial_number', 'is_deducted', 'created_at'
         ]
         read_only_fields = ['id', 'is_deducted', 'created_at']
 
@@ -22,4 +24,7 @@ class TaskProductCreateSerializer(serializers.Serializer):
         child=serializers.DictField(),
         required=True
     )
-    # products = [{"product_id": 1, "warehouse_id": 1, "quantity": 2}, ...]
+    # products = [
+    #   {"product_id": 1, "warehouse_id": 1, "quantity": 2},                   # normal product
+    #   {"product_id": 2, "warehouse_id": 1, "serial_number": "SN-001"},        # serial product
+    # ]

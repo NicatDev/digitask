@@ -77,7 +77,11 @@ class StockMovementViewSet(viewsets.ModelViewSet):
             elif m_type == StockMovement.Type.OUT:
                 qty_new -= qty
             elif m_type == StockMovement.Type.ADJUST:
-                qty_new += qty
+                direction = data.get('adjust_direction', 'increase')
+                if direction == 'decrease':
+                    qty_new -= qty
+                else:
+                    qty_new += qty
             elif m_type == StockMovement.Type.RETURN:
                 qty_new += qty
             elif m_type == StockMovement.Type.TRANSFER:
@@ -124,11 +128,26 @@ class StockMovementViewSet(viewsets.ModelViewSet):
             if m_type == StockMovement.Type.TRANSFER:
                 return self._serial_transfer(request, data, warehouse, product, inventory, qty_old, serial_number_value)
 
-            if m_type in [StockMovement.Type.IN, StockMovement.Type.RETURN, StockMovement.Type.ADJUST]:
+            if m_type in [StockMovement.Type.IN, StockMovement.Type.RETURN]:
                 if SerialNumberItem.objects.filter(serial_number=serial_number_value).exists():
                     return Response({'error': f'Bu serial nömrə artıq mövcuddur: {serial_number_value}'}, status=status.HTTP_400_BAD_REQUEST)
                 SerialNumberItem.objects.create(product=product, warehouse=warehouse, serial_number=serial_number_value)
                 qty_new = qty_old + 1
+
+            elif m_type == StockMovement.Type.ADJUST:
+                direction = data.get('adjust_direction', 'increase')
+                if direction == 'decrease':
+                    try:
+                        item = SerialNumberItem.objects.get(serial_number=serial_number_value, product=product, warehouse=warehouse)
+                        item.delete()
+                        qty_new = qty_old - 1
+                    except SerialNumberItem.DoesNotExist:
+                        return Response({'error': f'Bu serial nömrə bu anbarda tapılmadı: {serial_number_value}'}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    if SerialNumberItem.objects.filter(serial_number=serial_number_value).exists():
+                        return Response({'error': f'Bu serial nömrə artıq mövcuddur: {serial_number_value}'}, status=status.HTTP_400_BAD_REQUEST)
+                    SerialNumberItem.objects.create(product=product, warehouse=warehouse, serial_number=serial_number_value)
+                    qty_new = qty_old + 1
 
             elif m_type == StockMovement.Type.OUT:
                 try:

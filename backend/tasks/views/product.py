@@ -41,11 +41,14 @@ class TaskProductViewSet(viewsets.ModelViewSet):
             for item in products_data:
                 product_id = item.get('product_id')
                 warehouse_id = item.get('warehouse_id')
-                quantity = item.get('quantity')
+                quantity = item.get('quantity', 1)
+                serial_number = item.get('serial_number')
                 
-                if not all([product_id, warehouse_id, quantity]):
+                if not all([product_id, warehouse_id]):
                     continue
                 
+                # Serial products: quantity=1, serial_number required
+                # Normal products: quantity required, no serial_number
                 try:
                     product = Product.objects.get(id=product_id)
                     warehouse = Warehouse.objects.get(id=warehouse_id)
@@ -54,7 +57,8 @@ class TaskProductViewSet(viewsets.ModelViewSet):
                         task_id=task_id,
                         product=product,
                         warehouse=warehouse,
-                        quantity=quantity
+                        quantity=1 if product.has_serial_number else quantity,
+                        serial_number=serial_number if product.has_serial_number else None
                     )
                     created_products.append(TaskProductSerializer(tp).data)
                 except (Product.DoesNotExist, Warehouse.DoesNotExist):
