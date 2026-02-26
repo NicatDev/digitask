@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Modal, Form, Input, Button, Select, message } from 'antd';
-import { serialAdjustStock, getSerialItems } from '../../../../axios/api/warehouse/index';
+import { serialAdjustStock, getSerialItems, getInventory } from '../../../../axios/api/warehouse/index';
 import { handleApiError } from '../../../../utils/errorHandler';
 
 const { Option } = Select;
@@ -9,11 +9,24 @@ const SerialStockModal = ({ open, onClose, product, warehouses, inventory, onSuc
     const [form] = Form.useForm();
     const [serialOptions, setSerialOptions] = useState([]);
     const [serialLoading, setSerialLoading] = useState(false);
+    const [allSerialItems, setAllSerialItems] = useState([]); // all serial items for this product
+    const [serialSearchText, setSerialSearchText] = useState('');
     const isLocked = !!prefilledSerial;
+
+    // Fetch ALL serial items for this product (for warehouse count display)
+    useEffect(() => {
+        if (open && product) {
+            getSerialItems({ product: product.id, page_size: 1000 })
+                .then(res => setAllSerialItems(res.data.results || res.data || []))
+                .catch(() => { });
+        }
+    }, [open, product?.id]);
 
     useEffect(() => {
         if (open) {
             form.resetFields();
+            setSerialOptions([]);
+            setSerialSearchText('');
             if (prefilledSerial) {
                 setTimeout(() => {
                     form.setFieldsValue({
@@ -29,44 +42,93 @@ const SerialStockModal = ({ open, onClose, product, warehouses, inventory, onSuc
     const movementType = Form.useWatch('movement_type', form);
     const warehouseId = Form.useWatch('warehouse_id', form);
     const needsSelect = movementType === 'out' || movementType === 'transfer';
+    const needsInput = movementType === 'in' || movementType === 'return' || movementType === 'adjust';
 
-    // Load serial items for out/transfer select
-    useEffect(() => {
-        if (open && product && warehouseId && needsSelect && !isLocked) {
-            setSerialLoading(true);
-            getSerialItems({ product: product.id, warehouse: warehouseId, page_size: 200 })
-                .then(res => setSerialOptions(res.data.results || res.data || []))
-                .catch(() => message.error('Serial nömrələr yüklənmədi'))
-                .finally(() => setSerialLoading(false));
+    // Load serial items filtered by warehouse for out/transfer
+    const loadSerialOptions = useCallback(async (whId, search = '') => {
+        if (!product) return;
+        setSerialLoading(true);
+        try {
+            const params = { product: product.id, page_size: 200 };
+            if (whId) params.warehouse = whId;
+            if (search) params.search = search;
+            const res = await getSerialItems(params);
+            setSerialOptions(res.data.results || res.data || []);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setSerialLoading(false);
         }
-    }, [open, product?.id, warehouseId, needsSelect, isLocked]);
+    }, [product?.id]);
+
+    // When warehouse changes → reload serial options, clear serial selection
+    useEffect(() => {
+        if (open && product && needsSelect && !isLocked) {
+            if (warehouseId) {
+                loadSerialOptions(warehouseId);
+            } else {
+                loadSerialOptions(null); // show all
+            }
+            form.setFieldValue('serial_number', undefined);
+            setSerialSearchText('');
+        }
+    }, [warehouseId, needsSelect, open, isLocked]);
+
+    // Backend search for serial numbers (debounced via onSearch)
+    const handleSerialSearch = (value) => {
+        setSerialSearchText(value);
+        if (product && needsSelect) {
+            loadSerialOptions(warehouseId, value);
+        }
+    };
+
+    // When serial is selected → auto-set warehouse to the serial's warehouse
+    const handleSerialSelect = (serialNumber) => {
+        const item = serialOptions.find(s => s.serial_number === serialNumber)
+            || allSerialItems.find(s => s.serial_number === serialNumber);
+        if (item && item.warehouse) {
+            form.setFieldValue('warehouse_id', item.warehouse);
+        }
+    };
+
+    // Get serial count per warehouse
+    const getSerialCountForWarehouse = (whId) => {
+        return allSerialItems.filter(s => s.warehouse === whId).length;
+    };
 
     const onFinish = async (values) => {
         try {
             await serialAdjustStock({ ...values, product_id: product?.id });
             onSuccess();
-            onClose();
-            form.resetFields();
+            handleClose();
         } catch (e) {
             handleApiError(e, 'Serial stock əməliyyatı uğursuz oldu');
         }
     };
 
-    const getInvQty = (whId) => {
-        if (!product) return '0';
-        const inv = inventory.find(i => i.warehouse === whId && i.product === product.id);
-        return inv ? parseFloat(inv.quantity).toFixed(0) : '0';
+    const handleClose = () => {
+        form.resetFields();
+        setSerialOptions([]);
+        setAllSerialItems([]);
+        setSerialSearchText('');
+        onClose();
     };
 
     return (
         <Modal
             title={`Serial Stock: ${product?.name || ''}`}
-            open={open} onCancel={() => { onClose(); form.resetFields(); }}
+            open={open} onCancel={handleClose}
             footer={null} width={500} destroyOnClose
         >
             <Form form={form} onFinish={onFinish} layout="vertical">
                 <Form.Item name="movement_type" label="Əməliyyat Növü" rules={[{ required: true }]}>
-                    <Select disabled={isLocked}>
+                    <Select disabled={isLocked} onChange={() => {
+                        if (!isLocked) {
+                            form.setFieldValue('serial_number', undefined);
+                            form.setFieldValue('to_warehouse_id', undefined);
+                            form.setFieldValue('returned_by', undefined);
+                        }
+                    }}>
                         <Option value="in">Giriş (Import)</Option>
                         <Option value="out">Çıxış (Export)</Option>
                         <Option value="transfer">Transfer</Option>
@@ -77,9 +139,10 @@ const SerialStockModal = ({ open, onClose, product, warehouses, inventory, onSuc
 
                 <Form.Item name="warehouse_id" label="Anbar" rules={[{ required: true }]}>
                     <Select placeholder="Anbar seçin" disabled={isLocked}>
-                        {warehouses.map(w => (
-                            <Option key={w.id} value={w.id}>{w.name} ({getInvQty(w.id)})</Option>
-                        ))}
+                        {warehouses.map(w => {
+                            const cnt = getSerialCountForWarehouse(w.id);
+                            return <Option key={w.id} value={w.id}>{w.name} ({cnt})</Option>;
+                        })}
                     </Select>
                 </Form.Item>
 
@@ -87,9 +150,10 @@ const SerialStockModal = ({ open, onClose, product, warehouses, inventory, onSuc
                     {({ getFieldValue }) => getFieldValue('movement_type') === 'transfer' ? (
                         <Form.Item name="to_warehouse_id" label="Hədəf Anbar" rules={[{ required: true }]}>
                             <Select placeholder="Hədəf anbar seçin">
-                                {warehouses.map(w => (
-                                    <Option key={w.id} value={w.id}>{w.name} ({getInvQty(w.id)})</Option>
-                                ))}
+                                {warehouses.map(w => {
+                                    const cnt = getSerialCountForWarehouse(w.id);
+                                    return <Option key={w.id} value={w.id}>{w.name} ({cnt})</Option>;
+                                })}
                             </Select>
                         </Form.Item>
                     ) : null}
@@ -101,25 +165,35 @@ const SerialStockModal = ({ open, onClose, product, warehouses, inventory, onSuc
                     ) : null}
                 </Form.Item>
 
-                {/* Serial number: Select for out/transfer, Input for in/return/adjust */}
-                <Form.Item name="serial_number" label="Serial Nömrə" rules={[{ required: true, message: 'Serial nömrə tələb olunur' }]}>
-                    {isLocked ? (
-                        <Input disabled />
-                    ) : needsSelect ? (
-                        <Select
-                            placeholder="Serial nömrə seçin"
-                            showSearch optionFilterProp="children"
-                            loading={serialLoading}
-                            notFoundContent={serialLoading ? 'Yüklənir...' : 'Tapılmadı'}
-                        >
-                            {serialOptions.map(item => (
-                                <Option key={item.id} value={item.serial_number}>{item.serial_number}</Option>
-                            ))}
-                        </Select>
-                    ) : (
+                {/* Serial Number Field */}
+                {needsSelect && (
+                    <Form.Item name="serial_number" label="Serial Nömrə" rules={[{ required: true, message: 'Serial nömrə seçin' }]}>
+                        {isLocked ? (
+                            <Input disabled />
+                        ) : (
+                            <Select
+                                placeholder="Serial nömrə seçin"
+                                showSearch
+                                filterOption={false}
+                                onSearch={handleSerialSearch}
+                                onSelect={handleSerialSelect}
+                                loading={serialLoading}
+                                notFoundContent={serialLoading ? 'Yüklənir...' : 'Tapılmadı'}
+                            >
+                                {serialOptions.map(item => (
+                                    <Option key={item.id} value={item.serial_number}>
+                                        {item.serial_number} — {item.warehouse_name}
+                                    </Option>
+                                ))}
+                            </Select>
+                        )}
+                    </Form.Item>
+                )}
+                {needsInput && (
+                    <Form.Item name="serial_number" label="Serial Nömrə" rules={[{ required: true, message: 'Serial nömrə daxil edin' }]}>
                         <Input placeholder="Serial nömrəni daxil edin" />
-                    )}
-                </Form.Item>
+                    </Form.Item>
+                )}
 
                 <Form.Item name="reference_no" label="Sənəd No / Referans"><Input /></Form.Item>
                 <Form.Item name="reason" label="Səbəb / Qeyd"><Input.TextArea /></Form.Item>

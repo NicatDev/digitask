@@ -84,8 +84,8 @@ const ProductTab = ({ isActive }) => {
 
             const [productsRes, warehousesRes, inventoryRes, categoriesRes] = await Promise.all([
                 getProducts(queryParams),
-                getWarehouses(),
-                getInventory(),
+                getWarehouses({ page_size: 100 }),
+                getInventory({ page_size: 1000 }),
                 getCategories({ page_size: 100 })
             ]);
 

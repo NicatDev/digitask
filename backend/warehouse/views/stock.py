@@ -49,10 +49,17 @@ class StockMovementViewSet(viewsets.ModelViewSet):
         warehouse_id = data.get('warehouse_id')
         product_id = data.get('product_id')
         m_type = data.get('movement_type')
-        qty = Decimal(str(data.get('quantity', 0)))
 
-        if not all([warehouse_id, product_id, m_type, qty]):
-            return Response({'error': 'warehouse_id, product_id, movement_type, quantity tələb olunur'}, status=status.HTTP_400_BAD_REQUEST)
+        if not all([warehouse_id, product_id, m_type]):
+            return Response({'error': 'warehouse_id, product_id, movement_type tələb olunur'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            qty = Decimal(str(data.get('quantity', 0)))
+        except Exception:
+            return Response({'error': 'Düzgün miqdar daxil edin'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not qty or qty <= 0:
+            return Response({'error': 'Miqdar 0-dan böyük olmalıdır'}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
             warehouse = Warehouse.objects.get(pk=warehouse_id)
