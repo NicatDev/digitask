@@ -254,28 +254,30 @@ const CategoryTab = ({ isActive }) => {
                 </Form>
 
                 {/* Existing fields */}
-                <List
-                    dataSource={selectedCategory?.fields_list || []}
-                    locale={{ emptyText: 'Hələ sahə əlavə olunmayıb' }}
-                    renderItem={item => (
-                        <List.Item
-                            actions={[
-                                <Popconfirm title="Bu sahəni silmək istəyirsiniz?" onConfirm={() => onRemoveField(item.id)}>
-                                    <Button type="text" danger icon={<DeleteOutlined />} size="small" />
-                                </Popconfirm>
-                            ]}
-                        >
-                            <List.Item.Meta
-                                title={item.name}
-                                description={
-                                    <Tag color={fieldTypeColors[item.field_type]}>
-                                        {fieldTypeLabels[item.field_type]}
-                                    </Tag>
-                                }
-                            />
-                        </List.Item>
-                    )}
-                />
+                <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                    <List
+                        dataSource={selectedCategory?.fields_list || []}
+                        locale={{ emptyText: 'Hələ sahə əlavə olunmayıb' }}
+                        renderItem={item => (
+                            <List.Item
+                                actions={[
+                                    <Popconfirm title="Bu sahəni silmək istəyirsiniz?" onConfirm={() => onRemoveField(item.id)}>
+                                        <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+                                    </Popconfirm>
+                                ]}
+                            >
+                                <List.Item.Meta
+                                    title={item.name}
+                                    description={
+                                        <Tag color={fieldTypeColors[item.field_type]}>
+                                            {fieldTypeLabels[item.field_type]}
+                                        </Tag>
+                                    }
+                                />
+                            </List.Item>
+                        )}
+                    />
+                </div>
             </Modal>
         </div>
     );
