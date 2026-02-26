@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, message, Popconfirm, Switch, Select, Grid, InputNumber, Row, Col, Popover, Badge, List, Tag, Tooltip, DatePicker, Checkbox } from 'antd';
-import { FilterOutlined, SwapOutlined, PlusOutlined, BarcodeOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import React, { useEffect, useState, useMemo } from 'react';
+import dayjs from 'dayjs';
+import { Table, Button, Modal, Form, Input, message, Popconfirm, Switch, Select, Grid, InputNumber, Row, Col, Popover, Badge, List, Tag, DatePicker, Dropdown, Checkbox } from 'antd';
+import { FilterOutlined, SwapOutlined, PlusOutlined, BarcodeOutlined, SettingOutlined } from '@ant-design/icons';
 import styles from './style.module.scss';
 import { getProducts, createProduct, updateProduct, deleteProduct, adjustStock, getWarehouses, getInventory, getCategories, getSerialItems } from '../../../../axios/api/warehouse/index';
 import { handleApiError } from '../../../../utils/errorHandler';
@@ -8,6 +9,28 @@ import { useAuth } from '../../../../context/AuthContext';
 import { hasPermission, PERMISSIONS } from '../../../../utils/permissions';
 
 const { Option } = Select;
+
+const ALL_BASE_COLUMNS = [
+    { key: 'id', label: 'ID' },
+    { key: 'name', label: 'Ad' },
+    { key: 'brand', label: 'Brand' },
+    { key: 'model', label: 'Model' },
+    { key: 'serial_info', label: 'Serial' },
+    { key: 'size', label: 'Ölçü' },
+    { key: 'weight', label: 'Çəki' },
+    { key: 'port_count', label: 'Port Sayı' },
+    { key: 'category_name', label: 'Kateqoriya' },
+    { key: 'price', label: 'Qiymət' },
+    { key: 'unit_display', label: 'Vahid' },
+    { key: 'min_quantity', label: 'Min' },
+    { key: 'max_quantity', label: 'Max' },
+    { key: 'total_stock', label: 'Say' },
+    { key: 'stock_action', label: 'Hərəkət' },
+    { key: 'is_active', label: 'Aktiv' },
+    { key: 'action', label: 'Əməliyyat' },
+];
+
+const DEFAULT_VISIBLE = ALL_BASE_COLUMNS.map(c => c.key);
 
 const ProductTab = ({ isActive }) => {
     const [data, setData] = useState([]);
@@ -20,10 +43,11 @@ const ProductTab = ({ isActive }) => {
     // Filter States
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
-    const [statusFilter, setStatusFilter] = useState(true); // Default: active only
+    const [statusFilter, setStatusFilter] = useState(true);
     const [warehouseFilter, setWarehouseFilter] = useState(null);
     const [categoryFilter, setCategoryFilter] = useState(null);
     const [showFilters, setShowFilters] = useState(false);
+    const [visibleColumns, setVisibleColumns] = useState(DEFAULT_VISIBLE);
     const screens = Grid.useBreakpoint();
 
     // Product Modal
@@ -36,12 +60,17 @@ const ProductTab = ({ isActive }) => {
     const [isStockModalOpen, setIsStockModalOpen] = useState(false);
     const [stockForm] = Form.useForm();
     const [selectedProduct, setSelectedProduct] = useState(null);
+    // Serial items for export select
+    const [stockSerialItems, setStockSerialItems] = useState([]);
+    const [stockSerialLoading, setStockSerialLoading] = useState(false);
 
     // Serial Number List Modal
     const [isSerialModalOpen, setIsSerialModalOpen] = useState(false);
     const [serialItems, setSerialItems] = useState([]);
     const [serialLoading, setSerialLoading] = useState(false);
     const [serialProduct, setSerialProduct] = useState(null);
+    const [serialSearch, setSerialSearch] = useState('');
+    const [serialPagination, setSerialPagination] = useState({ current: 1, pageSize: 50, total: 0 });
 
     const [pagination, setPagination] = useState({
         current: 1,
@@ -126,14 +155,14 @@ const ProductTab = ({ isActive }) => {
 
     const onProductFinish = async (values) => {
         try {
-            // Build category_data from dynamic fields
             const cat = categories.find(c => c.id === values.category);
             if (cat && cat.fields_list) {
                 const categoryData = {};
                 cat.fields_list.forEach(f => {
                     const key = `cf_${f.id}`;
                     if (values[key] !== undefined && values[key] !== null) {
-                        categoryData[f.name] = values[key];
+                        // Convert dayjs to string for date fields
+                        categoryData[f.name] = f.field_type === 'date' && values[key]?.format ? values[key].format('YYYY-MM-DD') : values[key];
                     }
                     delete values[key];
                 });
@@ -178,20 +207,50 @@ const ProductTab = ({ isActive }) => {
             setIsStockModalOpen(false);
             stockForm.resetFields();
             setSelectedProduct(null);
+            setStockSerialItems([]);
             fetchData();
         } catch (error) {
             handleApiError(error, 'Stock əməliyyatı uğursuz oldu');
         }
     };
 
-    // Serial number modal
+    // Load serial items for stock modal (export/transfer select)
+    const loadStockSerialItems = async (productId, warehouseId) => {
+        if (!productId) return;
+        setStockSerialLoading(true);
+        try {
+            const params = { product: productId, page_size: 200 };
+            if (warehouseId) params.warehouse = warehouseId;
+            const res = await getSerialItems(params);
+            setStockSerialItems(res.data.results || res.data || []);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setStockSerialLoading(false);
+        }
+    };
+
+    // Serial number list modal
     const openSerialModal = async (product) => {
         setSerialProduct(product);
         setIsSerialModalOpen(true);
+        setSerialSearch('');
+        fetchSerialItems(product.id, 1, '');
+    };
+
+    const fetchSerialItems = async (productId, page = 1, search = '') => {
         setSerialLoading(true);
         try {
-            const res = await getSerialItems({ product: product.id, page_size: 100 });
-            setSerialItems(res.data.results || res.data || []);
+            const params = { product: productId, page, page_size: 50 };
+            if (search) params.search = search;
+            const res = await getSerialItems(params);
+            const result = res.data;
+            setSerialItems(result.results || result || []);
+            setSerialPagination(prev => ({
+                ...prev,
+                current: page,
+                total: result.count || 0,
+            }));
         } catch (e) {
             message.error('Serial nömrələr yüklənmədi');
         } finally {
@@ -199,12 +258,32 @@ const ProductTab = ({ isActive }) => {
         }
     };
 
+    useEffect(() => {
+        if (serialProduct && isSerialModalOpen) {
+            const timer = setTimeout(() => {
+                fetchSerialItems(serialProduct.id, 1, serialSearch);
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [serialSearch]);
+
     const getProductInventory = (productId) => {
         return inventory.filter(inv => inv.product === productId);
     };
 
-    const getStockForProduct = (productId) => {
-        const productInv = getProductInventory(productId);
+    const getStockForProduct = (record) => {
+        if (record.has_serial_number) {
+            // For serial products: count serial items
+            // If warehouse filter, we need inventory per warehouse
+            if (warehouseFilter) {
+                const inv = inventory.find(i => i.product === record.id && i.warehouse === warehouseFilter);
+                return inv ? parseFloat(inv.quantity || 0) : 0;
+            }
+            // Total serial count from total_stock annotation
+            return parseFloat(record.total_stock || 0);
+        }
+        // Normal products
+        const productInv = getProductInventory(record.id);
         if (warehouseFilter) {
             const inv = productInv.find(i => i.warehouse === warehouseFilter);
             return inv ? parseFloat(inv.quantity || 0) : 0;
@@ -229,7 +308,7 @@ const ProductTab = ({ isActive }) => {
         );
     };
 
-    // Get dynamic columns for selected category
+    // Dynamic category columns
     const getCategoryColumns = () => {
         if (!categoryFilter) return [];
         const cat = categories.find(c => c.id === categoryFilter);
@@ -246,12 +325,13 @@ const ProductTab = ({ isActive }) => {
         }));
     };
 
-    const columns = [
-        { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-        { title: 'Ad', dataIndex: 'name', key: 'name', width: 150 },
-        { title: 'Brand', dataIndex: 'brand', key: 'brand' },
-        { title: 'Model', dataIndex: 'model', key: 'model' },
-        {
+    // All column definitions
+    const allColumnDefs = {
+        id: { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
+        name: { title: 'Ad', dataIndex: 'name', key: 'name', width: 150 },
+        brand: { title: 'Brand', dataIndex: 'brand', key: 'brand' },
+        model: { title: 'Model', dataIndex: 'model', key: 'model' },
+        serial_info: {
             title: 'Serial',
             key: 'serial_info',
             width: 100,
@@ -260,34 +340,26 @@ const ProductTab = ({ isActive }) => {
                     return <Tag color="default">—</Tag>;
                 }
                 return (
-                    <Button
-                        size="small"
-                        type="link"
-                        icon={<BarcodeOutlined />}
-                        onClick={() => openSerialModal(record)}
-                    >
+                    <Button size="small" type="link" icon={<BarcodeOutlined />} onClick={() => openSerialModal(record)}>
                         {record.serial_count || 0}
                     </Button>
                 );
             }
         },
-        ...(categoryFilter ? [] : [
-            { title: 'Ölçü', dataIndex: 'size', key: 'size' },
-            { title: 'Çəki', dataIndex: 'weight', key: 'weight' },
-            { title: 'Port Sayı', dataIndex: 'port_count', key: 'port_count' },
-        ]),
-        { title: 'Kateqoriya', dataIndex: 'category_name', key: 'category_name', render: v => v || '-' },
-        ...getCategoryColumns(),
-        { title: 'Qiymət', dataIndex: 'price', key: 'price', render: (val) => val ? `${parseFloat(val).toFixed(2)} ₼` : '-' },
-        { title: 'Vahid', dataIndex: 'unit_display', key: 'unit_display' },
-        { title: 'Min', dataIndex: 'min_quantity', key: 'min_quantity', render: (val) => val ? parseFloat(val).toFixed(2) : '-' },
-        { title: 'Max', dataIndex: 'max_quantity', key: 'max_quantity', render: (val) => val ? parseFloat(val).toFixed(2) : '-' },
-        {
+        size: { title: 'Ölçü', dataIndex: 'size', key: 'size' },
+        weight: { title: 'Çəki', dataIndex: 'weight', key: 'weight' },
+        port_count: { title: 'Port Sayı', dataIndex: 'port_count', key: 'port_count' },
+        category_name: { title: 'Kateqoriya', dataIndex: 'category_name', key: 'category_name', render: v => v || '-' },
+        price: { title: 'Qiymət', dataIndex: 'price', key: 'price', render: (val) => val ? `${parseFloat(val).toFixed(2)} ₼` : '-' },
+        unit_display: { title: 'Vahid', dataIndex: 'unit_display', key: 'unit_display' },
+        min_quantity: { title: 'Min', dataIndex: 'min_quantity', key: 'min_quantity', render: (val) => val ? parseFloat(val).toFixed(2) : '-' },
+        max_quantity: { title: 'Max', dataIndex: 'max_quantity', key: 'max_quantity', render: (val) => val ? parseFloat(val).toFixed(2) : '-' },
+        total_stock: {
             title: 'Say',
             key: 'total_stock',
             width: 120,
             render: (_, record) => {
-                const total = getStockForProduct(record.id);
+                const total = getStockForProduct(record);
                 const min = record.min_quantity ? parseFloat(record.min_quantity) : null;
                 const max = record.max_quantity ? parseFloat(record.max_quantity) : null;
 
@@ -295,31 +367,22 @@ const ProductTab = ({ isActive }) => {
                 if (min !== null && total < min) color = '#faad14';
                 if (max !== null && total > max) color = '#faad14';
 
-                // If warehouse filter is active — no popover
                 if (warehouseFilter) {
                     return (
-                        <Badge
-                            count={total.toFixed(2)}
-                            style={{ backgroundColor: color }}
-                            overflowCount={99999}
-                        />
+                        <Badge count={total.toFixed(2)} style={{ backgroundColor: color }} overflowCount={99999} />
                     );
                 }
 
                 return (
                     <Popover content={renderInventoryPopover(record.id)} title="Anbar Balansı">
                         <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Badge
-                                count={total.toFixed(2)}
-                                style={{ backgroundColor: color }}
-                                overflowCount={99999}
-                            />
+                            <Badge count={total.toFixed(2)} style={{ backgroundColor: color }} overflowCount={99999} />
                         </span>
                     </Popover>
                 );
             }
         },
-        {
+        stock_action: {
             title: 'Hərəkət',
             key: 'stock_action',
             render: (_, record) => (
@@ -330,6 +393,7 @@ const ProductTab = ({ isActive }) => {
                         setSelectedProduct(record);
                         setIsStockModalOpen(true);
                         stockForm.resetFields();
+                        setStockSerialItems([]);
                     }}
                     disabled={!hasPermission(user, PERMISSIONS.WAREHOUSE_WRITER)}
                 >
@@ -337,32 +401,29 @@ const ProductTab = ({ isActive }) => {
                 </Button>
             )
         },
-        {
+        is_active: {
             title: 'Aktiv',
             dataIndex: 'is_active',
             key: 'is_active',
             render: (active, record) => (
-                <Switch
-                    checked={active}
-                    onChange={(checked) => handleStatusChange(record.id, checked)}
-                />
+                <Switch checked={active} onChange={(checked) => handleStatusChange(record.id, checked)} />
             )
         },
-        {
+        action: {
             title: 'Əməliyyat',
             key: 'action',
             render: (_, record) => (
                 <>
                     <Button type="link" onClick={() => {
                         setEditingItem(record);
-                        // Set category fields
                         const cat = categories.find(c => c.id === record.category);
                         setSelectedCategory(cat || null);
                         const formValues = { ...record };
-                        // Populate dynamic fields
                         if (cat && cat.fields_list && record.category_data) {
                             cat.fields_list.forEach(f => {
-                                formValues[`cf_${f.id}`] = record.category_data[f.name];
+                                let val = record.category_data[f.name];
+                                if (f.field_type === 'date' && val) val = dayjs(val);
+                                formValues[`cf_${f.id}`] = val;
                             });
                         }
                         form.setFieldsValue(formValues);
@@ -374,9 +435,38 @@ const ProductTab = ({ isActive }) => {
                 </>
             ),
         },
-    ];
+    };
 
-    // Get selected category for product form
+    const columns = useMemo(() => {
+        const baseCols = ALL_BASE_COLUMNS
+            .filter(c => visibleColumns.includes(c.key))
+            .map(c => allColumnDefs[c.key]);
+        // Append category dynamic columns (NOT filterable by column selector)
+        return [...baseCols, ...getCategoryColumns()];
+    }, [visibleColumns, data, inventory, warehouseFilter, categoryFilter, categories, warehouses]);
+
+    // Column selector menu
+    const columnSelectorMenu = {
+        items: ALL_BASE_COLUMNS.map(c => ({
+            key: c.key,
+            label: (
+                <Checkbox
+                    checked={visibleColumns.includes(c.key)}
+                    onChange={(e) => {
+                        if (e.target.checked) {
+                            setVisibleColumns(prev => [...prev, c.key]);
+                        } else {
+                            setVisibleColumns(prev => prev.filter(k => k !== c.key));
+                        }
+                    }}
+                >
+                    {c.label}
+                </Checkbox>
+            ),
+        })),
+    };
+
+    // Watch form category changes
     const formCategory = Form.useWatch('category', form);
     useEffect(() => {
         if (formCategory) {
@@ -389,6 +479,14 @@ const ProductTab = ({ isActive }) => {
 
     const isSerialProduct = selectedProduct?.has_serial_number;
     const stockMovementType = Form.useWatch('movement_type', stockForm);
+    const stockWarehouseId = Form.useWatch('warehouse_id', stockForm);
+
+    // Load serial items when warehouse changes in stock modal (for export/transfer)
+    useEffect(() => {
+        if (isSerialProduct && stockWarehouseId && (stockMovementType === 'out' || stockMovementType === 'transfer')) {
+            loadStockSerialItems(selectedProduct.id, stockWarehouseId);
+        }
+    }, [stockWarehouseId, stockMovementType, isSerialProduct]);
 
     return (
         <div>
@@ -407,10 +505,7 @@ const ProductTab = ({ isActive }) => {
                             style={{ width: screens.md ? 250 : '100%' }}
                         />
                         {!screens.md && (
-                            <Button
-                                icon={<FilterOutlined />}
-                                onClick={() => setShowFilters(!showFilters)}
-                            />
+                            <Button icon={<FilterOutlined />} onClick={() => setShowFilters(!showFilters)} />
                         )}
                     </div>
 
@@ -424,40 +519,22 @@ const ProductTab = ({ isActive }) => {
                     }}>
                         {(screens.md || showFilters) && (
                             <>
-                                <Select
-                                    placeholder="Status"
-                                    style={{ width: screens.md ? 120 : '100%' }}
-                                    value={statusFilter}
-                                    onChange={setStatusFilter}
-                                >
+                                <Select placeholder="Status" style={{ width: screens.md ? 120 : '100%' }} value={statusFilter} onChange={setStatusFilter}>
                                     <Option value="all">Hamısı</Option>
                                     <Option value={true}>Aktiv</Option>
                                     <Option value={false}>Deaktiv</Option>
                                 </Select>
-                                <Select
-                                    placeholder="Anbar"
-                                    style={{ width: screens.md ? 150 : '100%' }}
-                                    allowClear
-                                    value={warehouseFilter}
-                                    onChange={setWarehouseFilter}
-                                >
-                                    {warehouses.map(w => (
-                                        <Option key={w.id} value={w.id}>{w.name}</Option>
-                                    ))}
+                                <Select placeholder="Anbar" style={{ width: screens.md ? 150 : '100%' }} allowClear value={warehouseFilter} onChange={setWarehouseFilter}>
+                                    {warehouses.map(w => <Option key={w.id} value={w.id}>{w.name}</Option>)}
                                 </Select>
-                                <Select
-                                    placeholder="Kateqoriya"
-                                    style={{ width: screens.md ? 150 : '100%' }}
-                                    allowClear
-                                    value={categoryFilter}
-                                    onChange={setCategoryFilter}
-                                >
-                                    {categories.map(c => (
-                                        <Option key={c.id} value={c.id}>{c.name}</Option>
-                                    ))}
+                                <Select placeholder="Kateqoriya" style={{ width: screens.md ? 150 : '100%' }} allowClear value={categoryFilter} onChange={setCategoryFilter}>
+                                    {categories.map(c => <Option key={c.id} value={c.id}>{c.name}</Option>)}
                                 </Select>
                             </>
                         )}
+                        <Dropdown menu={columnSelectorMenu} trigger={['click']}>
+                            <Button icon={<SettingOutlined />} />
+                        </Dropdown>
                         <Button
                             type="primary"
                             block={!screens.md}
@@ -517,14 +594,10 @@ const ProductTab = ({ isActive }) => {
                     </Row>
                     <Row gutter={16}>
                         <Col span={8}>
-                            <Form.Item name="brand" label="Brand">
-                                <Input />
-                            </Form.Item>
+                            <Form.Item name="brand" label="Brand"><Input /></Form.Item>
                         </Col>
                         <Col span={8}>
-                            <Form.Item name="model" label="Model">
-                                <Input />
-                            </Form.Item>
+                            <Form.Item name="model" label="Model"><Input /></Form.Item>
                         </Col>
                         <Col span={8}>
                             <Form.Item name="has_serial_number" label="Serial Nömrəli" valuePropName="checked">
@@ -533,50 +606,23 @@ const ProductTab = ({ isActive }) => {
                         </Col>
                     </Row>
                     <Row gutter={16}>
-                        <Col span={6}>
-                            <Form.Item name="size" label="Ölçü">
-                                <Input />
-                            </Form.Item>
-                        </Col>
-                        <Col span={6}>
-                            <Form.Item name="weight" label="Çəki">
-                                <Input />
-                            </Form.Item>
-                        </Col>
-                        <Col span={6}>
-                            <Form.Item name="port_count" label="Port Sayı">
-                                <InputNumber style={{ width: '100%' }} />
-                            </Form.Item>
-                        </Col>
-                        <Col span={6}>
-                            <Form.Item name="price" label="Qiymət">
-                                <InputNumber style={{ width: '100%' }} step="0.01" />
-                            </Form.Item>
-                        </Col>
+                        <Col span={6}><Form.Item name="size" label="Ölçü"><Input /></Form.Item></Col>
+                        <Col span={6}><Form.Item name="weight" label="Çəki"><Input /></Form.Item></Col>
+                        <Col span={6}><Form.Item name="port_count" label="Port Sayı"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+                        <Col span={6}><Form.Item name="price" label="Qiymət"><InputNumber style={{ width: '100%' }} step="0.01" /></Form.Item></Col>
                     </Row>
                     <Row gutter={16}>
-                        <Col span={8}>
-                            <Form.Item name="min_quantity" label="Min Say">
-                                <InputNumber style={{ width: '100%' }} />
-                            </Form.Item>
-                        </Col>
-                        <Col span={8}>
-                            <Form.Item name="max_quantity" label="Max Say">
-                                <InputNumber style={{ width: '100%' }} />
-                            </Form.Item>
-                        </Col>
+                        <Col span={8}><Form.Item name="min_quantity" label="Min Say"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+                        <Col span={8}><Form.Item name="max_quantity" label="Max Say"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
                         <Col span={8}>
                             <Form.Item name="category" label="Kateqoriya">
                                 <Select allowClear placeholder="Kateqoriya seçin">
-                                    {categories.map(c => (
-                                        <Option key={c.id} value={c.id}>{c.name}</Option>
-                                    ))}
+                                    {categories.map(c => <Option key={c.id} value={c.id}>{c.name}</Option>)}
                                 </Select>
                             </Form.Item>
                         </Col>
                     </Row>
 
-                    {/* Dynamic Category Fields */}
                     {selectedCategory && selectedCategory.fields_list && selectedCategory.fields_list.length > 0 && (
                         <>
                             <div style={{ marginBottom: 8, fontWeight: 600, color: '#1890ff' }}>
@@ -589,6 +635,7 @@ const ProductTab = ({ isActive }) => {
                                             name={`cf_${f.id}`}
                                             label={f.name}
                                             rules={f.is_required ? [{ required: true, message: `${f.name} tələb olunur` }] : []}
+                                            {...(f.field_type === 'boolean' ? { valuePropName: 'checked' } : {})}
                                         >
                                             {f.field_type === 'string' && <Input />}
                                             {f.field_type === 'number' && <InputNumber style={{ width: '100%' }} />}
@@ -601,13 +648,8 @@ const ProductTab = ({ isActive }) => {
                         </>
                     )}
 
-                    <Form.Item name="description" label="Təsvir">
-                        <Input.TextArea />
-                    </Form.Item>
-
-                    <Button type="primary" htmlType="submit" block>
-                        Təsdiqlə
-                    </Button>
+                    <Form.Item name="description" label="Təsvir"><Input.TextArea /></Form.Item>
+                    <Button type="primary" htmlType="submit" block>Təsdiqlə</Button>
                 </Form>
             </Modal>
 
@@ -615,7 +657,7 @@ const ProductTab = ({ isActive }) => {
             <Modal
                 title={`Stock Əməliyyatı: ${selectedProduct?.name}`}
                 open={isStockModalOpen}
-                onCancel={() => setIsStockModalOpen(false)}
+                onCancel={() => { setIsStockModalOpen(false); setStockSerialItems([]); }}
                 footer={null}
                 width={500}
                 className={styles.responsiveModal}
@@ -625,10 +667,12 @@ const ProductTab = ({ isActive }) => {
                         <Select onChange={() => {
                             stockForm.setFieldValue('to_warehouse_id', undefined);
                             stockForm.setFieldValue('returned_by', undefined);
+                            stockForm.setFieldValue('serial_number', undefined);
                         }}>
                             <Option value="in">Giriş (Import)</Option>
                             <Option value="out">Çıxış (Export)</Option>
                             <Option value="transfer">Transfer</Option>
+                            <Option value="adjust">Korreksiya (Adjust)</Option>
                             <Option value="return">Qaytarma (Return)</Option>
                         </Select>
                     </Form.Item>
@@ -643,10 +687,7 @@ const ProductTab = ({ isActive }) => {
                         </Select>
                     </Form.Item>
 
-                    <Form.Item
-                        noStyle
-                        shouldUpdate={(prev, current) => prev.movement_type !== current.movement_type}
-                    >
+                    <Form.Item noStyle shouldUpdate={(prev, current) => prev.movement_type !== current.movement_type}>
                         {({ getFieldValue }) =>
                             getFieldValue('movement_type') === 'transfer' ? (
                                 <Form.Item name="to_warehouse_id" label="Hədəf Anbar" rules={[{ required: true }]}>
@@ -662,10 +703,7 @@ const ProductTab = ({ isActive }) => {
                         }
                     </Form.Item>
 
-                    <Form.Item
-                        noStyle
-                        shouldUpdate={(prev, current) => prev.movement_type !== current.movement_type}
-                    >
+                    <Form.Item noStyle shouldUpdate={(prev, current) => prev.movement_type !== current.movement_type}>
                         {({ getFieldValue }) =>
                             getFieldValue('movement_type') === 'return' ? (
                                 <Form.Item name="returned_by" label="Qaytaran haqqında məlumat">
@@ -675,10 +713,26 @@ const ProductTab = ({ isActive }) => {
                         }
                     </Form.Item>
 
-                    {/* Serial number vs normal quantity */}
+                    {/* Serial number: Select for out/transfer, Input for in/return/adjust */}
                     {isSerialProduct ? (
                         <Form.Item name="serial_number" label="Serial Nömrə" rules={[{ required: true, message: 'Serial nömrə tələb olunur' }]}>
-                            <Input placeholder="Serial nömrəni daxil edin" />
+                            {(stockMovementType === 'out' || stockMovementType === 'transfer') ? (
+                                <Select
+                                    placeholder="Serial nömrə seçin"
+                                    showSearch
+                                    optionFilterProp="children"
+                                    loading={stockSerialLoading}
+                                    notFoundContent={stockSerialLoading ? 'Yüklənir...' : 'Tapılmadı'}
+                                >
+                                    {stockSerialItems.map(item => (
+                                        <Option key={item.id} value={item.serial_number}>
+                                            {item.serial_number}
+                                        </Option>
+                                    ))}
+                                </Select>
+                            ) : (
+                                <Input placeholder="Serial nömrəni daxil edin" />
+                            )}
                         </Form.Item>
                     ) : (
                         <Form.Item name="quantity" label="Miqdar" rules={[{ required: true }]}>
@@ -686,17 +740,9 @@ const ProductTab = ({ isActive }) => {
                         </Form.Item>
                     )}
 
-                    <Form.Item name="reference_no" label="Sənəd No / Referans">
-                        <Input />
-                    </Form.Item>
-
-                    <Form.Item name="reason" label="Səbəb / Qeyd">
-                        <Input.TextArea />
-                    </Form.Item>
-
-                    <Button type="primary" htmlType="submit" block>
-                        İcra Et
-                    </Button>
+                    <Form.Item name="reference_no" label="Sənəd No / Referans"><Input /></Form.Item>
+                    <Form.Item name="reason" label="Səbəb / Qeyd"><Input.TextArea /></Form.Item>
+                    <Button type="primary" htmlType="submit" block>İcra Et</Button>
                 </Form>
             </Modal>
 
@@ -706,12 +752,26 @@ const ProductTab = ({ isActive }) => {
                 open={isSerialModalOpen}
                 onCancel={() => setIsSerialModalOpen(false)}
                 footer={null}
-                width={600}
+                width={650}
             >
+                <Input.Search
+                    placeholder="Serial nömrə axtar..."
+                    value={serialSearch}
+                    onChange={(e) => setSerialSearch(e.target.value)}
+                    style={{ marginBottom: 16 }}
+                    allowClear
+                />
                 <List
                     loading={serialLoading}
                     dataSource={serialItems}
                     locale={{ emptyText: 'Serial nömrə yoxdur' }}
+                    pagination={{
+                        current: serialPagination.current,
+                        pageSize: serialPagination.pageSize,
+                        total: serialPagination.total,
+                        onChange: (page) => fetchSerialItems(serialProduct.id, page, serialSearch),
+                        size: 'small',
+                    }}
                     renderItem={item => (
                         <List.Item
                             actions={[
@@ -719,12 +779,10 @@ const ProductTab = ({ isActive }) => {
                                     size="small"
                                     icon={<SwapOutlined />}
                                     onClick={() => {
-                                        setSerialProduct(null);
+                                        const prod = serialProduct;
                                         setIsSerialModalOpen(false);
-                                        setSelectedProduct(serialProduct);
-                                        stockForm.setFieldsValue({
-                                            serial_number: item.serial_number,
-                                        });
+                                        setSelectedProduct(prod);
+                                        stockForm.setFieldsValue({ serial_number: item.serial_number, movement_type: 'out' });
                                         setIsStockModalOpen(true);
                                     }}
                                 >
@@ -735,7 +793,7 @@ const ProductTab = ({ isActive }) => {
                             <List.Item.Meta
                                 avatar={<BarcodeOutlined style={{ fontSize: 20, color: '#1890ff' }} />}
                                 title={item.serial_number}
-                                description={`Anbar: ${item.warehouse_name} | Tarix: ${new Date(item.created_at).toLocaleDateString('az-AZ')}`}
+                                description={`Anbar: ${item.warehouse_name} | ${new Date(item.created_at).toLocaleDateString('az-AZ')}`}
                             />
                         </List.Item>
                     )}
