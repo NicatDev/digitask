@@ -3,6 +3,7 @@ import { Tabs, Typography } from 'antd';
 import WarehouseTab from './components/WarehouseTab';
 import ProductTab from './components/ProductTab';
 import HistoryTab from './components/HistoryTab';
+import CategoryTab from './components/CategoryTab';
 import styles from './style.module.scss';
 
 const { Title } = Typography;
@@ -23,8 +24,13 @@ const WarehousePage = () => {
         },
         {
             key: '3',
+            label: 'Kateqoriyalar',
+            children: <CategoryTab isActive={activeTab === '3'} />,
+        },
+        {
+            key: '4',
             label: 'Tarixçə',
-            children: <HistoryTab isActive={activeTab === '3'} />,
+            children: <HistoryTab isActive={activeTab === '4'} />,
         },
     ];
 
@@ -37,3 +43,4 @@ const WarehousePage = () => {
 };
 
 export default WarehousePage;
+

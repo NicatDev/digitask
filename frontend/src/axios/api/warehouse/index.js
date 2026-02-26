@@ -19,5 +19,13 @@ export const getInventory = (params) => service.get('/warehouse/inventory/', { p
 export const getStockMovements = (params) => service.get('/warehouse/movements/', { params });
 export const adjustStock = (data) => service.post('/warehouse/movements/adjust/', data);
 
-// Helper to get Regions (re-using account api if needed or direct call if exposed specific)
-// But regions are in users/api/account usually. We can reuse 'getRegions' from account.js
+// Categories
+export const getCategories = (params) => service.get('/warehouse/categories/', { params });
+export const createCategory = (data) => service.post('/warehouse/categories/', data);
+export const updateCategory = (id, data) => service.patch(`/warehouse/categories/${id}/`, data);
+export const deleteCategory = (id) => service.delete(`/warehouse/categories/${id}/`);
+export const addCategoryField = (categoryId, data) => service.post(`/warehouse/categories/${categoryId}/add-field/`, data);
+export const removeCategoryField = (categoryId, fieldId) => service.delete(`/warehouse/categories/${categoryId}/remove-field/${fieldId}/`);
+
+// Serial Number Items
+export const getSerialItems = (params) => service.get('/warehouse/serial-items/', { params });

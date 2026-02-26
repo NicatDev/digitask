@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, message, Popconfirm, Switch, Select, Grid, InputNumber, Row, Col, Popover, Badge } from 'antd';
-import { FilterOutlined, SwapOutlined, PlusOutlined, MinusOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, message, Popconfirm, Switch, Select, Grid, InputNumber, Row, Col, Popover, Badge, List, Tag, Tooltip, DatePicker, Checkbox } from 'antd';
+import { FilterOutlined, SwapOutlined, PlusOutlined, BarcodeOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import styles from './style.module.scss';
-import { getProducts, createProduct, updateProduct, deleteProduct, adjustStock, getWarehouses, getInventory } from '../../../../axios/api/warehouse/index';
+import { getProducts, createProduct, updateProduct, deleteProduct, adjustStock, getWarehouses, getInventory, getCategories, getSerialItems } from '../../../../axios/api/warehouse/index';
 import { handleApiError } from '../../../../utils/errorHandler';
 import { useAuth } from '../../../../context/AuthContext';
 import { hasPermission, PERMISSIONS } from '../../../../utils/permissions';
@@ -14,12 +14,15 @@ const ProductTab = ({ isActive }) => {
     const [loading, setLoading] = useState(false);
     const [warehouses, setWarehouses] = useState([]);
     const [inventory, setInventory] = useState([]);
+    const [categories, setCategories] = useState([]);
     const { user } = useAuth();
 
     // Filter States
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState(true); // Default: active only
+    const [warehouseFilter, setWarehouseFilter] = useState(null);
+    const [categoryFilter, setCategoryFilter] = useState(null);
     const [showFilters, setShowFilters] = useState(false);
     const screens = Grid.useBreakpoint();
 
@@ -27,11 +30,18 @@ const ProductTab = ({ isActive }) => {
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [form] = Form.useForm();
+    const [selectedCategory, setSelectedCategory] = useState(null);
 
     // Stock Modal
     const [isStockModalOpen, setIsStockModalOpen] = useState(false);
     const [stockForm] = Form.useForm();
     const [selectedProduct, setSelectedProduct] = useState(null);
+
+    // Serial Number List Modal
+    const [isSerialModalOpen, setIsSerialModalOpen] = useState(false);
+    const [serialItems, setSerialItems] = useState([]);
+    const [serialLoading, setSerialLoading] = useState(false);
+    const [serialProduct, setSerialProduct] = useState(null);
 
     const [pagination, setPagination] = useState({
         current: 1,
@@ -43,7 +53,7 @@ const ProductTab = ({ isActive }) => {
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearchText(searchText);
-            setPagination(prev => ({ ...prev, current: 1 })); // Reset to page 1 on search
+            setPagination(prev => ({ ...prev, current: 1 }));
         }, 500);
         return () => clearTimeout(timer);
     }, [searchText]);
@@ -60,11 +70,15 @@ const ProductTab = ({ isActive }) => {
             if (statusFilter !== 'all') {
                 queryParams.is_active = statusFilter;
             }
+            if (categoryFilter) {
+                queryParams.category = categoryFilter;
+            }
 
-            const [productsRes, warehousesRes, inventoryRes] = await Promise.all([
+            const [productsRes, warehousesRes, inventoryRes, categoriesRes] = await Promise.all([
                 getProducts(queryParams),
                 getWarehouses(),
-                getInventory() // Note: This might need pagination too if list is huge
+                getInventory(),
+                getCategories({ page_size: 100 })
             ]);
 
             const productsData = productsRes.data;
@@ -78,6 +92,7 @@ const ProductTab = ({ isActive }) => {
 
             setWarehouses(warehousesRes.data.results || warehousesRes.data);
             setInventory(inventoryRes.data.results || inventoryRes.data);
+            setCategories(categoriesRes.data.results || categoriesRes.data || []);
         } catch (error) {
             console.error(error);
             handleApiError(error, 'Məlumatları yükləmək mümkün olmadı');
@@ -90,16 +105,14 @@ const ProductTab = ({ isActive }) => {
         if (isActive) {
             fetchData();
         }
-    }, [isActive, debouncedSearchText, statusFilter]);
+    }, [isActive, debouncedSearchText, statusFilter, warehouseFilter, categoryFilter]);
 
-    const handleTableChange = (newPagination, filters, sorter) => {
+    const handleTableChange = (newPagination) => {
         fetchData({
             current: newPagination.current,
             pageSize: newPagination.pageSize,
         });
     };
-
-
 
     const handleDelete = async (id) => {
         try {
@@ -113,6 +126,20 @@ const ProductTab = ({ isActive }) => {
 
     const onProductFinish = async (values) => {
         try {
+            // Build category_data from dynamic fields
+            const cat = categories.find(c => c.id === values.category);
+            if (cat && cat.fields_list) {
+                const categoryData = {};
+                cat.fields_list.forEach(f => {
+                    const key = `cf_${f.id}`;
+                    if (values[key] !== undefined && values[key] !== null) {
+                        categoryData[f.name] = values[key];
+                    }
+                    delete values[key];
+                });
+                values.category_data = categoryData;
+            }
+
             if (editingItem) {
                 await updateProduct(editingItem.id, values);
                 message.success('Məhsul yeniləndi');
@@ -123,6 +150,7 @@ const ProductTab = ({ isActive }) => {
             setIsProductModalOpen(false);
             form.resetFields();
             setEditingItem(null);
+            setSelectedCategory(null);
             fetchData();
         } catch (error) {
             handleApiError(error, 'Əməliyyat uğursuz oldu');
@@ -150,20 +178,37 @@ const ProductTab = ({ isActive }) => {
             setIsStockModalOpen(false);
             stockForm.resetFields();
             setSelectedProduct(null);
-            fetchData(); // Refresh data after stock adjustment
+            fetchData();
         } catch (error) {
             handleApiError(error, 'Stock əməliyyatı uğursuz oldu');
         }
     };
 
-
+    // Serial number modal
+    const openSerialModal = async (product) => {
+        setSerialProduct(product);
+        setIsSerialModalOpen(true);
+        setSerialLoading(true);
+        try {
+            const res = await getSerialItems({ product: product.id, page_size: 100 });
+            setSerialItems(res.data.results || res.data || []);
+        } catch (e) {
+            message.error('Serial nömrələr yüklənmədi');
+        } finally {
+            setSerialLoading(false);
+        }
+    };
 
     const getProductInventory = (productId) => {
         return inventory.filter(inv => inv.product === productId);
     };
 
-    const getTotalStock = (productId) => {
+    const getStockForProduct = (productId) => {
         const productInv = getProductInventory(productId);
+        if (warehouseFilter) {
+            const inv = productInv.find(i => i.warehouse === warehouseFilter);
+            return inv ? parseFloat(inv.quantity || 0) : 0;
+        }
         return productInv.reduce((sum, inv) => sum + parseFloat(inv.quantity || 0), 0);
     };
 
@@ -184,42 +229,81 @@ const ProductTab = ({ isActive }) => {
         );
     };
 
+    // Get dynamic columns for selected category
+    const getCategoryColumns = () => {
+        if (!categoryFilter) return [];
+        const cat = categories.find(c => c.id === categoryFilter);
+        if (!cat || !cat.fields_list) return [];
+        return cat.fields_list.map(f => ({
+            title: f.name,
+            key: `cf_${f.id}`,
+            render: (_, record) => {
+                const val = record.category_data?.[f.name];
+                if (val === undefined || val === null) return '-';
+                if (f.field_type === 'boolean') return val ? '✓' : '✗';
+                return String(val);
+            }
+        }));
+    };
+
     const columns = [
         { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
         { title: 'Ad', dataIndex: 'name', key: 'name', width: 150 },
         { title: 'Brand', dataIndex: 'brand', key: 'brand' },
         { title: 'Model', dataIndex: 'model', key: 'model' },
-        { title: 'Serial No', dataIndex: 'serial_number', key: 'serial_number' },
-        { title: 'Ölçü', dataIndex: 'size', key: 'size' },
-        { title: 'Çəki', dataIndex: 'weight', key: 'weight' },
-        { title: 'Port Sayı', dataIndex: 'port_count', key: 'port_count' },
+        {
+            title: 'Serial',
+            key: 'serial_info',
+            width: 100,
+            render: (_, record) => {
+                if (!record.has_serial_number) {
+                    return <Tag color="default">—</Tag>;
+                }
+                return (
+                    <Button
+                        size="small"
+                        type="link"
+                        icon={<BarcodeOutlined />}
+                        onClick={() => openSerialModal(record)}
+                    >
+                        {record.serial_count || 0}
+                    </Button>
+                );
+            }
+        },
+        ...(categoryFilter ? [] : [
+            { title: 'Ölçü', dataIndex: 'size', key: 'size' },
+            { title: 'Çəki', dataIndex: 'weight', key: 'weight' },
+            { title: 'Port Sayı', dataIndex: 'port_count', key: 'port_count' },
+        ]),
+        { title: 'Kateqoriya', dataIndex: 'category_name', key: 'category_name', render: v => v || '-' },
+        ...getCategoryColumns(),
         { title: 'Qiymət', dataIndex: 'price', key: 'price', render: (val) => val ? `${parseFloat(val).toFixed(2)} ₼` : '-' },
         { title: 'Vahid', dataIndex: 'unit_display', key: 'unit_display' },
-        { title: 'Min Say', dataIndex: 'min_quantity', key: 'min_quantity', render: (val) => val ? parseFloat(val).toFixed(2) : '-' },
-        { title: 'Max Say', dataIndex: 'max_quantity', key: 'max_quantity', render: (val) => val ? parseFloat(val).toFixed(2) : '-' },
+        { title: 'Min', dataIndex: 'min_quantity', key: 'min_quantity', render: (val) => val ? parseFloat(val).toFixed(2) : '-' },
+        { title: 'Max', dataIndex: 'max_quantity', key: 'max_quantity', render: (val) => val ? parseFloat(val).toFixed(2) : '-' },
         {
             title: 'Say',
             key: 'total_stock',
             width: 120,
             render: (_, record) => {
-                const total = getTotalStock(record.id);
+                const total = getStockForProduct(record.id);
                 const min = record.min_quantity ? parseFloat(record.min_quantity) : null;
                 const max = record.max_quantity ? parseFloat(record.max_quantity) : null;
 
-                let color = '#52c41a'; // Green (OK)
-                let tooltip = 'Normal';
+                let color = '#52c41a';
+                if (min !== null && total < min) color = '#faad14';
+                if (max !== null && total > max) color = '#faad14';
 
-                if (min !== null && total < min) {
-                    color = '#faad14'; // Yellow (Low stock)
-                    tooltip = 'Minimumdan az';
-                }
-                if (max !== null && total > max) {
-                    color = '#f5222d'; // Red (Over stock) - using Red for critical/over
-                    // Or keep Yellow for warning? Usually overstock is less critical than understock but still a warning.
-                    // User said "sari rengde" (yellow) if less or more. Let's use flexible logic.
-                    // Request: "eger az ve ya coxdusa sari rengde" -> Yellow for both.
-                    color = '#faad14';
-                    tooltip = total > max ? 'Maksimumdan çox' : 'Minimumdan az';
+                // If warehouse filter is active — no popover
+                if (warehouseFilter) {
+                    return (
+                        <Badge
+                            count={total.toFixed(2)}
+                            style={{ backgroundColor: color }}
+                            overflowCount={99999}
+                        />
+                    );
                 }
 
                 return (
@@ -230,7 +314,6 @@ const ProductTab = ({ isActive }) => {
                                 style={{ backgroundColor: color }}
                                 overflowCount={99999}
                             />
-                            {/* <InfoCircleOutlined style={{ color: '#1890ff' }} /> */}
                         </span>
                     </Popover>
                 );
@@ -272,7 +355,17 @@ const ProductTab = ({ isActive }) => {
                 <>
                     <Button type="link" onClick={() => {
                         setEditingItem(record);
-                        form.setFieldsValue(record);
+                        // Set category fields
+                        const cat = categories.find(c => c.id === record.category);
+                        setSelectedCategory(cat || null);
+                        const formValues = { ...record };
+                        // Populate dynamic fields
+                        if (cat && cat.fields_list && record.category_data) {
+                            cat.fields_list.forEach(f => {
+                                formValues[`cf_${f.id}`] = record.category_data[f.name];
+                            });
+                        }
+                        form.setFieldsValue(formValues);
                         setIsProductModalOpen(true);
                     }}>Düzəliş</Button>
                     <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => handleDelete(record.id)}>
@@ -282,6 +375,20 @@ const ProductTab = ({ isActive }) => {
             ),
         },
     ];
+
+    // Get selected category for product form
+    const formCategory = Form.useWatch('category', form);
+    useEffect(() => {
+        if (formCategory) {
+            const cat = categories.find(c => c.id === formCategory);
+            setSelectedCategory(cat || null);
+        } else {
+            setSelectedCategory(null);
+        }
+    }, [formCategory, categories]);
+
+    const isSerialProduct = selectedProduct?.has_serial_number;
+    const stockMovementType = Form.useWatch('movement_type', stockForm);
 
     return (
         <div>
@@ -295,7 +402,7 @@ const ProductTab = ({ isActive }) => {
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: screens.md ? 'auto' : '100%' }}>
                         <Input.Search
-                            placeholder="Axtar (Ad, Brand, Model)..."
+                            placeholder="Axtar (Ad, Brand, Model, Serial)..."
                             onChange={(e) => setSearchText(e.target.value)}
                             style={{ width: screens.md ? 250 : '100%' }}
                         />
@@ -319,14 +426,35 @@ const ProductTab = ({ isActive }) => {
                             <>
                                 <Select
                                     placeholder="Status"
-                                    style={{ width: screens.md ? 150 : '100%' }}
-                                    allowClear
+                                    style={{ width: screens.md ? 120 : '100%' }}
                                     value={statusFilter}
                                     onChange={setStatusFilter}
                                 >
-                                    <Select.Option value="all">Hamısı</Select.Option>
-                                    <Select.Option value={true}>Aktiv</Select.Option>
-                                    <Select.Option value={false}>Deaktiv</Select.Option>
+                                    <Option value="all">Hamısı</Option>
+                                    <Option value={true}>Aktiv</Option>
+                                    <Option value={false}>Deaktiv</Option>
+                                </Select>
+                                <Select
+                                    placeholder="Anbar"
+                                    style={{ width: screens.md ? 150 : '100%' }}
+                                    allowClear
+                                    value={warehouseFilter}
+                                    onChange={setWarehouseFilter}
+                                >
+                                    {warehouses.map(w => (
+                                        <Option key={w.id} value={w.id}>{w.name}</Option>
+                                    ))}
+                                </Select>
+                                <Select
+                                    placeholder="Kateqoriya"
+                                    style={{ width: screens.md ? 150 : '100%' }}
+                                    allowClear
+                                    value={categoryFilter}
+                                    onChange={setCategoryFilter}
+                                >
+                                    {categories.map(c => (
+                                        <Option key={c.id} value={c.id}>{c.name}</Option>
+                                    ))}
                                 </Select>
                             </>
                         )}
@@ -336,6 +464,7 @@ const ProductTab = ({ isActive }) => {
                             onClick={() => {
                                 setEditingItem(null);
                                 form.resetFields();
+                                setSelectedCategory(null);
                                 setIsProductModalOpen(true);
                             }}
                             disabled={!hasPermission(user, PERMISSIONS.WAREHOUSE_WRITER)}
@@ -360,7 +489,7 @@ const ProductTab = ({ isActive }) => {
             <Modal
                 title={editingItem ? "Məhsulu Düzəlt" : "Yeni Məhsul"}
                 open={isProductModalOpen}
-                onCancel={() => setIsProductModalOpen(false)}
+                onCancel={() => { setIsProductModalOpen(false); setSelectedCategory(null); }}
                 footer={null}
                 width={800}
                 className={styles.responsiveModal}
@@ -398,8 +527,8 @@ const ProductTab = ({ isActive }) => {
                             </Form.Item>
                         </Col>
                         <Col span={8}>
-                            <Form.Item name="serial_number" label="Serial Nömrə">
-                                <Input />
+                            <Form.Item name="has_serial_number" label="Serial Nömrəli" valuePropName="checked">
+                                <Switch />
                             </Form.Item>
                         </Col>
                     </Row>
@@ -426,17 +555,52 @@ const ProductTab = ({ isActive }) => {
                         </Col>
                     </Row>
                     <Row gutter={16}>
-                        <Col span={12}>
+                        <Col span={8}>
                             <Form.Item name="min_quantity" label="Min Say">
                                 <InputNumber style={{ width: '100%' }} />
                             </Form.Item>
                         </Col>
-                        <Col span={12}>
+                        <Col span={8}>
                             <Form.Item name="max_quantity" label="Max Say">
                                 <InputNumber style={{ width: '100%' }} />
                             </Form.Item>
                         </Col>
+                        <Col span={8}>
+                            <Form.Item name="category" label="Kateqoriya">
+                                <Select allowClear placeholder="Kateqoriya seçin">
+                                    {categories.map(c => (
+                                        <Option key={c.id} value={c.id}>{c.name}</Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+                        </Col>
                     </Row>
+
+                    {/* Dynamic Category Fields */}
+                    {selectedCategory && selectedCategory.fields_list && selectedCategory.fields_list.length > 0 && (
+                        <>
+                            <div style={{ marginBottom: 8, fontWeight: 600, color: '#1890ff' }}>
+                                {selectedCategory.name} sahələri
+                            </div>
+                            <Row gutter={16}>
+                                {selectedCategory.fields_list.map(f => (
+                                    <Col span={8} key={f.id}>
+                                        <Form.Item
+                                            name={`cf_${f.id}`}
+                                            label={f.name}
+                                            rules={f.is_required ? [{ required: true, message: `${f.name} tələb olunur` }] : []}
+                                        >
+                                            {f.field_type === 'string' && <Input />}
+                                            {f.field_type === 'number' && <InputNumber style={{ width: '100%' }} />}
+                                            {f.field_type === 'boolean' && <Switch />}
+                                            {f.field_type === 'date' && <DatePicker style={{ width: '100%' }} />}
+                                        </Form.Item>
+                                    </Col>
+                                ))}
+                            </Row>
+                        </>
+                    )}
+
                     <Form.Item name="description" label="Təsvir">
                         <Input.TextArea />
                     </Form.Item>
@@ -511,9 +675,16 @@ const ProductTab = ({ isActive }) => {
                         }
                     </Form.Item>
 
-                    <Form.Item name="quantity" label="Miqdar" rules={[{ required: true }]}>
-                        <InputNumber style={{ width: '100%' }} min={0} step={0.001} />
-                    </Form.Item>
+                    {/* Serial number vs normal quantity */}
+                    {isSerialProduct ? (
+                        <Form.Item name="serial_number" label="Serial Nömrə" rules={[{ required: true, message: 'Serial nömrə tələb olunur' }]}>
+                            <Input placeholder="Serial nömrəni daxil edin" />
+                        </Form.Item>
+                    ) : (
+                        <Form.Item name="quantity" label="Miqdar" rules={[{ required: true }]}>
+                            <InputNumber style={{ width: '100%' }} min={0} step={0.001} />
+                        </Form.Item>
+                    )}
 
                     <Form.Item name="reference_no" label="Sənəd No / Referans">
                         <Input />
@@ -527,6 +698,48 @@ const ProductTab = ({ isActive }) => {
                         İcra Et
                     </Button>
                 </Form>
+            </Modal>
+
+            {/* Serial Number List Modal */}
+            <Modal
+                title={`Serial Nömrələr: ${serialProduct?.name || ''}`}
+                open={isSerialModalOpen}
+                onCancel={() => setIsSerialModalOpen(false)}
+                footer={null}
+                width={600}
+            >
+                <List
+                    loading={serialLoading}
+                    dataSource={serialItems}
+                    locale={{ emptyText: 'Serial nömrə yoxdur' }}
+                    renderItem={item => (
+                        <List.Item
+                            actions={[
+                                <Button
+                                    size="small"
+                                    icon={<SwapOutlined />}
+                                    onClick={() => {
+                                        setSerialProduct(null);
+                                        setIsSerialModalOpen(false);
+                                        setSelectedProduct(serialProduct);
+                                        stockForm.setFieldsValue({
+                                            serial_number: item.serial_number,
+                                        });
+                                        setIsStockModalOpen(true);
+                                    }}
+                                >
+                                    Export/Transfer
+                                </Button>
+                            ]}
+                        >
+                            <List.Item.Meta
+                                avatar={<BarcodeOutlined style={{ fontSize: 20, color: '#1890ff' }} />}
+                                title={item.serial_number}
+                                description={`Anbar: ${item.warehouse_name} | Tarix: ${new Date(item.created_at).toLocaleDateString('az-AZ')}`}
+                            />
+                        </List.Item>
+                    )}
+                />
             </Modal>
         </div>
     );

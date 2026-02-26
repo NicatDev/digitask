@@ -1,2 +1,2 @@
-from .common import WarehouseViewSet, ProductViewSet
-from .stock import WarehouseInventoryViewSet, StockMovementViewSet
+from .common import WarehouseViewSet, ProductViewSet, ProductCategoryViewSet
+from .stock import WarehouseInventoryViewSet, StockMovementViewSet, SerialNumberItemViewSet

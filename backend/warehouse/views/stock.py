@@ -4,12 +4,14 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db import transaction
 from decimal import Decimal
-from ..models import Warehouse, Product, WarehouseInventory, StockMovement
+from ..models import Warehouse, Product, WarehouseInventory, StockMovement, SerialNumberItem
 from ..serializers import (
     WarehouseInventorySerializer,
-    StockMovementSerializer
+    StockMovementSerializer,
+    SerialNumberItemSerializer
 )
 from .common import StandardResultsSetPagination
+
 
 class WarehouseInventoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = WarehouseInventory.objects.all()
@@ -19,12 +21,22 @@ class WarehouseInventoryViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['product__name', 'warehouse__name']
     filterset_fields = ['warehouse', 'product']
 
+
+class SerialNumberItemViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = SerialNumberItem.objects.all()
+    serializer_class = SerialNumberItemSerializer
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    search_fields = ['serial_number', 'product__name']
+    filterset_fields = ['product', 'warehouse']
+
+
 class StockMovementViewSet(viewsets.ModelViewSet):
     queryset = StockMovement.objects.all().order_by('-created_at')
     serializer_class = StockMovementSerializer
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['product__name', 'warehouse__name', 'reference_no', 'reason']
+    search_fields = ['product__name', 'warehouse__name', 'reference_no', 'reason', 'serial_number']
     filterset_fields = ['warehouse', 'product', 'movement_type', 'created_by']
 
     def perform_create(self, serializer):
@@ -35,10 +47,10 @@ class StockMovementViewSet(viewsets.ModelViewSet):
         data = request.data
         warehouse_id = data.get('warehouse_id')
         product_id = data.get('product_id')
-        qty = Decimal(str(data.get('quantity', 0)))
         m_type = data.get('movement_type')
+        serial_number_value = data.get('serial_number', '').strip()
         
-        if not all([warehouse_id, product_id, qty, m_type]):
+        if not all([warehouse_id, product_id, m_type]):
             return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
@@ -50,6 +62,80 @@ class StockMovementViewSet(viewsets.ModelViewSet):
             )
             
             qty_old = inventory.quantity
+
+            # ─── Serial Nömrəli Məhsullar ───
+            if product.has_serial_number:
+                if m_type == StockMovement.Type.TRANSFER:
+                    return self._handle_serial_transfer(
+                        request, data, warehouse, product, inventory, qty_old, serial_number_value
+                    )
+                
+                if not serial_number_value:
+                    return Response({'error': 'Serial nömrə tələb olunur'}, status=status.HTTP_400_BAD_REQUEST)
+                
+                if m_type in [StockMovement.Type.IN, StockMovement.Type.RETURN]:
+                    # Check uniqueness
+                    if SerialNumberItem.objects.filter(serial_number=serial_number_value).exists():
+                        return Response(
+                            {'error': f'Bu serial nömrə artıq mövcuddur: {serial_number_value}'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    SerialNumberItem.objects.create(
+                        product=product, warehouse=warehouse, serial_number=serial_number_value
+                    )
+                    qty_new = qty_old + 1
+                
+                elif m_type == StockMovement.Type.OUT:
+                    try:
+                        item = SerialNumberItem.objects.get(
+                            serial_number=serial_number_value, product=product, warehouse=warehouse
+                        )
+                        item.delete()
+                        qty_new = qty_old - 1
+                    except SerialNumberItem.DoesNotExist:
+                        return Response(
+                            {'error': f'Bu serial nömrə bu anbarda tapılmadı: {serial_number_value}'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                
+                elif m_type == StockMovement.Type.ADJUST:
+                    # For serial products, adjust can add or remove
+                    if not SerialNumberItem.objects.filter(serial_number=serial_number_value).exists():
+                        SerialNumberItem.objects.create(
+                            product=product, warehouse=warehouse, serial_number=serial_number_value
+                        )
+                        qty_new = qty_old + 1
+                    else:
+                        return Response(
+                            {'error': f'Bu serial nömrə artıq mövcuddur: {serial_number_value}'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                else:
+                    return Response({'error': 'Dəstəklənməyən əməliyyat növü'}, status=status.HTTP_400_BAD_REQUEST)
+                
+                inventory.quantity = qty_new
+                inventory.save()
+                
+                StockMovement.objects.create(
+                    warehouse=warehouse,
+                    product=product,
+                    movement_type=m_type,
+                    reason=data.get('reason', ''),
+                    quantity_old=qty_old,
+                    quantity_new=qty_new,
+                    created_by=request.user,
+                    reference_no=data.get('reference_no', ''),
+                    serial_number=serial_number_value,
+                    returned_by=data.get('returned_by', '') if m_type == StockMovement.Type.RETURN else None
+                )
+                
+                return Response({'status': 'Stock adjusted', 'new_quantity': str(qty_new)})
+
+            # ─── Normal Məhsullar (serial nömrəsiz) ───
+            qty = Decimal(str(data.get('quantity', 0)))
+            if not qty:
+                return Response({'error': 'Miqdar tələb olunur'}, status=status.HTTP_400_BAD_REQUEST)
+            
             qty_new = qty_old
 
             if m_type == StockMovement.Type.IN:
@@ -59,7 +145,11 @@ class StockMovementViewSet(viewsets.ModelViewSet):
             elif m_type == StockMovement.Type.ADJUST:
                 qty_new += qty
             elif m_type == StockMovement.Type.RETURN:
-                 qty_new += qty
+                qty_new += qty
+            elif m_type == StockMovement.Type.TRANSFER:
+                return self._handle_normal_transfer(
+                    request, data, warehouse, product, inventory, qty_old, qty
+                )
             
             inventory.quantity = qty_new
             inventory.save()
@@ -75,102 +165,94 @@ class StockMovementViewSet(viewsets.ModelViewSet):
                 reference_no=data.get('reference_no', ''),
                 returned_by=data.get('returned_by', '') if m_type == StockMovement.Type.RETURN else None
             )
-            
-            if m_type == StockMovement.Type.TRANSFER:
-                to_wh_id = data.get('to_warehouse_id')
-                if not to_wh_id:
-                     # This check should probably return a response or raise a DRF ValidationError properly
-                     return Response({'error': "Target warehouse required for transfer"}, status=status.HTTP_400_BAD_REQUEST)
-                
-                to_warehouse = Warehouse.objects.get(pk=to_wh_id)
-                to_inventory, _ = WarehouseInventory.objects.get_or_create(
-                    warehouse=to_warehouse, product=product
-                )
-                
-                # Correct Transfer Logic:
-                # 1. Source (Warehouse) -> Already decreased by base logic (treated as OUT essentially or delta applied)
-                # wait, in my original code:
-                # if m_type == TRANSFER:
-                #   inventory.quantity = qty_old - qty 
-                #   I overwrote the adjustment.
-                
-                # Let's fix logical consistency from previous file.
-                # In previous file, I did generic mix, then overwrote for Transfer.
-                # Here I should just do it cleanly.
 
-                # Let's clean up logic:
-                # Revert the generic change for Transfer to avoid double accounting or confusion, 
-                # OR handle it specifically.
-                
-                # Actually, let's keep it simple. Only apply generic logic if NOT transfer, or handle transfer completely separately.
-                # But to preserve existing behavior:
-                
-                # Reset source inventory change from generic block if it was wrong?
-                # Generic block: 
-                # elif m_type == StockMovement.Type.ADJUST: ...
-                # Wait, TRANSFER wasn't in the generic block in previous code?
-                # Ah, I missed 'TRANSFER' case in logic block above in previous file?
-                # No, I didn't have TRANSFER in the if/elif chain for `qty_new` calculation in the view I just pasted.
-                # Wait, looking at `views.py` I read earlier:
-                # if m_type == IN ... elif OUT ... elif ADJUST ... elif RETURN
-                # It didn't handle TRANSFER in the generic `qty_new` calculation!
-                # So `qty_new` remained `qty_old` for transfer in that block.
-                # Then `inventory.quantity = qty_new` saved it as unchanged.
-                # THEN in `if m_type == TRANSFER`: it did `inventory.quantity = qty_old - qty` and saved.
-                
-                # So, I should explicitly handle TRANSFER in the if/elif chain or leave it as is.
-                # I will create a cleaner version here.
-                pass
+        return Response({'status': 'Stock adjusted', 'new_quantity': str(qty_new)})
 
-            # RETHINKING LOGIC FOR CLEANER IMPLEMENTATION IN REFACTOR
-            # If Transfer:
-            # Source: -qty
-            # Dest: +qty
-            
-            if m_type == StockMovement.Type.TRANSFER:
-                 # Source
-                 inventory.quantity = qty_old - qty
-                 inventory.save()
+    def _handle_serial_transfer(self, request, data, warehouse, product, inventory, qty_old, serial_number_value):
+        """Transfer a serial-numbered item between warehouses."""
+        to_wh_id = data.get('to_warehouse_id')
+        if not to_wh_id:
+            return Response({'error': 'Hədəf anbar tələb olunur'}, status=status.HTTP_400_BAD_REQUEST)
+        if not serial_number_value:
+            return Response({'error': 'Serial nömrə tələb olunur'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        to_warehouse = Warehouse.objects.get(pk=to_wh_id)
+        
+        try:
+            item = SerialNumberItem.objects.get(
+                serial_number=serial_number_value, product=product, warehouse=warehouse
+            )
+        except SerialNumberItem.DoesNotExist:
+            return Response(
+                {'error': f'Bu serial nömrə bu anbarda tapılmadı: {serial_number_value}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Move item to destination warehouse
+        item.warehouse = to_warehouse
+        item.save()
+        
+        # Update source inventory
+        inventory.quantity = qty_old - 1
+        inventory.save()
+        
+        # Update destination inventory
+        to_inventory, _ = WarehouseInventory.objects.get_or_create(warehouse=to_warehouse, product=product)
+        to_qty_old = to_inventory.quantity
+        to_inventory.quantity = to_qty_old + 1
+        to_inventory.save()
+        
+        # Create movement records
+        StockMovement.objects.create(
+            warehouse=warehouse, to_warehouse=to_warehouse, product=product,
+            movement_type=StockMovement.Type.TRANSFER,
+            reason=f"Transfer OUT to {to_warehouse.name}",
+            quantity_old=qty_old, quantity_new=inventory.quantity,
+            created_by=request.user, reference_no=data.get('reference_no', ''),
+            serial_number=serial_number_value
+        )
+        StockMovement.objects.create(
+            warehouse=to_warehouse, from_warehouse=warehouse, product=product,
+            movement_type=StockMovement.Type.TRANSFER,
+            reason=f"Transfer IN from {warehouse.name}",
+            quantity_old=to_qty_old, quantity_new=to_inventory.quantity,
+            created_by=request.user, reference_no=data.get('reference_no', ''),
+            serial_number=serial_number_value
+        )
+        
+        return Response({'status': 'Transfer successful'})
 
-                 to_wh_id = data.get('to_warehouse_id')
-                 if not to_wh_id:
-                      raise ValueError("Target warehouse required")
-
-                 to_warehouse = Warehouse.objects.get(pk=to_wh_id)
-                 to_inventory, _ = WarehouseInventory.objects.get_or_create(warehouse=to_warehouse, product=product)
-                 
-                 to_qty_old = to_inventory.quantity
-                 to_inventory.quantity = to_qty_old + qty
-                 to_inventory.save()
-                 
-                 # Create 2 records? One OUT from source, One IN to dest. Or 1 Record with from/to?
-                 # My model has from/to fields.
-                 # Usually 2 records are better for localized history in each warehouse tab.
-                 # Creating Record 1 (OUT equivalent)
-                 StockMovement.objects.create(
-                    warehouse=warehouse,
-                    to_warehouse=to_warehouse,
-                    product=product,
-                    movement_type=StockMovement.Type.TRANSFER,
-                    reason=f"Transfer OUT to {to_warehouse.name}",
-                    quantity_old=qty_old,
-                    quantity_new=inventory.quantity,
-                    created_by=request.user,
-                    reference_no=data.get('reference_no', '')
-                 )
-                 # Record 2 (IN equivalent)
-                 StockMovement.objects.create(
-                    warehouse=to_warehouse,
-                    from_warehouse=warehouse,
-                    product=product,
-                    movement_type=StockMovement.Type.TRANSFER,
-                    reason=f"Transfer IN from {warehouse.name}",
-                    quantity_old=to_qty_old,
-                    quantity_new=to_inventory.quantity,
-                    created_by=request.user,
-                    reference_no=data.get('reference_no', '')
-                 )
-                 
-                 return Response({'status': 'Transfer successful'})
-
-        return Response({'status': 'Stock adjusted', 'new_quantity': qty_new})
+    def _handle_normal_transfer(self, request, data, warehouse, product, inventory, qty_old, qty):
+        """Transfer a normal (non-serial) product between warehouses."""
+        to_wh_id = data.get('to_warehouse_id')
+        if not to_wh_id:
+            return Response({'error': 'Hədəf anbar tələb olunur'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        to_warehouse = Warehouse.objects.get(pk=to_wh_id)
+        
+        # Source
+        inventory.quantity = qty_old - qty
+        inventory.save()
+        
+        # Destination
+        to_inventory, _ = WarehouseInventory.objects.get_or_create(warehouse=to_warehouse, product=product)
+        to_qty_old = to_inventory.quantity
+        to_inventory.quantity = to_qty_old + qty
+        to_inventory.save()
+        
+        StockMovement.objects.create(
+            warehouse=warehouse, to_warehouse=to_warehouse, product=product,
+            movement_type=StockMovement.Type.TRANSFER,
+            reason=f"Transfer OUT to {to_warehouse.name}",
+            quantity_old=qty_old, quantity_new=inventory.quantity,
+            created_by=request.user, reference_no=data.get('reference_no', '')
+        )
+        StockMovement.objects.create(
+            warehouse=to_warehouse, from_warehouse=warehouse, product=product,
+            movement_type=StockMovement.Type.TRANSFER,
+            reason=f"Transfer IN from {warehouse.name}",
+            quantity_old=to_qty_old, quantity_new=to_inventory.quantity,
+            created_by=request.user, reference_no=data.get('reference_no', '')
+        )
+        
+        return Response({'status': 'Transfer successful'})

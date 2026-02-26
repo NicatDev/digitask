@@ -1,2 +1,2 @@
-from .common import WarehouseSerializer, ProductSerializer
-from .stock import WarehouseInventorySerializer, StockMovementSerializer
+from .common import WarehouseSerializer, ProductSerializer, ProductCategorySerializer, CategoryFieldSerializer
+from .stock import WarehouseInventorySerializer, StockMovementSerializer, SerialNumberItemSerializer

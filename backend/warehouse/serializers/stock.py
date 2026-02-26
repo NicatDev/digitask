@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from ..models import WarehouseInventory, StockMovement
+from ..models import WarehouseInventory, StockMovement, SerialNumberItem
+
 
 class WarehouseInventorySerializer(serializers.ModelSerializer):
     warehouse_name = serializers.CharField(source='warehouse.name', read_only=True)
@@ -11,6 +12,17 @@ class WarehouseInventorySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'warehouse', 'warehouse_name', 'product', 'product_name', 'product_unit', 'quantity'
         ]
+
+
+class SerialNumberItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    warehouse_name = serializers.CharField(source='warehouse.name', read_only=True)
+
+    class Meta:
+        model = SerialNumberItem
+        fields = ['id', 'product', 'product_name', 'warehouse', 'warehouse_name', 'serial_number', 'created_at']
+        read_only_fields = ['created_at']
+
 
 class StockMovementSerializer(serializers.ModelSerializer):
     warehouse_name = serializers.CharField(source='warehouse.name', read_only=True)
@@ -24,6 +36,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
             'id', 'warehouse', 'warehouse_name', 'from_warehouse', 'to_warehouse',
             'product', 'product_name', 'movement_type', 'movement_type_display',
             'reason', 'quantity_old', 'quantity_new',
-            'created_by', 'created_by_name', 'created_at', 'reference_no', 'returned_by'
+            'created_by', 'created_by_name', 'created_at', 'reference_no',
+            'serial_number', 'returned_by'
         ]
         read_only_fields = ['created_by', 'created_at']

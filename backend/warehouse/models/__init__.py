@@ -1,2 +1,2 @@
-from .common import Warehouse, Product
-from .stock import WarehouseInventory, StockMovement
+from .common import Warehouse, Product, ProductCategory, CategoryField
+from .stock import WarehouseInventory, StockMovement, SerialNumberItem

@@ -4,9 +4,10 @@ from .common import Warehouse, Product
 
 User = settings.AUTH_USER_MODEL
 
+
 class WarehouseInventory(models.Model):
     """
-    Warehouse + Product üçün “neçə dənə var” və əlavə info.
+    Warehouse + Product üçün "neçə dənə var" və əlavə info.
     """
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name="inventory_items")
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="inventory_items")
@@ -23,6 +24,25 @@ class WarehouseInventory(models.Model):
 
     def __str__(self):
         return f"{self.warehouse} - {self.product} = {self.quantity}"
+
+
+class SerialNumberItem(models.Model):
+    """Individual serial-numbered item belonging to a product in a specific warehouse."""
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='serial_items')
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='serial_items')
+    serial_number = models.CharField(max_length=200, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["product"]),
+            models.Index(fields=["warehouse"]),
+            models.Index(fields=["serial_number"]),
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.product.name} - {self.serial_number}"
 
 
 class StockMovement(models.Model):
@@ -58,6 +78,9 @@ class StockMovement(models.Model):
 
     # gələcəkdə: sənəd/akt nömrəsi, invoice və s.
     reference_no = models.CharField(max_length=80, blank=True)
+    
+    # serial nömrəli əməliyyatlar üçün
+    serial_number = models.CharField(max_length=200, blank=True)
     
     # Qaytarma əməliyyatı üçün qaytaran şəxsin məlumatları
     returned_by = models.CharField(max_length=255, blank=True, null=True)
