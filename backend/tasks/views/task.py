@@ -202,52 +202,64 @@ class TaskViewSet(viewsets.ModelViewSet):
     def _deduct_task_products(self, task, user):
         """Tapşırıq tamamlandıqda məhsulları anbardan çıxar."""
         from warehouse.models import SerialNumberItem
-        task_products = task.task_products.filter(is_deducted=False)
         
-        with transaction.atomic():
-            for tp in task_products:
-                inventory, created = WarehouseInventory.objects.get_or_create(
-                    warehouse=tp.warehouse,
-                    product=tp.product
-                )
-                
-                qty_old = inventory.quantity
+        task_products = task.task_products.select_related('product', 'warehouse').filter(is_deducted=False)
+        print(f"[DEDUCT] Task #{task.id}: {task_products.count()} products to deduct")
+        
+        for tp in task_products:
+            print(f"[DEDUCT] Processing: product={tp.product.name}, warehouse={tp.warehouse.name}, qty={tp.quantity}, serial={tp.serial_number}, has_serial={tp.product.has_serial_number}")
+            try:
+                with transaction.atomic():
+                    inventory, created = WarehouseInventory.objects.get_or_create(
+                        warehouse=tp.warehouse,
+                        product=tp.product
+                    )
+                    
+                    qty_old = inventory.quantity
+                    print(f"[DEDUCT] Inventory qty_old={qty_old}, created={created}")
 
-                if tp.product.has_serial_number and tp.serial_number:
-                    # Serial product: delete serial item, deduct 1
-                    try:
-                        serial_item = SerialNumberItem.objects.get(
+                    if tp.product.has_serial_number and tp.serial_number:
+                        # Serial product: delete serial item from warehouse
+                        deleted_count, _ = SerialNumberItem.objects.filter(
                             serial_number=tp.serial_number,
                             product=tp.product,
                             warehouse=tp.warehouse
-                        )
-                        serial_item.delete()
-                    except SerialNumberItem.DoesNotExist:
-                        pass  # Already removed somehow
-                    qty_new = qty_old - 1
-                else:
-                    # Normal product: deduct quantity
-                    qty_new = qty_old - tp.quantity
-                
-                inventory.quantity = qty_new
-                inventory.save()
-                
-                # Stock movement yarat
-                StockMovement.objects.create(
-                    warehouse=tp.warehouse,
-                    product=tp.product,
-                    movement_type=StockMovement.Type.OUT,
-                    reason=f"Tapşırıq #{task.id} icrası zamanı istifadə olunmuşdur",
-                    quantity_old=qty_old,
-                    quantity_new=qty_new,
-                    created_by=user,
-                    reference_no=f"TASK-{task.id}",
-                    serial_number=tp.serial_number or ''
-                )
-                
-                # İşarələ ki, artıq çıxarılıb
-                tp.is_deducted = True
-                tp.save()
+                        ).delete()
+                        print(f"[DEDUCT] Deleted {deleted_count} SerialNumberItem(s) for serial={tp.serial_number}")
+                        qty_new = qty_old - 1
+                    elif tp.product.has_serial_number:
+                        # Serial product but no serial_number recorded - still deduct 1
+                        print(f"[DEDUCT] Serial product WITHOUT serial_number, deducting 1")
+                        qty_new = qty_old - 1
+                    else:
+                        # Normal product: deduct quantity
+                        qty_new = qty_old - tp.quantity
+                    
+                    print(f"[DEDUCT] qty_old={qty_old} -> qty_new={qty_new}")
+                    inventory.quantity = qty_new
+                    inventory.save()
+                    
+                    # Stock movement yarat
+                    sm = StockMovement.objects.create(
+                        warehouse=tp.warehouse,
+                        product=tp.product,
+                        movement_type=StockMovement.Type.OUT,
+                        reason=f"Tapşırıq #{task.id} icrası zamanı istifadə olunmuşdur",
+                        quantity_old=qty_old,
+                        quantity_new=qty_new,
+                        created_by=user,
+                        reference_no=f"TASK-{task.id}",
+                        serial_number=tp.serial_number or ''
+                    )
+                    print(f"[DEDUCT] StockMovement created: id={sm.id}")
+                    
+                    tp.is_deducted = True
+                    tp.save()
+                    print(f"[DEDUCT] SUCCESS: {tp.product.name} deducted")
+            except Exception as e:
+                import traceback
+                print(f"[DEDUCT] ERROR for product {tp.product.name}: {e}")
+                traceback.print_exc()
 
 
 class TaskServiceViewSet(viewsets.ModelViewSet):
