@@ -7,6 +7,8 @@ class ProductCard extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onStockAction;
   final VoidCallback onInventoryClick;
+  final VoidCallback? onNameClick;
+  final VoidCallback? onSerialClick;
 
   const ProductCard({
     super.key,
@@ -15,20 +17,25 @@ class ProductCard extends StatelessWidget {
     this.onDelete,
     this.onStockAction,
     required this.onInventoryClick,
+    this.onNameClick,
+    this.onSerialClick,
   });
 
   @override
   Widget build(BuildContext context) {
     final stockVal = product.displayStock;
-    Color stockColor = Colors.green;
-    String stockStatus = 'Normal';
 
-    if (product.minQuantity != null && stockVal < product.minQuantity!) {
-      stockColor = Colors.orange;
-      stockStatus = 'Low Stock';
-    } else if (product.maxQuantity != null && stockVal > product.maxQuantity!) {
-      stockColor = Colors.orange;
-      stockStatus = 'Over Stock';
+    // Serial products: neutral blue, Non-serial: green/orange based on min/max
+    Color stockColor;
+    if (product.hasSerialNumber) {
+      stockColor = Colors.blueGrey;
+    } else {
+      stockColor = Colors.green;
+      if (product.minQuantity != null && stockVal < product.minQuantity!) {
+        stockColor = Colors.orange;
+      } else if (product.maxQuantity != null && stockVal > product.maxQuantity!) {
+        stockColor = Colors.orange;
+      }
     }
 
     return Card(
@@ -51,14 +58,37 @@ class ProductCard extends StatelessWidget {
                       Row(
                         children: [
                           Flexible(
-                            child: Text(product.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            child: InkWell(
+                              onTap: onNameClick,
+                              child: Text(
+                                product.name,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: onNameClick != null ? Colors.blue.shade800 : Colors.black,
+                                  decoration: onNameClick != null ? TextDecoration.underline : null,
+                                  decorationColor: Colors.blue.shade300,
+                                ),
+                              ),
+                            ),
                           ),
                           if (product.hasSerialNumber) ...[
                             const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(6)),
-                              child: const Text('SN', style: TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
+                            InkWell(
+                              onTap: onSerialClick,
+                              borderRadius: BorderRadius.circular(6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(6)),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.qr_code, size: 12, color: Colors.blue.shade700),
+                                    const SizedBox(width: 2),
+                                    Text('SN', style: TextStyle(color: Colors.blue.shade700, fontSize: 10, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ],
@@ -96,7 +126,7 @@ class ProductCard extends StatelessWidget {
                       children: [
                         Text(
                           product.hasSerialNumber
-                              ? product.serialCount.toString()
+                              ? product.displaySerialCount.toString()
                               : stockVal.toStringAsFixed(2),
                           style: TextStyle(color: stockColor, fontWeight: FontWeight.bold, fontSize: 16),
                         ),

@@ -113,23 +113,19 @@ class _CategoriesTabState extends State<CategoriesTab> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: ValueListenableBuilder(
-        valueListenable: ChatService().currentUser,
-        builder: (context, user, _) {
-          final canWrite = user?.isWarehouseWriter ?? false;
-          return FloatingActionButton(
-            onPressed: canWrite ? () => _showCategoryDialog() : null,
-            backgroundColor: canWrite ? Colors.blue : Colors.grey,
-            child: const Icon(Icons.add, color: Colors.white),
-          );
-        },
-      ),
+      floatingActionButton: _isWriter
+          ? FloatingActionButton(
+              onPressed: () => _showCategoryDialog(),
+              backgroundColor: Colors.blue,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _fetchCategories,
               child: _categories.isEmpty
-                  ? const Center(child: Text('Kateqoriya yoxdur'))
+                  ? ListView(children: const [SizedBox(height: 200), Center(child: Text('Kateqoriya yoxdur'))])
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: _categories.length,
@@ -148,7 +144,7 @@ class _CategoriesTabState extends State<CategoriesTab> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       IconButton(
-                                        icon: const Icon(Icons.view_list, color: Colors.blue),
+                                        icon: const Icon(Icons.view_list, color: Colors.blue, size: 20),
                                         onPressed: () => _showFieldsModal(cat),
                                         tooltip: 'Sahələr',
                                       ),
@@ -192,6 +188,7 @@ class _FieldsModalState extends State<_FieldsModal> {
   final _nameCtrl = TextEditingController();
   String _fieldType = 'string';
   List<dynamic> _fields = [];
+  bool _adding = false;
 
   final List<Map<String, String>> _fieldTypes = [
     {'value': 'string', 'label': 'Mətn'},
@@ -209,8 +206,9 @@ class _FieldsModalState extends State<_FieldsModal> {
   Future<void> _addField() async {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) return;
+    setState(() => _adding = true);
     try {
-      await ApiClient().dio.post('/warehouse/categories/${widget.category['id']}/add_field/', data: {
+      await ApiClient().dio.post('/warehouse/categories/${widget.category['id']}/add-field/', data: {
         'name': name,
         'field_type': _fieldType,
       });
@@ -221,18 +219,20 @@ class _FieldsModalState extends State<_FieldsModal> {
       if (mounted) {
         setState(() {
           _fields = List.from(res.data['fields_list'] ?? []);
+          _adding = false;
         });
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Əlavə olunmadı')));
+      if (mounted) {
+        setState(() => _adding = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Əlavə olunmadı')));
+      }
     }
   }
 
   Future<void> _removeField(int fieldId) async {
     try {
-      await ApiClient().dio.post('/warehouse/categories/${widget.category['id']}/remove_field/', data: {
-        'field_id': fieldId,
-      });
+      await ApiClient().dio.delete('/warehouse/categories/${widget.category['id']}/remove-field/$fieldId/');
       widget.onChanged();
       setState(() {
         _fields.removeWhere((f) => f['id'] == fieldId);
@@ -245,7 +245,7 @@ class _FieldsModalState extends State<_FieldsModal> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 16),
       constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -254,37 +254,58 @@ class _FieldsModalState extends State<_FieldsModal> {
           Center(
             child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text('Sahələr: ${widget.category['name']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           if (widget.isWriter) ...[
-            Row(
+            Column(
               children: [
-                Expanded(
-                  flex: 2,
-                  child: TextField(
-                    controller: _nameCtrl,
-                    decoration: const InputDecoration(hintText: 'Sahə adı', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _nameCtrl,
+                        decoration: const InputDecoration(
+                          hintText: 'Sahə adı',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _fieldType,
-                    decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10)),
-                    items: _fieldTypes.map((t) => DropdownMenuItem(value: t['value'], child: Text(t['label']!, style: const TextStyle(fontSize: 13)))).toList(),
-                    onChanged: (val) => setState(() => _fieldType = val!),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.add_circle, color: Colors.green),
-                  onPressed: _addField,
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _fieldType,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                          isDense: true,
+                        ),
+                        items: _fieldTypes.map((t) => DropdownMenuItem(value: t['value'], child: Text(t['label']!, style: const TextStyle(fontSize: 13)))).toList(),
+                        onChanged: (val) => setState(() => _fieldType = val!),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _adding ? null : _addField,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      child: _adding
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Text('Əlavə et'),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const Divider(height: 24),
+            const Divider(height: 20),
           ],
 
           Expanded(
@@ -297,7 +318,7 @@ class _FieldsModalState extends State<_FieldsModal> {
                       final field = _fields[index];
                       return ListTile(
                         dense: true,
-                        title: Text(field['name'] ?? ''),
+                        title: Text(field['name'] ?? '', overflow: TextOverflow.ellipsis),
                         subtitle: Text(field['field_type'] ?? '', style: const TextStyle(fontSize: 12)),
                         trailing: widget.isWriter
                             ? IconButton(

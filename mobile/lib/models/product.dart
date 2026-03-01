@@ -17,8 +17,12 @@ class Product {
   final int serialCount;
   final int? category;
   final String? categoryName;
-  final Map<String, dynamic>? customFields;
+  final Map<String, dynamic>? categoryData;
   final bool isActive;
+
+  // Mutable: can be overridden by warehouse filter
+  double? overrideStock;
+  int? overrideSerialCount;
 
   Product({
     required this.id,
@@ -39,12 +43,22 @@ class Product {
     this.serialCount = 0,
     this.category,
     this.categoryName,
-    this.customFields,
+    this.categoryData,
     required this.isActive,
+    this.overrideStock,
+    this.overrideSerialCount,
   });
 
-  /// The display stock: for serial products use serial_count, otherwise total_stock
-  double get displayStock => hasSerialNumber ? serialCount.toDouble() : totalStock;
+  /// The display stock: uses override if set, otherwise serial_count or total_stock
+  double get displayStock {
+    if (hasSerialNumber) {
+      return (overrideSerialCount ?? serialCount).toDouble();
+    }
+    return overrideStock ?? totalStock;
+  }
+
+  /// Display serial count (warehouse-filtered or total)
+  int get displaySerialCount => overrideSerialCount ?? serialCount;
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
@@ -66,7 +80,7 @@ class Product {
       serialCount: json['serial_count'] ?? 0,
       category: json['category'],
       categoryName: json['category_name'],
-      customFields: json['custom_fields'] is Map ? Map<String, dynamic>.from(json['custom_fields']) : null,
+      categoryData: json['category_data'] is Map ? Map<String, dynamic>.from(json['category_data']) : null,
       isActive: json['is_active'] ?? true,
     );
   }
@@ -87,7 +101,7 @@ class Product {
       'min_quantity': minQuantity,
       'max_quantity': maxQuantity,
       'category': category,
-      'custom_fields': customFields,
+      'category_data': categoryData,
       'is_active': isActive,
     };
   }

@@ -42,7 +42,11 @@ class _LoginScreenState extends State<LoginScreen> {
         await storage.write(key: 'refresh_token', value: refresh);
 
         if (mounted) {
-           await LocationService.initialize();
+           try {
+             await LocationService.initialize();
+           } catch (e) {
+             debugPrint('LocationService init error: $e');
+           }
            Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const MainLayout()),
           );

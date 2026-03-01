@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/models/product.dart';
 
@@ -182,11 +183,9 @@ class _StockMovementModalState extends State<StockMovementModal> {
     } catch (e) {
       if (mounted) {
         String msg = 'Əməliyyat uğursuz oldu';
-        try {
-          if (e is dynamic && e.response?.data is Map) {
-            msg = e.response.data['error'] ?? msg;
-          }
-        } catch (_) {}
+        if (e is DioException && e.response?.data is Map) {
+          msg = (e.response!.data as Map)['error']?.toString() ?? msg;
+        }
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
     } finally {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/models/product.dart';
 
@@ -27,12 +28,15 @@ class _ProductModalState extends State<ProductModal> {
   String _unit = 'pcs';
   bool _hasSerialNumber = false;
   int? _categoryId;
-  Map<String, dynamic> _customFieldValues = {};
+  Map<String, dynamic> _categoryDataValues = {};
+
+  // Controllers for text-type custom fields
+  final Map<String, TextEditingController> _fieldControllers = {};
 
   bool _isSubmitting = false;
   bool _loadingCategories = true;
   List<dynamic> _categories = [];
-  List<dynamic> _categoryFields = []; // Fields for selected category
+  List<dynamic> _categoryFields = [];
 
   final List<Map<String, String>> _units = [
     {'value': 'pcs', 'label': 'Ədəd (pcs)'},
@@ -61,7 +65,7 @@ class _ProductModalState extends State<ProductModal> {
     _unit = p?.unit ?? 'pcs';
     _hasSerialNumber = p?.hasSerialNumber ?? false;
     _categoryId = p?.category;
-    _customFieldValues = Map<String, dynamic>.from(p?.customFields ?? {});
+    _categoryDataValues = Map<String, dynamic>.from(p?.categoryData ?? {});
     _fetchCategories();
   }
 
@@ -77,6 +81,9 @@ class _ProductModalState extends State<ProductModal> {
     _minQtyController.dispose();
     _maxQtyController.dispose();
     _descController.dispose();
+    for (final c in _fieldControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -88,7 +95,6 @@ class _ProductModalState extends State<ProductModal> {
           final data = res.data;
           _categories = (data is Map && data.containsKey('results')) ? data['results'] : (data is List ? data : []);
           _loadingCategories = false;
-          // Load fields for current category
           if (_categoryId != null) {
             _loadCategoryFields(_categoryId!);
           }
@@ -102,16 +108,68 @@ class _ProductModalState extends State<ProductModal> {
   void _loadCategoryFields(int catId) {
     final cat = _categories.firstWhere((c) => c['id'] == catId, orElse: () => null);
     if (cat != null) {
+      final fields = List<dynamic>.from(cat['fields_list'] ?? []);
+      // Create controllers for text/number fields
+      for (final f in _fieldControllers.values) {
+        f.dispose();
+      }
+      _fieldControllers.clear();
+      for (final field in fields) {
+        final name = field['name'] ?? '';
+        final type = field['field_type'] ?? 'string';
+        if (type == 'string' || type == 'number') {
+          _fieldControllers[name] = TextEditingController(
+            text: _categoryDataValues[name]?.toString() ?? '',
+          );
+        }
+      }
       setState(() {
-        _categoryFields = List.from(cat['fields_list'] ?? []);
+        _categoryFields = fields;
       });
     } else {
       setState(() => _categoryFields = []);
     }
   }
 
+  void _collectFieldValues() {
+    for (final field in _categoryFields) {
+      final name = field['name'] ?? '';
+      final type = field['field_type'] ?? 'string';
+      if (type == 'string') {
+        final val = _fieldControllers[name]?.text.trim() ?? '';
+        if (val.isNotEmpty) _categoryDataValues[name] = val;
+      } else if (type == 'number') {
+        final val = _fieldControllers[name]?.text.trim() ?? '';
+        if (val.isNotEmpty) _categoryDataValues[name] = num.tryParse(val) ?? val;
+      }
+      // boolean and date are already set via onChanged
+    }
+  }
+
+  Future<void> _pickDate(String fieldName) async {
+    final current = _categoryDataValues[fieldName]?.toString() ?? '';
+    DateTime initial = DateTime.now();
+    if (current.isNotEmpty) {
+      try {
+        initial = DateTime.parse(current);
+      } catch (_) {}
+    }
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        _categoryDataValues[fieldName] = DateFormat('yyyy-MM-dd').format(picked);
+      });
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    _collectFieldValues();
     setState(() => _isSubmitting = true);
 
     try {
@@ -124,11 +182,11 @@ class _ProductModalState extends State<ProductModal> {
         'size': _sizeController.text.trim(),
         'weight': _weightController.text.trim(),
         'description': _descController.text.trim(),
-        'is_active': true,
+        'is_active': widget.product?.isActive ?? true,
       };
 
-      if (_categoryId != null) data['category'] = _categoryId;
-      if (_customFieldValues.isNotEmpty) data['custom_fields'] = _customFieldValues;
+      data['category'] = _categoryId;
+      data['category_data'] = _categoryDataValues;
       if (_portCountController.text.isNotEmpty) data['port_count'] = int.tryParse(_portCountController.text);
       if (_priceController.text.isNotEmpty) data['price'] = double.tryParse(_priceController.text);
       if (_minQtyController.text.isNotEmpty) data['min_quantity'] = double.tryParse(_minQtyController.text);
@@ -153,6 +211,52 @@ class _ProductModalState extends State<ProductModal> {
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  Widget _buildCategoryField(Map<String, dynamic> field) {
+    final fieldName = field['name'] ?? '';
+    final fieldType = field['field_type'] ?? 'string';
+
+    if (fieldType == 'boolean') {
+      return CheckboxListTile(
+        value: _categoryDataValues[fieldName] == true,
+        onChanged: (val) => setState(() => _categoryDataValues[fieldName] = val ?? false),
+        title: Text(fieldName),
+        controlAffinity: ListTileControlAffinity.leading,
+        contentPadding: EdgeInsets.zero,
+      );
+    }
+
+    if (fieldType == 'date') {
+      final dateVal = _categoryDataValues[fieldName]?.toString() ?? '';
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: InkWell(
+          onTap: () => _pickDate(fieldName),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: fieldName,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              suffixIcon: const Icon(Icons.calendar_today),
+            ),
+            child: Text(
+              dateVal.isNotEmpty ? dateVal : 'Tarix seçin',
+              style: TextStyle(color: dateVal.isNotEmpty ? Colors.black : Colors.grey),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // string or number
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: _fieldControllers[fieldName],
+        decoration: InputDecoration(labelText: fieldName, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+        keyboardType: fieldType == 'number' ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+      ),
+    );
   }
 
   @override
@@ -205,7 +309,7 @@ class _ProductModalState extends State<ProductModal> {
                       onChanged: (val) {
                         setState(() {
                           _categoryId = val;
-                          _customFieldValues = {};
+                          _categoryDataValues = {};
                         });
                         if (val != null) {
                           _loadCategoryFields(val);
@@ -269,37 +373,13 @@ class _ProductModalState extends State<ProductModal> {
                 decoration: InputDecoration(labelText: 'Təsvir', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               ),
 
-              // Custom fields for selected category
+              // Dynamic category fields
               if (_categoryFields.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 const Divider(),
                 const Text('Kateqoriya Sahələri', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 8),
-                ..._categoryFields.map((field) {
-                  final fieldName = field['name'] ?? '';
-                  final fieldType = field['field_type'] ?? 'string';
-                  final currentVal = _customFieldValues[fieldName]?.toString() ?? '';
-
-                  if (fieldType == 'boolean') {
-                    return CheckboxListTile(
-                      value: _customFieldValues[fieldName] == true,
-                      onChanged: (val) => setState(() => _customFieldValues[fieldName] = val),
-                      title: Text(fieldName),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      contentPadding: EdgeInsets.zero,
-                    );
-                  }
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: TextFormField(
-                      initialValue: currentVal,
-                      decoration: InputDecoration(labelText: fieldName, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-                      keyboardType: fieldType == 'number' ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-                      onChanged: (val) => _customFieldValues[fieldName] = fieldType == 'number' ? num.tryParse(val) : val,
-                    ),
-                  );
-                }),
+                ..._categoryFields.map((field) => _buildCategoryField(field)),
               ],
 
               const SizedBox(height: 20),
