@@ -19,14 +19,15 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final stockVal = product.displayStock;
     Color stockColor = Colors.green;
     String stockStatus = 'Normal';
 
-    if (product.minQuantity != null && product.totalStock < product.minQuantity!) {
+    if (product.minQuantity != null && stockVal < product.minQuantity!) {
       stockColor = Colors.orange;
       stockStatus = 'Low Stock';
-    } else if (product.maxQuantity != null && product.totalStock > product.maxQuantity!) {
-      stockColor = Colors.orange; // Using orange for overstock as per requirement (or red if preferred, sticking to orange/yellow)
+    } else if (product.maxQuantity != null && stockVal > product.maxQuantity!) {
+      stockColor = Colors.orange;
       stockStatus = 'Over Stock';
     }
 
@@ -47,13 +48,35 @@ class ProductCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(product.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(product.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          ),
+                          if (product.hasSerialNumber) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(6)),
+                              child: const Text('SN', style: TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ],
+                      ),
                       if (product.brand != null || product.model != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
                             '${product.brand ?? ''} ${product.model ?? ''}'.trim(),
                             style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                          ),
+                        ),
+                      if (product.categoryName != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            product.categoryName!,
+                            style: TextStyle(color: Colors.purple[400], fontSize: 11),
                           ),
                         ),
                     ],
@@ -72,11 +95,13 @@ class ProductCard extends StatelessWidget {
                     child: Column(
                       children: [
                         Text(
-                          product.totalStock.toStringAsFixed(2),
+                          product.hasSerialNumber
+                              ? product.serialCount.toString()
+                              : stockVal.toStringAsFixed(2),
                           style: TextStyle(color: stockColor, fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                         Text(
-                          product.unit,
+                          product.hasSerialNumber ? 'ədəd' : product.unit,
                           style: TextStyle(color: stockColor, fontSize: 10),
                         ),
                       ],
@@ -92,26 +117,23 @@ class ProductCard extends StatelessWidget {
               spacing: 16,
               runSpacing: 8,
               children: [
-                if (product.serialNumber?.isNotEmpty == true)
-                  _buildDetailItem(Icons.qr_code, 'SN:', product.serialNumber!),
                 if (product.price != null)
-                  _buildDetailItem(Icons.attach_money, 'Price:', '${product.price!.toStringAsFixed(2)} ₼'),
+                  _buildDetailItem(Icons.attach_money, 'Qiymət:', '${product.price!.toStringAsFixed(2)} ₼'),
                 if (product.size?.isNotEmpty == true)
-                  _buildDetailItem(Icons.aspect_ratio, 'Size:', product.size!),
+                  _buildDetailItem(Icons.aspect_ratio, 'Ölçü:', product.size!),
                 if (product.weight?.isNotEmpty == true)
-                  _buildDetailItem(Icons.scale, 'Weight:', product.weight!),
+                  _buildDetailItem(Icons.scale, 'Çəki:', product.weight!),
                 if (product.portCount != null)
-                  _buildDetailItem(Icons.lan, 'Ports:', product.portCount.toString()),
+                  _buildDetailItem(Icons.lan, 'Port:', product.portCount.toString()),
               ],
             ),
-            
+
             const Divider(height: 24),
 
             // Actions
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Active Status
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
@@ -119,7 +141,7 @@ class ProductCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    product.isActive ? 'Active' : 'Inactive',
+                    product.isActive ? 'Aktiv' : 'Deaktiv',
                     style: TextStyle(
                       color: product.isActive ? Colors.green.shade700 : Colors.red.shade700,
                       fontSize: 12,
@@ -127,24 +149,22 @@ class ProductCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                
                 Row(
                   children: [
                     TextButton.icon(
                       onPressed: onStockAction,
                       icon: Icon(Icons.swap_horiz, size: 18, color: onStockAction != null ? Colors.blue : Colors.grey),
                       label: Text('Stock', style: TextStyle(color: onStockAction != null ? Colors.blue : Colors.grey)),
-                      style: TextButton.styleFrom(foregroundColor: onStockAction != null ? Colors.blue : Colors.grey),
                     ),
                     IconButton(
                       icon: Icon(Icons.edit, color: onEdit != null ? Colors.orange : Colors.grey, size: 20),
                       onPressed: onEdit,
-                      tooltip: 'Edit',
+                      tooltip: 'Düzəlt',
                     ),
                     IconButton(
                       icon: Icon(Icons.delete, color: onDelete != null ? Colors.red : Colors.grey, size: 20),
                       onPressed: onDelete,
-                      tooltip: 'Delete',
+                      tooltip: 'Sil',
                     ),
                   ],
                 ),

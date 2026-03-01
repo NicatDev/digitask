@@ -42,6 +42,7 @@ class HistoryCard extends StatelessWidget {
     final qtyOld = double.tryParse(movement['quantity_old']?.toString() ?? '0') ?? 0.0;
     final qtyNew = double.tryParse(movement['quantity_new']?.toString() ?? '0') ?? 0.0;
     final delta = qtyNew - qtyOld;
+    final serialNumber = movement['serial_number']?.toString() ?? '';
     
     return Card(
       color: Colors.white,
@@ -72,10 +73,34 @@ class HistoryCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              movement['product_name'] ?? 'Unknown Product',
+              movement['product_name'] ?? 'Naməlum Məhsul',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 4),
+
+            // Serial number display
+            if (serialNumber.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.qr_code, size: 14, color: Colors.blue),
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        serialNumber,
+                        style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             Row(
               children: [
                 const Icon(Icons.warehouse, size: 16, color: Colors.grey),
@@ -127,6 +152,14 @@ class HistoryCard extends StatelessWidget {
                         child: Text(
                           'Ref: ${movement['reference_no']}',
                           style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey),
+                        ),
+                      ),
+                    if (movement['returned_by'] != null && movement['returned_by'].toString().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Qaytaran: ${movement['returned_by']}',
+                          style: const TextStyle(fontSize: 12, color: Colors.purple),
                         ),
                       ),
                   ],
