@@ -279,7 +279,7 @@ class _TasksTabState extends State<TasksTab> {
                   children: [
                     Expanded(
                       child: _tasks.isEmpty
-                          ? const Center(child: Text('No tasks found'))
+                          ? const Center(child: Text('Tapşırıq tapılmadı'))
                           : RefreshIndicator(
                               onRefresh: () => _fetchTasks(refresh: true),
                               child: ListView.separated(
@@ -322,7 +322,7 @@ class _TasksTabState extends State<TasksTab> {
                                 children: [
                                   Icon(Icons.arrow_back, size: 18),
                                   SizedBox(width: 8),
-                                  Text('Prev'),
+                                  Text('Ǝvvəl'),
                                 ],
                               ),
                             ),
@@ -333,7 +333,7 @@ class _TasksTabState extends State<TasksTab> {
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text('Next'),
+                                  Text('Növbəti'),
                                   SizedBox(width: 8),
                                   Icon(Icons.arrow_forward, size: 18),
                                 ],

@@ -158,7 +158,7 @@ class _MainLayoutState extends State<MainLayout> {
                   children: [
                     Icon(Icons.person_outline, size: 20, color: Colors.black54),
                     SizedBox(width: 12),
-                    Text('Profile'),
+                    Text('Profil'),
                   ],
                 ),
               ),
@@ -168,7 +168,7 @@ class _MainLayoutState extends State<MainLayout> {
                   children: [
                     Icon(Icons.logout, size: 20, color: Colors.red),
                     SizedBox(width: 12),
-                    Text('Logout', style: TextStyle(color: Colors.red)),
+                    Text('Çıxış', style: TextStyle(color: Colors.red)),
                   ],
                 ),
               ),
@@ -277,11 +277,11 @@ class _MainLayoutState extends State<MainLayout> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNavItem(0, Icons.dashboard_outlined, Icons.dashboard, 'Home'),
-                _buildNavItem(1, Icons.description_outlined, Icons.description, 'Documents'), // Was Invoices
+                _buildNavItem(0, Icons.dashboard_outlined, Icons.dashboard, 'Ana səhifə'),
+                _buildNavItem(1, Icons.description_outlined, Icons.description, 'Sənədlər'),
                 const SizedBox(width: 60), // Gap for FAB
-                _buildNavItem(2, Icons.task_outlined, Icons.task, 'Tasks'),
-                _buildNavItem(3, Icons.warehouse_outlined, Icons.warehouse, 'Warehouse'), // Was Profile
+                _buildNavItem(2, Icons.task_outlined, Icons.task, 'Tapşırıqlar'),
+                _buildNavItem(3, Icons.warehouse_outlined, Icons.warehouse, 'Anbar'),
               ],
             ),
           ),

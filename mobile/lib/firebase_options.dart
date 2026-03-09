@@ -28,21 +28,20 @@ class DefaultFirebaseOptions {
     storageBucket: 'digigroup-11ad6.firebasestorage.app',
   );
 
-  // Web config — Firebase Console-dan götürülməlidir
-  // Firebase Console → Project Settings → General → Web apps → Config
+  // Web config
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyAq7zMKXVECu5bvMQzru4_nXeU1AiT77tM',
-    appId: '1:656216418148:web:YOUR_WEB_APP_ID',  // ← Firebase Console-dan dəyişin
+    appId: '1:656216418148:web:YOUR_WEB_APP_ID',
     messagingSenderId: '656216418148',
     projectId: 'digigroup-11ad6',
     storageBucket: 'digigroup-11ad6.firebasestorage.app',
     authDomain: 'digigroup-11ad6.firebaseapp.com',
   );
 
-  // iOS config — əgər lazımdırsa əlavə edin
+  // iOS config from GoogleService-Info.plist
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAq7zMKXVECu5bvMQzru4_nXeU1AiT77tM',
-    appId: '1:656216418148:ios:YOUR_IOS_APP_ID',  // ← Firebase Console-dan dəyişin
+    apiKey: 'AIzaSyDBQSGfRYvjacEKYmbjRsO92DWB05ga874',
+    appId: '1:656216418148:ios:8836e77ad8fff805c6fc71',
     messagingSenderId: '656216418148',
     projectId: 'digigroup-11ad6',
     storageBucket: 'digigroup-11ad6.firebasestorage.app',

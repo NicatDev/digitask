@@ -478,7 +478,7 @@ class _ProductFilterModalState extends State<_ProductFilterModal> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Filter', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text('Filtr', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
 
           DropdownButtonFormField<String>(

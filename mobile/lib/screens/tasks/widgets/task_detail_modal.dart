@@ -66,7 +66,7 @@ class TaskDetailModal extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   children: [
                     _sectionTitle('Tapşırıq Məlumatları'),
-                    _infoRow('Status', task['status_display'] ?? task['status'] ?? '-'),
+                    _infoRow('Status', _statusLabel(task['status'] ?? '')),
                     _infoRow('Qeyd', task['note'] ?? '-'),
                     _infoRow('İcraçılar', _formatAssigneeNames(task)),
                     _infoRow('Qrup', task['group_name'] ?? '-'),

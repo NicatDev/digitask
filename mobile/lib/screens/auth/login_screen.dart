@@ -54,11 +54,11 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } on DioException catch (e) {
       setState(() {
-        _errorMessage = e.response?.data['detail'] ?? 'Login failed';
+        _errorMessage = e.response?.data['detail'] ?? 'Giriş uğursuz oldu';
       });
     } catch (e) {
        setState(() {
-        _errorMessage = 'An unexpected error occurred';
+        _errorMessage = 'Gözlənilməz xəta baş verdi';
       });
     } finally {
       if (mounted) {
@@ -105,22 +105,22 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _usernameController,
                   decoration: const InputDecoration(
-                    labelText: 'Username',
+                    labelText: 'İstifadəçi adı',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.person),
                   ),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                  validator: (v) => v!.isEmpty ? 'Tələb olunur' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _passwordController,
                   decoration: const InputDecoration(
-                    labelText: 'Password',
+                    labelText: 'Şifrə',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.lock),
                   ),
                   obscureText: true,
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                  validator: (v) => v!.isEmpty ? 'Tələb olunur' : null,
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
@@ -130,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: _isLoading 
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Login'),
+                    : const Text('Daxil ol'),
                 ),
               ],
             ),

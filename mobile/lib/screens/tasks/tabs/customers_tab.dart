@@ -126,10 +126,10 @@ class _CustomersTabState extends State<CustomersTab> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Filter by Status', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Statusa görə filtr', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             ListTile(
-              title: const Text('All'),
+              title: const Text('Hamısı'),
               leading: Radio<String>(
                 value: 'all',
                 groupValue: _activeFilter,
@@ -141,7 +141,7 @@ class _CustomersTabState extends State<CustomersTab> {
               ),
             ),
             ListTile(
-              title: const Text('Active'),
+              title: const Text('Aktiv'),
               leading: Radio<String>(
                 value: 'active',
                 groupValue: _activeFilter,
@@ -153,7 +153,7 @@ class _CustomersTabState extends State<CustomersTab> {
               ),
             ),
             ListTile(
-              title: const Text('Inactive'),
+              title: const Text('Deaktiv'),
               leading: Radio<String>(
                 value: 'inactive',
                 groupValue: _activeFilter,
@@ -195,11 +195,11 @@ class _CustomersTabState extends State<CustomersTab> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Customer'),
-        content: const Text('Are you sure you want to delete this customer?'),
+        title: const Text('Müştərini Sil'),
+        content: const Text('Bu müştərini silmək istədiyinizə əminsiniz?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Ləğv et')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -208,12 +208,12 @@ class _CustomersTabState extends State<CustomersTab> {
       try {
         await ApiClient().dio.patch('/tasks/customers/$id/', data: {'is_active': false});
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Customer deleted')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Müştəri silindi')));
           _fetchCustomers(refresh: true);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete customer')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Müştəri silinə bilmədi')));
         }
       }
     }
@@ -228,7 +228,7 @@ class _CustomersTabState extends State<CustomersTab> {
       builder: (ctx) => LocationMapModal(
         lat: (coords['lat'] as num).toDouble(),
         lng: (coords['lng'] as num).toDouble(),
-        title: customer['full_name'] ?? 'Customer',
+        title: customer['full_name'] ?? 'Müştəri',
       ),
     );
   }
@@ -252,7 +252,7 @@ class _CustomersTabState extends State<CustomersTab> {
                   controller: _searchController,
                   onChanged: _onSearchChanged,
                   decoration: InputDecoration(
-                    hintText: 'Search customers...',
+                     hintText: 'Müştəri axtar...',
                     prefixIcon: const Icon(Icons.search),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -300,7 +300,7 @@ class _CustomersTabState extends State<CustomersTab> {
                   children: [
                     Expanded(
                       child: _customers.isEmpty
-                          ? const Center(child: Text('No customers found'))
+                          ? const Center(child: Text('Müştəri tapılmadı'))
                           : ListView.separated(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               itemCount: _customers.length,
@@ -332,18 +332,18 @@ class _CustomersTabState extends State<CustomersTab> {
                                 children: [
                                   Icon(Icons.arrow_back, size: 18),
                                   SizedBox(width: 8),
-                                  Text('Prev'),
+                                  Text('Ǝvvəl'),
                                 ],
                               ),
                             ),
-                            Text('Page $_currentPage', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text('Səhifə $_currentPage', style: const TextStyle(fontWeight: FontWeight.bold)),
                             ElevatedButton(
                               onPressed: _hasNextPage ? () => _changePage(_currentPage + 1) : null,
                               style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.blue),
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text('Next'),
+                                  Text('Növbəti'),
                                   SizedBox(width: 8),
                                   Icon(Icons.arrow_forward, size: 18),
                                 ],
@@ -400,7 +400,7 @@ class CustomerCard extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          customer['full_name'] ?? 'Unknown',
+                          customer['full_name'] ?? 'Namalum',
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -415,7 +415,7 @@ class CustomerCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    isActive ? 'Active' : 'Inactive',
+                     isActive ? 'Aktiv' : 'Deaktiv',
                     style: TextStyle(
                       color: isActive ? Colors.green.shade700 : Colors.red.shade700,
                       fontWeight: FontWeight.w500,
@@ -438,17 +438,17 @@ class CustomerCard extends StatelessWidget {
                 IconButton(
                   icon: Icon(Icons.location_on, color: hasLocation ? Colors.blue : Colors.grey.shade300),
                   onPressed: onLocation,
-                  tooltip: 'View Location',
+                   tooltip: 'Məkana bax',
                 ),
                 IconButton(
                   icon: Icon(Icons.edit, color: onEdit != null ? Colors.orange : Colors.grey),
                   onPressed: onEdit,
-                  tooltip: 'Edit',
+                   tooltip: 'Redaktə',
                 ),
                 IconButton(
                   icon: Icon(Icons.delete, color: onDelete != null ? Colors.red : Colors.grey),
                   onPressed: onDelete,
-                  tooltip: 'Delete',
+                   tooltip: 'Sil',
                 ),
               ],
             ),
@@ -503,7 +503,7 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedRegionId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a region')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Region seçin')));
       return;
     }
 
@@ -532,12 +532,12 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
         if (mounted) {
           Navigator.pop(context);
           widget.onSuccess();
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Customer created successfully')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Müştəri uğurla yaradıldı')));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to create customer')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Müştəri yaradıla bilmədi')));
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -559,7 +559,7 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Add Customer', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text('Müştəri Əlavə Et', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                 ],
               ),
@@ -572,12 +572,12 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _phoneController,
-                decoration: InputDecoration(labelText: 'Phone', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                decoration: InputDecoration(labelText: 'Telefon', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _registerNumberController,
-                decoration: InputDecoration(labelText: 'Register Number (VOEN)', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                decoration: InputDecoration(labelText: 'Qeydiyyat nömrəsi (VÖEN)', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
@@ -589,7 +589,7 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _addressController,
-                decoration: InputDecoration(labelText: 'Address', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                decoration: InputDecoration(labelText: 'Ünvan', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               ),
               const SizedBox(height: 16),
               InkWell(
@@ -606,7 +606,7 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
                         child: Text(
                           _selectedLocation != null
                               ? 'Lat: ${_selectedLocation!.latitude.toStringAsFixed(4)}, Lng: ${_selectedLocation!.longitude.toStringAsFixed(4)}'
-                              : 'Select Location on Map',
+                              : 'Xaritədən məkan seçin',
                           style: TextStyle(color: _selectedLocation != null ? Colors.black : Colors.grey[600]),
                         ),
                       ),
@@ -621,7 +621,7 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submit,
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: _isSubmitting ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Create Customer', style: TextStyle(fontSize: 16)),
+                  child: _isSubmitting ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Müştəri Yarat', style: TextStyle(fontSize: 16)),
                 ),
               ),
             ],
@@ -691,7 +691,7 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedRegionId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a region')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Region seçin')));
       return;
     }
 
@@ -719,12 +719,12 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
         if (mounted) {
           Navigator.pop(context);
           widget.onSuccess();
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Customer updated successfully')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Müştəri uğurla yeniləndi')));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update customer')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Müştəri yenilənə bilmədi')));
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -746,25 +746,25 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Edit Customer', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text('Müştərini Redaktə Et', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                 ],
               ),
               const SizedBox(height: 20),
               TextFormField(
                 controller: _nameController,
-                decoration: InputDecoration(labelText: 'Full Name *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-                validator: (val) => val?.isEmpty == true ? 'Name is required' : null,
+                decoration: InputDecoration(labelText: 'Tam ad *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                validator: (val) => val?.isEmpty == true ? 'Ad tələb olunur' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _phoneController,
-                decoration: InputDecoration(labelText: 'Phone', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                decoration: InputDecoration(labelText: 'Telefon', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _registerNumberController,
-                decoration: InputDecoration(labelText: 'Register Number (VOEN)', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                decoration: InputDecoration(labelText: 'Qeydiyyat nömrəsi (VÖEN)', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
@@ -776,7 +776,7 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _addressController,
-                decoration: InputDecoration(labelText: 'Address', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                decoration: InputDecoration(labelText: 'Ünvan', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               ),
               const SizedBox(height: 16),
               InkWell(
@@ -793,7 +793,7 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
                         child: Text(
                           _selectedLocation != null
                               ? 'Lat: ${_selectedLocation!.latitude.toStringAsFixed(4)}, Lng: ${_selectedLocation!.longitude.toStringAsFixed(4)}'
-                              : 'Select Location on Map',
+                              : 'Xaritədən məkan seçin',
                           style: TextStyle(color: _selectedLocation != null ? Colors.black : Colors.grey[600]),
                         ),
                       ),
@@ -808,7 +808,7 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submit,
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: _isSubmitting ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Update Customer', style: TextStyle(fontSize: 16)),
+                  child: _isSubmitting ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Müştərini Yenilə', style: TextStyle(fontSize: 16)),
                 ),
               ),
             ],
@@ -911,7 +911,7 @@ class _LocationPickerModalState extends State<LocationPickerModal> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Pick Location', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('Məkan seçin', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
@@ -959,7 +959,7 @@ class _LocationPickerModalState extends State<LocationPickerModal> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: Text(
-                  'Confirm Location (${_currentLocation.latitude.toStringAsFixed(4)}, ${_currentLocation.longitude.toStringAsFixed(4)})',
+                  'Məkanı Təsdiqlə (${_currentLocation.latitude.toStringAsFixed(4)}, ${_currentLocation.longitude.toStringAsFixed(4)})',
                   style: const TextStyle(fontSize: 16),
                 ),
               ),

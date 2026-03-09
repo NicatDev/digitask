@@ -24,7 +24,7 @@ class _CreateGroupModalState extends State<CreateGroupModal> {
           print('Error creating group: $e');
           if (mounted) {
              ScaffoldMessenger.of(context).showSnackBar(
-                 const SnackBar(content: Text('Failed to create group')),
+                 const SnackBar(content: Text('Qrup yaradıla bilmədi')),
              );
           }
       } finally {
@@ -35,19 +35,19 @@ class _CreateGroupModalState extends State<CreateGroupModal> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-        title: const Text('Create Group'),
+        title: const Text('Qrup Yarat'),
         content: TextField(
             controller: _nameController,
-            decoration: const InputDecoration(hintText: 'Group Name'),
+            decoration: const InputDecoration(hintText: 'Qrup adı'),
         ),
         actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context), 
-                child: const Text('Cancel')
+                child: const Text('Ləğv et')
             ),
             ElevatedButton(
                 onPressed: _isLoading ? null : _create, 
-                child: _isLoading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Create')
+                child: _isLoading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Yarat')
             ),
         ],
     );

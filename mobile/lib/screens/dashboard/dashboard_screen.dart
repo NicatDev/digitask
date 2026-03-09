@@ -86,14 +86,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       await ApiClient().dio.post('/dashboard/events/', data: payload);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Event created successfully')),
+           const SnackBar(content: Text('Tədbir uğurla yaradıldı')),
         );
         _fetchEvents();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create event: $e')),
+           SnackBar(content: Text('Tədbir yaradıla bilmədi: $e')),
         );
       }
     }
@@ -130,7 +130,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Events',
+                  'Tədbirlər',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
@@ -153,7 +153,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 32),
                 const Text(
-                  'Top Performers',
+                  'Ən yaxşı nəticə göstərənlər',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
@@ -170,7 +170,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildTopUsersList() {
     if (_topUsers.isEmpty) {
-      return const Center(child: Text('No stats available', style: TextStyle(color: Colors.grey)));
+      return const Center(child: Text('Statistika mövcud deyil', style: TextStyle(color: Colors.grey)));
     }
     return ListView.separated(
       shrinkWrap: true,
@@ -240,7 +240,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 maxLines: 1,
               ),
               Text(
-                user['assigned_to__group__name'] ?? 'Employee',
+                user['assigned_to__group__name'] ?? 'Əməkdaş',
                 style: const TextStyle(color: Colors.grey, fontSize: 12),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -256,7 +256,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const Text(
-              'Tasks Done',
+              'Tamamlanan',
               style: TextStyle(color: Colors.grey, fontSize: 10),
             ),
           ],
@@ -295,7 +295,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Add Event',
+               'Tədbir əlavə et',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.blue),
             ),
           ],
@@ -309,7 +309,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       await ApiClient().dio.delete('/dashboard/events/$id/');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Event deleted successfully')),
+           const SnackBar(content: Text('Tədbir uğurla silindi')),
         );
         _fetchEvents();
         Navigator.pop(context); // Close modal
@@ -317,7 +317,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete event: $e')),
+           SnackBar(content: Text('Tədbir silinə bilmədi: $e')),
         );
       }
     }
@@ -327,12 +327,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Event'),
-        content: const Text('Are you sure you want to delete this event?'),
+         title: const Text('Tədbiri Sil'),
+        content: const Text('Bu tədbiri silmək istədiyinizə əminsiniz?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: const Text('Ləğv et'),
           ),
           TextButton(
             onPressed: () {
@@ -340,7 +340,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _deleteEvent(id);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: const Text('Sil'),
           ),
         ],
       ),
@@ -410,7 +410,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                event['title'] ?? 'No Title',
+                event['title'] ?? 'Başlıqsız',
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
@@ -426,12 +426,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 24),
               const Text(
-                'Description',
+                'Təsvir',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
-                event['description'] ?? 'No description provided.',
+                event['description'] ?? 'Təsvir əlavə olunmayıb.',
                 style: const TextStyle(fontSize: 16, height: 1.5, color: Colors.black87),
               ),
               const SizedBox(height: 32),
@@ -546,13 +546,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Stack(
                           children: [
                             Text(
-                              event['title'] ?? 'No Title',
+                              event['title'] ?? 'Başlıqsız',
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, foreground: Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = Colors.black),
                             ),
                             Text(
-                              event['title'] ?? 'No Title',
+                              event['title'] ?? 'Başlıqsız',
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
@@ -623,21 +623,21 @@ class _AddEventFormState extends State<AddEventForm> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Create New Event', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+               const Text('Yeni Tədbir Yarat', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(
-                  labelText: 'Title',
+                   labelText: 'Başlıq',
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
+                validator: (v) => v!.isEmpty ? 'Tələb olunur' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _descController,
                 decoration: const InputDecoration(
-                  labelText: 'Description',
+                   labelText: 'Təsvir',
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
@@ -673,7 +673,7 @@ class _AddEventFormState extends State<AddEventForm> {
               DropdownButtonFormField<String>(
                 value: _eventType,
                 decoration: const InputDecoration(
-                  labelText: 'Type',
+                   labelText: 'Növ',
                   border: OutlineInputBorder(),
                 ),
                 items: const [
@@ -744,7 +744,7 @@ class _AddEventFormState extends State<AddEventForm> {
                       });
                     }
                   },
-                  child: const Text('Create Event'),
+                  child: const Text('Tədbir Yarat'),
                 ),
               ),
             ],

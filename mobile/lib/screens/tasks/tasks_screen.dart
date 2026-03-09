@@ -30,8 +30,8 @@ class TasksScreen extends StatelessWidget {
             unselectedLabelColor: Colors.grey,
             indicatorColor: Colors.blue,
             tabs: [
-              Tab(text: 'Tasks'),
-              Tab(text: 'Customers'),
+              Tab(text: 'Tapşırıqlar'),
+              Tab(text: 'Müştərilər'),
             ],
           ),
         ),

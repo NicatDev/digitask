@@ -35,14 +35,14 @@ class WarehouseCard extends StatelessWidget {
                         child: Text('#${warehouse['id']}', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold, fontSize: 12)),
                       ),
                       const SizedBox(width: 12),
-                      Expanded(child: Text(warehouse['name'] ?? 'Unnamed', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+                      Expanded(child: Text(warehouse['name'] ?? 'Adsız', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
                     ],
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(color: isActive ? Colors.green.shade50 : Colors.red.shade50, borderRadius: BorderRadius.circular(12)),
-                  child: Text(isActive ? 'Active' : 'Inactive', style: TextStyle(color: isActive ? Colors.green.shade700 : Colors.red.shade700, fontWeight: FontWeight.w500, fontSize: 12)),
+                  child: Text(isActive ? 'Aktiv' : 'Deaktiv', style: TextStyle(color: isActive ? Colors.green.shade700 : Colors.red.shade700, fontWeight: FontWeight.w500, fontSize: 12)),
                 ),
               ],
             ),
@@ -51,10 +51,10 @@ class WarehouseCard extends StatelessWidget {
             // Info Rows
             _buildInfoRow(Icons.location_city, 'Region', warehouse['region_name'] ?? '-'),
             const SizedBox(height: 8),
-            _buildInfoRow(Icons.place, 'Address', warehouse['address']?.isNotEmpty == true ? warehouse['address'] : '-'),
+            _buildInfoRow(Icons.place, 'Ünvan', warehouse['address']?.isNotEmpty == true ? warehouse['address'] : '-'),
             if (warehouse['note']?.isNotEmpty == true) ...[
               const SizedBox(height: 8),
-              _buildInfoRow(Icons.notes, 'Note', warehouse['note']),
+              _buildInfoRow(Icons.notes, 'Qeyd', warehouse['note']),
             ],
             
             const Divider(height: 24),
@@ -66,17 +66,17 @@ class WarehouseCard extends StatelessWidget {
                 IconButton(
                   icon: Icon(Icons.location_on, color: hasLocation ? Colors.blue : Colors.grey.shade300),
                   onPressed: onLocation,
-                  tooltip: 'View Location',
+                  tooltip: 'Məkana bax',
                 ),
                 IconButton(
                   icon: Icon(Icons.edit, color: onEdit != null ? Colors.orange : Colors.grey),
                   onPressed: onEdit,
-                  tooltip: 'Edit',
+                  tooltip: 'Redaktə',
                 ),
                 IconButton(
                   icon: Icon(Icons.delete, color: onDelete != null ? Colors.red : Colors.grey),
                   onPressed: onDelete,
-                  tooltip: 'Delete',
+                  tooltip: 'Sil',
                 ),
               ],
             ),

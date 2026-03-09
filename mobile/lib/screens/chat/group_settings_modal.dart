@@ -46,7 +46,7 @@ class _GroupSettingsModalState extends State<GroupSettingsModal> {
     } catch (e) {
       if (mounted) {
         setState(() { _isLoading = false; });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading details: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Detallar yüklənə bilmədi')));
       }
     }
   }
@@ -62,7 +62,7 @@ class _GroupSettingsModalState extends State<GroupSettingsModal> {
       } catch (e) {
           if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error deleting group: $e')),
+                  const SnackBar(content: Text('Qrup silinə bilmədi')),
               );
           }
       } finally {
@@ -85,11 +85,11 @@ class _GroupSettingsModalState extends State<GroupSettingsModal> {
               await _chatService.addMember(widget.groupId, selectedUser.id);
               await _fetchGroupDetails(); // Refresh list
               if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User added')));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('İstifadəçi əlavə olundu')));
               }
           } catch (e) {
               if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error adding member: $e')));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Üzv əlavə oluna bilmədi')));
               }
           } finally {
               if (mounted) setState(() { _isLoading = false; });
@@ -103,11 +103,11 @@ class _GroupSettingsModalState extends State<GroupSettingsModal> {
               await _chatService.removeMember(widget.groupId, userId);
               await _fetchGroupDetails(); // Refresh list
               if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User removed')));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('İstifadəçi silindi')));
               }
           } catch (e) {
               if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error removing member: $e')));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bu əməliyyat üçün icazəniz yoxdur')));
               }
           } finally {
               if (mounted) setState(() { _isLoading = false; });
@@ -117,7 +117,7 @@ class _GroupSettingsModalState extends State<GroupSettingsModal> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-        title: Text('Settings: ${widget.groupName}'),
+        title: Text('Parametrlər: ${widget.groupName}'),
         content: SizedBox(
           width: double.maxFinite,
           child: _isLoading && _groupDetails == null 
@@ -132,7 +132,7 @@ class _GroupSettingsModalState extends State<GroupSettingsModal> {
                         height: 50, // Increased height
                         child: ElevatedButton.icon(
                             icon: const Icon(Icons.person_add),
-                            label: const Text('Add Member', style: TextStyle(fontSize: 16)),
+                            label: const Text('Üzv Əlavə Et', style: TextStyle(fontSize: 16)),
                             onPressed: _addMember,
                             style: ElevatedButton.styleFrom(
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -140,7 +140,7 @@ class _GroupSettingsModalState extends State<GroupSettingsModal> {
                         ),
                     ),
                     const SizedBox(height: 16),
-                    const Text('Members:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Üzvlər:', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     
                     // Members List
@@ -171,29 +171,29 @@ class _GroupSettingsModalState extends State<GroupSettingsModal> {
                             ),
                         )
                     else 
-                        const Text('No members found'),
+                        const Text('Üzv tapılmadı'),
 
                     const Divider(),
                     
                     // Delete Group Option
                     ListTile(
                         leading: const Icon(Icons.delete, color: Colors.red),
-                        title: const Text('Delete Group', style: TextStyle(color: Colors.red)),
+                        title: const Text('Qrupu Sil', style: TextStyle(color: Colors.red)),
                         contentPadding: EdgeInsets.zero,
                         onTap: () {
                              showDialog(
                                 context: context,
                                 builder: (ctx) => AlertDialog(
-                                    title: const Text('Confirm Delete'),
-                                    content: const Text('Are you sure you want to delete this group?'),
+                                    title: const Text('Silməyi təsdiqlə'),
+                                    content: const Text('Bu qrupu silmək istədiyinizə əminsiniz?'),
                                     actions: [
-                                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Ləğv et')),
                                         TextButton(
                                             onPressed: () {
                                                 Navigator.pop(ctx);
                                                 _deleteGroup();
                                             }, 
-                                            child: const Text('Delete', style: TextStyle(color: Colors.red))
+                                            child: const Text('Sil', style: TextStyle(color: Colors.red))
                                         ),
                                     ],
                                 )
@@ -206,7 +206,7 @@ class _GroupSettingsModalState extends State<GroupSettingsModal> {
         actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context), 
-                child: const Text('Close')
+                child: const Text('Bağla')
             ),
         ],
     );
@@ -281,7 +281,7 @@ class _UserSearchDialogState extends State<UserSearchDialog> {
     @override
     Widget build(BuildContext context) {
         return AlertDialog(
-            title: const Text('Add Member'),
+            title: const Text('Üzv Əlavə et'),
             content: SizedBox(
                 width: double.maxFinite,
                 child: Column(
@@ -290,7 +290,7 @@ class _UserSearchDialogState extends State<UserSearchDialog> {
                         TextField(
                             controller: _searchController,
                             decoration: const InputDecoration(
-                                hintText: 'Search by name or email',
+                                hintText: 'Ad və ya email ilə axtar',
                                 prefixIcon: Icon(Icons.search),
                             ),
                         ),
@@ -304,7 +304,7 @@ class _UserSearchDialogState extends State<UserSearchDialog> {
                                 child: _filteredUsers.isEmpty 
                                     ? const Padding(
                                         padding: EdgeInsets.all(20.0),
-                                        child: Text('No users found'),
+                                        child: Text('İstifadəçi tapılmadı'),
                                       )
                                     : ListView.builder(
                                     shrinkWrap: true,
@@ -329,7 +329,7 @@ class _UserSearchDialogState extends State<UserSearchDialog> {
                 ),
             ),
             actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Ləğv et')),
             ],
         );
     }

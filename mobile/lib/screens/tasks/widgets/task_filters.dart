@@ -75,8 +75,8 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Filters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              TextButton(onPressed: _reset, child: const Text('Reset')),
+              const Text('Filtrlər', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              TextButton(onPressed: _reset, child: const Text('Sıfırla')),
             ],
           ),
           const SizedBox(height: 16),
@@ -86,7 +86,7 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
             value: _status,
             decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
             items: [
-              const DropdownMenuItem(value: null, child: Text('All Statuses')),
+              const DropdownMenuItem(value: null, child: Text('Bütün Statuslar')),
               ..._statuses.map((s) => DropdownMenuItem(value: s['value'], child: Text(s['label']!))),
             ],
             onChanged: (v) => setState(() => _status = v),
@@ -96,9 +96,9 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
           // Customer
           DropdownButtonFormField<int>(
             value: _customerId,
-            decoration: const InputDecoration(labelText: 'Customer', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'Müştəri', border: OutlineInputBorder()),
             items: [
-              const DropdownMenuItem(value: null, child: Text('All Customers')),
+              const DropdownMenuItem(value: null, child: Text('Bütün Müştərilər')),
               ...widget.customers.map((c) => DropdownMenuItem<int>(
                 value: c['id'], 
                 child: Text(
@@ -114,9 +114,9 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
           // Group
           DropdownButtonFormField<int>(
             value: _groupId,
-            decoration: const InputDecoration(labelText: 'Group', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'Qrup', border: OutlineInputBorder()),
             items: [
-              const DropdownMenuItem(value: null, child: Text('All Groups')),
+              const DropdownMenuItem(value: null, child: Text('Bütün Qruplar')),
               ...widget.groups.map((g) => DropdownMenuItem<int>(
                 value: g['id'], 
                 child: Text(
@@ -132,9 +132,9 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
           // Assignee
           DropdownButtonFormField<int>(
             value: _assigneeId,
-            decoration: const InputDecoration(labelText: 'Assignee', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'Təhkim Olunmuş', border: OutlineInputBorder()),
             items: [
-              const DropdownMenuItem(value: null, child: Text('All Users')),
+              const DropdownMenuItem(value: null, child: Text('Bütün İstifadəçilər')),
               ...widget.users.map((u) => DropdownMenuItem<int>(
                 value: u['id'], 
                 child: Text('${u['first_name']} ${u['last_name']}')
@@ -147,11 +147,11 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
           // Active
           DropdownButtonFormField<String>(
             value: _active,
-            decoration: const InputDecoration(labelText: 'Active Status', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'Aktiv Status', border: OutlineInputBorder()),
             items: const [
-              DropdownMenuItem(value: 'all', child: Text('All')),
-              DropdownMenuItem(value: 'active', child: Text('Active Only')),
-              DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
+              DropdownMenuItem(value: 'all', child: Text('Hamısı')),
+              DropdownMenuItem(value: 'active', child: Text('Yalnız Aktiv')),
+              DropdownMenuItem(value: 'inactive', child: Text('Passiv')),
             ],
             onChanged: (v) => setState(() => _active = v!),
           ),
@@ -169,7 +169,7 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Apply Filters'),
+              child: const Text('Filtrləri Tətbiq Et'),
             ),
           ),
         ],

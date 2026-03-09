@@ -43,12 +43,12 @@ class _TaskFormModalState extends State<TaskFormModal> {
   bool _isSaving = false;
 
   final List<Map<String, String>> _statuses = [
-    {'value': 'todo', 'label': 'To Do'},
-    {'value': 'in_progress', 'label': 'In Progress'},
-    {'value': 'arrived', 'label': 'Arrived'},
-    {'value': 'done', 'label': 'Done'},
-    {'value': 'pending', 'label': 'Pending'},
-    {'value': 'rejected', 'label': 'Rejected'},
+    {'value': 'todo', 'label': 'Gözləyir'},
+    {'value': 'in_progress', 'label': 'İcrada'},
+    {'value': 'arrived', 'label': 'Çatıb'},
+    {'value': 'done', 'label': 'Bitib'},
+    {'value': 'pending', 'label': 'Gözləmədə'},
+    {'value': 'rejected', 'label': 'Rədd edilib'},
   ];
 
   @override
@@ -88,7 +88,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
       orElse: () => <String, dynamic>{},
     );
     if (c.isEmpty) return '';
-    final name = c['full_name'] ?? 'Unnamed';
+    final name = c['full_name'] ?? 'Adsız';
     final regNum = c['register_number'];
     return regNum != null ? '$name - $regNum' : name;
   }
@@ -119,7 +119,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
       if (mounted) {
         Navigator.pop(context);
         widget.onSuccess();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(widget.task == null ? 'Task Created' : 'Task Updated')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(widget.task == null ? 'Tapşırıq yaradıldı' : 'Tapşırıq yeniləndi')));
       }
     } catch (e) {
       if (mounted) {
@@ -140,7 +140,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(widget.task == null ? 'New Task' : 'Edit Task', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(widget.task == null ? 'Yeni Tapşırıq' : 'Tapşırığı Redaktə Et', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
@@ -149,13 +149,13 @@ class _TaskFormModalState extends State<TaskFormModal> {
                 children: [
                   TextFormField(
                     controller: _titleCtrl,
-                    decoration: const InputDecoration(labelText: 'Title'),
-                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                    decoration: const InputDecoration(labelText: 'Başlıq'),
+                    validator: (v) => v!.isEmpty ? 'Tələb olunur' : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _noteCtrl,
-                    decoration: const InputDecoration(labelText: 'Note'),
+                    decoration: const InputDecoration(labelText: 'Qeyd'),
                     maxLines: 3,
                   ),
                   const SizedBox(height: 16),
@@ -183,7 +183,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
                       });
                     },
                     displayStringForOption: (c) {
-                      final name = c['full_name'] ?? 'Unnamed';
+                      final name = c['full_name'] ?? 'Adsız';
                       final regNum = c['register_number'];
                       return regNum != null ? '$name - $regNum' : name;
                     },
@@ -193,10 +193,10 @@ class _TaskFormModalState extends State<TaskFormModal> {
                         controller: controller,
                         focusNode: focusNode,
                         decoration: const InputDecoration(
-                          labelText: 'Customer',
+                          labelText: 'Müştəri',
                           suffixIcon: Icon(Icons.search),
                         ),
-                        validator: (v) => _customerId == null ? 'Required' : null,
+                        validator: (v) => _customerId == null ? 'Tələb olunur' : null,
                       );
                     },
                     optionsViewBuilder: (context, onSelected, options) {
@@ -213,7 +213,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
                               itemCount: options.length,
                               itemBuilder: (context, index) {
                                 final c = options.elementAt(index);
-                                final name = c['full_name'] ?? 'Unnamed';
+                                 final name = c['full_name'] ?? 'Adsız';
                                 final regNum = c['register_number'];
                                 return ListTile(
                                   title: Text(regNum != null ? '$name - $regNum' : name),
@@ -231,10 +231,10 @@ class _TaskFormModalState extends State<TaskFormModal> {
                   // Group
                   DropdownButtonFormField<int>(
                     value: _groupId,
-                    decoration: const InputDecoration(labelText: 'Group/Zone'),
+                    decoration: const InputDecoration(labelText: 'Qrup/Zona'),
                     items: widget.groups.map((g) => DropdownMenuItem<int>(
                       value: g['id'], 
-                      child: Text(g['name'] ?? 'Unnamed'),
+                      child: Text(g['name'] ?? 'Adsız'),
                     )).toList(),
                     onChanged: (v) => setState(() => _groupId = v),
                   ),
@@ -243,7 +243,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
                   // Task Type
                   DropdownButtonFormField<int>(
                     value: _taskTypeId,
-                    decoration: const InputDecoration(labelText: 'Task Type'),
+                    decoration: const InputDecoration(labelText: 'Tapşırıq Tipi'),
                     items: widget.taskTypes.map((t) => DropdownMenuItem<int>(
                       value: t['id'], 
                       child: Text(t['name']),
@@ -262,7 +262,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
                       final isSelected = _assigneeIds.contains(u['id']);
                       final name = '${u['first_name'] ?? ''} ${u['last_name'] ?? ''}'.trim();
                       return FilterChip(
-                        label: Text(name.isNotEmpty ? name : (u['email'] ?? 'User')),
+                        label: Text(name.isNotEmpty ? name : (u['email'] ?? 'İstifadəçi')),
                         selected: isSelected,
                         onSelected: (val) {
                           setState(() {
@@ -281,7 +281,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
 
                    const SizedBox(height: 16),
                    // Services
-                   const Text('Services', style: TextStyle(fontWeight: FontWeight.bold)),
+                   const Text('Xidmətlər', style: TextStyle(fontWeight: FontWeight.bold)),
                    Wrap(
                      spacing: 8,
                      children: widget.services.map((s) {
@@ -316,7 +316,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
                 ),
-                child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text('Save Task'),
+                child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text('Yadda Saxla'),
               ),
             ),
           ],

@@ -27,11 +27,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (difference.inDays > 0) {
       return DateFormat('MMM d, HH:mm').format(date); // e.g. Oct 12, 14:30
     } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
+      return '${difference.inHours} saat əvvəl';
     } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
+      return '${difference.inMinutes} dəq əvvəl';
     } else {
-      return 'Just now';
+      return 'İndicə';
     }
   }
 
@@ -65,15 +65,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: const Text('Bildirişlər'),
         actions: [
           IconButton(
             icon: const Icon(Icons.done_all),
-            tooltip: 'Mark all as read',
+            tooltip: 'Hamısını oxunmuş say',
             onPressed: () async {
               await _notificationService.markAllAsRead();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('All notifications marked as read')),
+                const SnackBar(content: Text('Bütün bildirişlər oxunmuş kimi qeyd edildi')),
               );
             },
           ),
@@ -89,7 +89,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 children: [
                   Icon(Icons.notifications_off_outlined, size: 64, color: Colors.grey),
                   SizedBox(height: 16),
-                  Text('No notifications', style: TextStyle(color: Colors.grey)),
+                  Text('Bildiriş yoxdur', style: TextStyle(color: Colors.grey)),
                 ],
               ),
             );
