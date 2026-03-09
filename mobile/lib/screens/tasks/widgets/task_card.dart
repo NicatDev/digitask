@@ -82,11 +82,33 @@ class TaskCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      builder: (_) => TaskDetailModal(task: task),
-                    ),
+                    onTap: () async {
+                      // Show loading dialog
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (_) => const Center(child: CircularProgressIndicator()),
+                      );
+                      try {
+                        final client = ApiClient().dio;
+                        final response = await client.get('/tasks/tasks/${task['id']}/');
+                        if (context.mounted) {
+                          Navigator.pop(context); // Close loading
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (_) => TaskDetailModal(task: response.data),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          Navigator.pop(context); // Close loading
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Məlumatlar yüklənmədi')),
+                          );
+                        }
+                      }
+                    },
                     child: Text(
                       task['title'] ?? 'Untitled',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue),

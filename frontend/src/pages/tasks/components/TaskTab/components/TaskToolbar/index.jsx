@@ -17,12 +17,15 @@ const TaskToolbar = ({
     setCustomerFilter,
     assigneeFilter,
     setAssigneeFilter,
+    groupFilter,
+    setGroupFilter,
     dateRange,
     setDateRange,
     isActiveFilter,
     setIsActiveFilter,
     customers,
     users,
+    groups = [],
     onNewTask,
     disableCreate = false
 }) => {
@@ -102,6 +105,19 @@ const TaskToolbar = ({
                                     <Option key={u.id} value={u.id}>
                                         {u.first_name} {u.last_name}
                                     </Option>
+                                ))}
+                            </Select>
+                            <Select
+                                placeholder="Qrup"
+                                style={{ width: screens.md ? 150 : '100%' }}
+                                allowClear
+                                showSearch
+                                optionFilterProp="children"
+                                value={groupFilter}
+                                onChange={setGroupFilter}
+                            >
+                                {groups.map(g => (
+                                    <Option key={g.id} value={g.id}>{g.name}</Option>
                                 ))}
                             </Select>
                             <RangePicker

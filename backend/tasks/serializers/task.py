@@ -133,6 +133,54 @@ class TaskServiceSerializer(serializers.ModelSerializer):
         return instance
 
 
+class TaskListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for task list views — only card/table visible fields."""
+    customer_name = serializers.CharField(source='customer.full_name', read_only=True)
+    customer_phone = serializers.CharField(source='customer.phone_number', read_only=True)
+    customer_register_number = serializers.CharField(source='customer.register_number', read_only=True)
+    customer_coordinates = serializers.JSONField(source='customer.address_coordinates', read_only=True)
+    customer_address = serializers.CharField(source='customer.address', read_only=True)
+    assigned_to = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    assigned_to_names = serializers.SerializerMethodField()
+    group_name = serializers.CharField(source='group.name', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    task_type_details = TaskTypeSerializer(source='task_type', read_only=True)
+    task_products_count = serializers.SerializerMethodField()
+    task_documents_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Task
+        fields = [
+            'id', 'title', 'status', 'status_display',
+            'customer', 'customer_name', 'customer_phone',
+            'customer_register_number', 'customer_coordinates', 'customer_address',
+            'assigned_to', 'assigned_to_names',
+            'group', 'group_name',
+            'task_type', 'task_type_details',
+            'services',
+            'is_active',
+            'task_products_count', 'task_documents_count',
+            'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+    def get_assigned_to_names(self, obj):
+        users = obj.assigned_to.all()
+        if not users:
+            return []
+        result = []
+        for user in users:
+            full_name = user.get_full_name()
+            result.append(full_name if full_name else user.username)
+        return result
+
+    def get_task_products_count(self, obj):
+        return obj.task_products.count()
+
+    def get_task_documents_count(self, obj):
+        return obj.task_documents.count()
+
+
 class TaskSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source='customer.full_name', read_only=True)
     customer_address = serializers.CharField(source='customer.address', read_only=True)

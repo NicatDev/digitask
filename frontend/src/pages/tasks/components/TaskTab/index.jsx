@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Form, message, Grid } from 'antd';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { getTasks, createTask, updateTask, deleteTask, updateTaskStatus, getServices, getColumns, getCustomers, getTaskTypes, addTaskAssignee, joinTask } from '../../../../axios/api/tasks';
+import { getTasks, getTask, createTask, updateTask, deleteTask, updateTaskStatus, getServices, getColumns, getCustomers, getTaskTypes, addTaskAssignee, joinTask } from '../../../../axios/api/tasks';
 import { getGroups, getUsers } from '../../../../axios/api/account';
 import { handleApiError } from '../../../../utils/errorHandler';
 import { useAuth } from '../../../../context/AuthContext';
@@ -56,6 +56,7 @@ const TaskTab = ({ isActive }) => {
     const [assigneeFilter, setAssigneeFilter] = useState(null);
     const [dateRange, setDateRange] = useState(null);
     const [isActiveFilter, setIsActiveFilter] = useState(true);
+    const [groupFilter, setGroupFilter] = useState(null);
     const [showFilters, setShowFilters] = useState(false);
 
     // Modal States
@@ -97,6 +98,7 @@ const TaskTab = ({ isActive }) => {
                 status: params.status !== undefined ? params.status : statusFilter,
                 customer: params.customer !== undefined ? params.customer : customerFilter,
                 assigned_to: params.assigned_to !== undefined ? params.assigned_to : assigneeFilter,
+                group: params.group !== undefined ? params.group : groupFilter,
                 is_active: params.is_active !== undefined ? (params.is_active === 'all' ? undefined : params.is_active) : (isActiveFilter === 'all' ? undefined : isActiveFilter),
                 // Date range handling...
             };
@@ -155,7 +157,7 @@ const TaskTab = ({ isActive }) => {
         if (isActive) {
             fetchData({ page: 1 });
         }
-    }, [debouncedSearchText, statusFilter, customerFilter, assigneeFilter, isActiveFilter, dateRange]);
+    }, [debouncedSearchText, statusFilter, customerFilter, assigneeFilter, isActiveFilter, groupFilter, dateRange]);
 
     const handleTableChange = (newPagination) => {
         fetchData({ page: newPagination.current });
@@ -304,12 +306,15 @@ const TaskTab = ({ isActive }) => {
                 setCustomerFilter={setCustomerFilter}
                 assigneeFilter={assigneeFilter}
                 setAssigneeFilter={setAssigneeFilter}
+                groupFilter={groupFilter}
+                setGroupFilter={setGroupFilter}
                 dateRange={dateRange}
                 setDateRange={setDateRange}
                 isActiveFilter={isActiveFilter}
                 setIsActiveFilter={setIsActiveFilter}
                 customers={customers}
                 users={users}
+                groups={groups}
                 onNewTask={handleNewTask}
                 disableCreate={!hasPermission(user, PERMISSIONS.TASK_WRITER)}
             />
@@ -328,9 +333,16 @@ const TaskTab = ({ isActive }) => {
                 onDelete={handleDelete}
                 onAccept={handleAcceptTask}
                 onViewLocation={handleViewLocation}
-                onViewDetail={(record) => {
-                    setSelectedTaskForDetail(record);
+                onViewDetail={async (record) => {
                     setIsDetailModalOpen(true);
+                    setSelectedTaskForDetail(null);
+                    try {
+                        const res = await getTask(record.id);
+                        setSelectedTaskForDetail(res.data);
+                    } catch (err) {
+                        message.error('Tapşırıq məlumatları yüklənmədi');
+                        setIsDetailModalOpen(false);
+                    }
                 }}
                 onProductSelect={openProductModal}
                 onDocumentAdd={(record) => {
