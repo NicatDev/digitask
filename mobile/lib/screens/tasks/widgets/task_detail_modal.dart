@@ -133,6 +133,21 @@ class TaskDetailModal extends StatelessWidget {
     return 'Təyin olunmayıb';
   }
 
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'todo':
+        return 'Gözləyir';
+      case 'in_progress':
+        return 'İcrada';
+      case 'done':
+        return 'Tamamlandı';
+      case 'cancelled':
+        return 'Ləğv edildi';
+      default:
+        return status.isNotEmpty ? status : '-';
+    }
+  }
+
   Widget _infoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
