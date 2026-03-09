@@ -6,10 +6,10 @@ class TaskFilterModal extends StatefulWidget {
   final List<dynamic> groups;
   final String? status;
   final int? customerId;
-  final int? assigneeId;
   final int? groupId;
+  final int? assigneeId;
   final String activeFilter;
-  final Function(String? status, int? custId, int? assignId, String active, int? groupId) onApply;
+  final Function(String? status, int? custId, int? groupId, int? assignId, String active) onApply;
 
   const TaskFilterModal({
     super.key,
@@ -18,8 +18,8 @@ class TaskFilterModal extends StatefulWidget {
     this.groups = const [],
     this.status,
     this.customerId,
-    this.assigneeId,
     this.groupId,
+    this.assigneeId,
     required this.activeFilter,
     required this.onApply,
   });
@@ -31,8 +31,8 @@ class TaskFilterModal extends StatefulWidget {
 class _TaskFilterModalState extends State<TaskFilterModal> {
   String? _status;
   int? _customerId;
-  int? _assigneeId;
   int? _groupId;
+  int? _assigneeId;
   String _active = 'active';
 
   final List<Map<String, String>> _statuses = [
@@ -49,8 +49,8 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
     super.initState();
     _status = widget.status;
     _customerId = widget.customerId;
-    _assigneeId = widget.assigneeId;
     _groupId = widget.groupId;
+    _assigneeId = widget.assigneeId;
     _active = widget.activeFilter;
   }
 
@@ -58,8 +58,8 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
     setState(() {
       _status = null;
       _customerId = null;
-      _assigneeId = null;
       _groupId = null;
+      _assigneeId = null;
       _active = 'active';
     });
   }
@@ -68,113 +68,111 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Filters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                TextButton(onPressed: _reset, child: const Text('Reset')),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            // Status
-            DropdownButtonFormField<String>(
-              value: _status,
-              decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('All Statuses')),
-                ..._statuses.map((s) => DropdownMenuItem(value: s['value'], child: Text(s['label']!))),
-              ],
-              onChanged: (v) => setState(() => _status = v),
-            ),
-            const SizedBox(height: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Filters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              TextButton(onPressed: _reset, child: const Text('Reset')),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Status
+          DropdownButtonFormField<String>(
+            value: _status,
+            decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('All Statuses')),
+              ..._statuses.map((s) => DropdownMenuItem(value: s['value'], child: Text(s['label']!))),
+            ],
+            onChanged: (v) => setState(() => _status = v),
+          ),
+          const SizedBox(height: 16),
 
-            // Group
-            DropdownButtonFormField<int>(
-              value: _groupId,
-              decoration: const InputDecoration(labelText: 'Qrup', border: OutlineInputBorder()),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('Bütün Qruplar')),
-                ...widget.groups.map((g) => DropdownMenuItem<int>(
-                  value: g['id'], 
-                  child: Text(
-                    _truncate(g['name'] ?? 'Unnamed', 25), 
-                    overflow: TextOverflow.ellipsis
-                  )
-                )),
-              ],
-              onChanged: (v) => setState(() => _groupId = v),
-            ),
-            const SizedBox(height: 16),
+          // Customer
+          DropdownButtonFormField<int>(
+            value: _customerId,
+            decoration: const InputDecoration(labelText: 'Customer', border: OutlineInputBorder()),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('All Customers')),
+              ...widget.customers.map((c) => DropdownMenuItem<int>(
+                value: c['id'], 
+                child: Text(
+                  _truncate(c['full_name'] ?? 'Unnamed', 25), 
+                  overflow: TextOverflow.ellipsis
+                )
+              )),
+            ],
+            onChanged: (v) => setState(() => _customerId = v),
+          ),
+          const SizedBox(height: 16),
 
-            // Customer
-            DropdownButtonFormField<int>(
-              value: _customerId,
-              decoration: const InputDecoration(labelText: 'Customer', border: OutlineInputBorder()),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('All Customers')),
-                ...widget.customers.map((c) => DropdownMenuItem<int>(
-                  value: c['id'], 
-                  child: Text(
-                    _truncate(c['full_name'] ?? 'Unnamed', 25), 
-                    overflow: TextOverflow.ellipsis
-                  )
-                )),
-              ],
-              onChanged: (v) => setState(() => _customerId = v),
-            ),
-            const SizedBox(height: 16),
+          // Group
+          DropdownButtonFormField<int>(
+            value: _groupId,
+            decoration: const InputDecoration(labelText: 'Group', border: OutlineInputBorder()),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('All Groups')),
+              ...widget.groups.map((g) => DropdownMenuItem<int>(
+                value: g['id'], 
+                child: Text(
+                  _truncate(g['name'] ?? 'Unnamed', 25), 
+                  overflow: TextOverflow.ellipsis
+                )
+              )),
+            ],
+            onChanged: (v) => setState(() => _groupId = v),
+          ),
+          const SizedBox(height: 16),
 
-            // Assignee
-            DropdownButtonFormField<int>(
-              value: _assigneeId,
-              decoration: const InputDecoration(labelText: 'Assignee', border: OutlineInputBorder()),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('All Users')),
-                ...widget.users.map((u) => DropdownMenuItem<int>(
-                  value: u['id'], 
-                  child: Text('${u['first_name']} ${u['last_name']}')
-                )),
-              ],
-              onChanged: (v) => setState(() => _assigneeId = v),
-            ),
-            const SizedBox(height: 16),
+          // Assignee
+          DropdownButtonFormField<int>(
+            value: _assigneeId,
+            decoration: const InputDecoration(labelText: 'Assignee', border: OutlineInputBorder()),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('All Users')),
+              ...widget.users.map((u) => DropdownMenuItem<int>(
+                value: u['id'], 
+                child: Text('${u['first_name']} ${u['last_name']}')
+              )),
+            ],
+            onChanged: (v) => setState(() => _assigneeId = v),
+          ),
+          const SizedBox(height: 16),
 
-            // Active
-            DropdownButtonFormField<String>(
-              value: _active,
-              decoration: const InputDecoration(labelText: 'Active Status', border: OutlineInputBorder()),
-              items: const [
-                DropdownMenuItem(value: 'all', child: Text('All')),
-                DropdownMenuItem(value: 'active', child: Text('Active Only')),
-                DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
-              ],
-              onChanged: (v) => setState(() => _active = v!),
-            ),
-            const SizedBox(height: 24),
+          // Active
+          DropdownButtonFormField<String>(
+            value: _active,
+            decoration: const InputDecoration(labelText: 'Active Status', border: OutlineInputBorder()),
+            items: const [
+              DropdownMenuItem(value: 'all', child: Text('All')),
+              DropdownMenuItem(value: 'active', child: Text('Active Only')),
+              DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
+            ],
+            onChanged: (v) => setState(() => _active = v!),
+          ),
+          const SizedBox(height: 24),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  widget.onApply(_status, _customerId, _assigneeId, _active, _groupId);
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Apply Filters'),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                widget.onApply(_status, _customerId, _groupId, _assigneeId, _active);
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                foregroundColor: Colors.white,
               ),
+              child: const Text('Apply Filters'),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -184,4 +182,3 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
     return '${str.substring(0, len)}...';
   }
 }
-

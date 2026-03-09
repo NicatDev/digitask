@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal
 from ..models import Task, TaskService, TaskProduct
-from ..serializers import TaskSerializer, TaskListSerializer, TaskServiceSerializer, TaskStatusUpdateSerializer, TaskProductSerializer, TaskProductCreateSerializer
+from ..serializers import TaskSerializer, TaskServiceSerializer, TaskStatusUpdateSerializer, TaskProductSerializer, TaskProductCreateSerializer
 from warehouse.models import WarehouseInventory, StockMovement
 from ..pagination import TaskPagination
 
@@ -21,27 +21,15 @@ class TaskViewSet(viewsets.ModelViewSet):
     pagination_class = TaskPagination
     permission_classes = [IsAuthenticated]
     
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return TaskListSerializer
-        return TaskSerializer
-    
     def get_queryset(self):
         queryset = Task.objects.select_related(
             'customer', 'group', 'group__region'
         ).prefetch_related(
             'assigned_to',
-        )
-        
-        # Only prefetch heavy nested relations for detail/retrieve
-        if self.action == 'retrieve':
-            queryset = queryset.prefetch_related(
-                'task_services', 'task_services__service', 'task_services__values',
-                'task_products', 'task_products__product', 'task_products__warehouse',
-                'task_documents'
-            )
-        
-        queryset = queryset.order_by('-created_at')
+            'task_services', 'task_services__service', 'task_services__values',
+            'task_products', 'task_products__product', 'task_products__warehouse',
+            'task_documents'
+        ).order_by('-created_at')
         
         user = self.request.user
         

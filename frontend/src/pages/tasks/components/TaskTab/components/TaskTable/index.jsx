@@ -227,10 +227,10 @@ const TaskTable = ({
                     <Button type="link" size="small" onClick={() => onStatusChange(record)}>Status</Button>
                     <Button type="link" size="small" onClick={() => onQuestionnaire(record)}>Anket</Button>
                     <Button type="link" size="small" onClick={() => onProductSelect(record)}>
-                        Məhsul ({record.task_products_count ?? record.task_products?.length ?? 0})
+                        Məhsul ({record.task_products?.length || 0})
                     </Button>
                     <Button type="link" size="small" onClick={() => onDocumentAdd(record)}>
-                        <FileAddOutlined /> ({record.task_documents_count ?? record.task_documents?.length ?? 0})
+                        <FileAddOutlined /> ({record.task_documents?.length || 0})
                     </Button>
                     {(user?.is_task_writer || user?.is_admin || user?.is_super_admin) && (
                         <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => onDelete(record.id)} disabled={disableActions}>

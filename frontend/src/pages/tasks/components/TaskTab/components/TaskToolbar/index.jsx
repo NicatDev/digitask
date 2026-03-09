@@ -15,17 +15,17 @@ const TaskToolbar = ({
     setStatusFilter,
     customerFilter,
     setCustomerFilter,
-    assigneeFilter,
-    setAssigneeFilter,
     groupFilter,
     setGroupFilter,
+    assigneeFilter,
+    setAssigneeFilter,
     dateRange,
     setDateRange,
     isActiveFilter,
     setIsActiveFilter,
     customers,
-    users,
     groups = [],
+    users,
     onNewTask,
     disableCreate = false
 }) => {
@@ -93,6 +93,19 @@ const TaskToolbar = ({
                                 ))}
                             </Select>
                             <Select
+                                placeholder="Qrup"
+                                style={{ width: screens.md ? 150 : '100%' }}
+                                allowClear
+                                showSearch
+                                optionFilterProp="children"
+                                value={groupFilter}
+                                onChange={setGroupFilter}
+                            >
+                                {groups.map(g => (
+                                    <Option key={g.id} value={g.id}>{g.name}</Option>
+                                ))}
+                            </Select>
+                            <Select
                                 placeholder="İcraçı"
                                 style={{ width: screens.md ? 150 : '100%' }}
                                 allowClear
@@ -105,19 +118,6 @@ const TaskToolbar = ({
                                     <Option key={u.id} value={u.id}>
                                         {u.first_name} {u.last_name}
                                     </Option>
-                                ))}
-                            </Select>
-                            <Select
-                                placeholder="Qrup"
-                                style={{ width: screens.md ? 150 : '100%' }}
-                                allowClear
-                                showSearch
-                                optionFilterProp="children"
-                                value={groupFilter}
-                                onChange={setGroupFilter}
-                            >
-                                {groups.map(g => (
-                                    <Option key={g.id} value={g.id}>{g.name}</Option>
                                 ))}
                             </Select>
                             <RangePicker

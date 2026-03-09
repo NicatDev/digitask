@@ -32,8 +32,8 @@ class _TasksTabState extends State<TasksTab> {
   String _searchQuery = '';
   String? _statusFilter;
   int? _customerFilter;
-  int? _assigneeFilter;
   int? _groupFilter;
+  int? _assigneeFilter;
   String _activeFilter = 'active'; // all, active, inactive
   DateTimeRange? _dateRange;
 
@@ -142,11 +142,11 @@ class _TasksTabState extends State<TasksTab> {
     };
     if (_statusFilter != null) params['status'] = _statusFilter;
     if (_customerFilter != null) params['customer'] = _customerFilter;
+    if (_groupFilter != null) params['group'] = _groupFilter;
     if (_assigneeFilter != null) params['assigned_to'] = _assigneeFilter;
     
     if (_activeFilter == 'active') params['is_active'] = true;
     if (_activeFilter == 'inactive') params['is_active'] = false;
-    if (_groupFilter != null) params['group'] = _groupFilter;
 
     return params;
   }
@@ -170,16 +170,16 @@ class _TasksTabState extends State<TasksTab> {
         groups: _groups,
         status: _statusFilter,
         customerId: _customerFilter,
-        assigneeId: _assigneeFilter,
         groupId: _groupFilter,
+        assigneeId: _assigneeFilter,
         activeFilter: _activeFilter,
-        onApply: (status, custId, assignId, active, groupId) {
+        onApply: (status, custId, groupId, assignId, active) {
           setState(() {
             _statusFilter = status;
             _customerFilter = custId;
+            _groupFilter = groupId;
             _assigneeFilter = assignId;
             _activeFilter = active;
-            _groupFilter = groupId;
           });
           _fetchTasks(refresh: true);
         },
@@ -222,93 +222,52 @@ class _TasksTabState extends State<TasksTab> {
         // Toolbar Row (Search + Actions)
         Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Column(
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Search tasks...',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      onChanged: (val) {
-                         _searchQuery = val;
-                         Future.delayed(const Duration(milliseconds: 500), () {
-                           if (mounted && _searchQuery == val) _fetchTasks(refresh: true);
-                         });
-                      },
-                    ),
+              Expanded(
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search tasks...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton( // Filter
-                    icon: const Icon(Icons.filter_list),
-                    onPressed: _openFilters,
-                    style: IconButton.styleFrom(backgroundColor: Colors.white),
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton( // Refresh
-                    icon: const Icon(Icons.refresh),
-                    onPressed: () => _fetchTasks(refresh: true),
-                    style: IconButton.styleFrom(backgroundColor: Colors.white),
-                  ),
-                  const SizedBox(width: 4),
-                  
-                  // Add Task Button - Visible but disabled if not writer
-                  ValueListenableBuilder<User?>(
-                    valueListenable: ChatService().currentUser,
-                    builder: (context, user, child) {
-                      final isWriter = user?.isTaskWriter ?? false;
-                      return IconButton( 
-                        icon: Icon(Icons.add, color: isWriter ? Colors.blue : Colors.grey),
-                        onPressed: isWriter ? () => _openTaskForm() : null,
-                        style: IconButton.styleFrom(backgroundColor: Colors.white),
-                      );
-                    }
-                  ),
-                ],
-              ),
-              // Group filter chips
-              if (_groups.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: SizedBox(
-                    height: 36,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
-                            label: const Text('Hamısı'),
-                            selected: _groupFilter == null,
-                            onSelected: (_) {
-                              setState(() => _groupFilter = null);
-                              _fetchTasks(refresh: true);
-                            },
-                            selectedColor: Colors.blue.shade100,
-                          ),
-                        ),
-                        ..._groups.map((g) => Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
-                            label: Text(g['name'] ?? ''),
-                            selected: _groupFilter == g['id'],
-                            onSelected: (_) {
-                              setState(() => _groupFilter = g['id']);
-                              _fetchTasks(refresh: true);
-                            },
-                            selectedColor: Colors.blue.shade100,
-                          ),
-                        )),
-                      ],
-                    ),
-                  ),
+                  onChanged: (val) {
+                     _searchQuery = val;
+                     Future.delayed(const Duration(milliseconds: 500), () {
+                       if (mounted && _searchQuery == val) _fetchTasks(refresh: true);
+                     });
+                  },
                 ),
+              ),
+              const SizedBox(width: 8),
+              IconButton( // Filter
+                icon: const Icon(Icons.filter_list),
+                onPressed: _openFilters,
+                style: IconButton.styleFrom(backgroundColor: Colors.white),
+              ),
+              const SizedBox(width: 4),
+              IconButton( // Refresh
+                icon: const Icon(Icons.refresh),
+                onPressed: () => _fetchTasks(refresh: true),
+                style: IconButton.styleFrom(backgroundColor: Colors.white),
+              ),
+              const SizedBox(width: 4),
+              
+              // Add Task Button - Visible but disabled if not writer
+              ValueListenableBuilder<User?>(
+                valueListenable: ChatService().currentUser,
+                builder: (context, user, child) {
+                  final isWriter = user?.isTaskWriter ?? false;
+                  return IconButton( 
+                    icon: Icon(Icons.add, color: isWriter ? Colors.blue : Colors.grey),
+                    onPressed: isWriter ? () => _openTaskForm() : null,
+                    style: IconButton.styleFrom(backgroundColor: Colors.white),
+                  );
+                }
+              ),
             ],
           ),
         ),
