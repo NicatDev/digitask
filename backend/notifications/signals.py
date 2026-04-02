@@ -1,5 +1,7 @@
 from django.db.models.signals import post_save, m2m_changed
+from django.db import transaction
 from django.dispatch import receiver
+import threading
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from .models import Notification
@@ -75,7 +77,10 @@ def broadcast_notification_on_create(sender, instance, created, **kwargs):
     """
     if created and not instance.target_users.exists():
         send_notification_ws(instance, target_users=None)
-        send_notification_fcm(instance, target_users=None)
+        # Run FCM in background thread after transaction commit
+        transaction.on_commit(
+            lambda: threading.Thread(target=send_notification_fcm, args=(instance, None)).start()
+        )
 
 
 @receiver(m2m_changed, sender=Notification.target_users.through)
@@ -83,7 +88,10 @@ def notification_targets_changed(sender, instance, action, pk_set, **kwargs):
     """Send websocket + FCM notification when target_users are added."""
     if action == "post_add" and pk_set:
         send_notification_ws(instance, target_users=pk_set)
-        send_notification_fcm(instance, target_users=pk_set)
+        # Run FCM in background thread after transaction commit
+        transaction.on_commit(
+            lambda: threading.Thread(target=send_notification_fcm, args=(instance, list(pk_set))).start()
+        )
 
 
 from tasks.models import Task
