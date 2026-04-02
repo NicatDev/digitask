@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class TaskDetailModal extends StatelessWidget {
   final Map<String, dynamic> task;
@@ -80,7 +81,25 @@ class TaskDetailModal extends StatelessWidget {
                     _sectionTitle('Müştəri Məlumatları'),
                     _infoRow('Ad', task['customer_name'] ?? '-'),
                     _infoRow('Ünvan', task['customer_address'] ?? '-'),
-                    _infoRow('Telefon', task['customer_phone'] ?? '-'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          Expanded(child: _infoRow('Telefon', task['customer_phone'] ?? '-')),
+                          if (task['customer_phone'] != null && task['customer_phone'].toString().isNotEmpty)
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              onPressed: () => _launchCaller(task['customer_phone']),
+                              icon: const Icon(Icons.phone_in_talk),
+                              label: const Text('Zəng et'),
+                            ),
+                        ],
+                      ),
+                    ),
                     _infoRow('Qeydiyyat №', task['customer_register_number'] ?? '-'),
                     
                     // Services
@@ -212,5 +231,15 @@ class TaskDetailModal extends StatelessWidget {
         ),
       );
     }).toList();
+  }
+
+  Future<void> _launchCaller(String phoneNumber) async {
+    final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (cleanPhone.isEmpty) return;
+    
+    final Uri url = Uri.parse('tel:$cleanPhone');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
   }
 }

@@ -122,6 +122,14 @@ class TaskCard extends StatelessWidget {
                   ),
                 ),
                 InkWell(
+                  onTap: () => _launchCaller(task['customer_phone'] ?? ''),
+                  borderRadius: BorderRadius.circular(12),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4.0),
+                    child: Icon(Icons.phone_forwarded, color: Colors.green, size: 20),
+                  ),
+                ),
+                InkWell(
                   onTap: () => _launchMaps(
                       context, 
                       task['customer_coordinates'], 
@@ -165,11 +173,23 @@ class TaskCard extends StatelessWidget {
                       const SizedBox(width: 12),
                     ],
                     if (task['customer_phone'] != null) ...[
-                      const Icon(Icons.phone, size: 14, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Text(
-                        task['customer_phone'],
-                        style: const TextStyle(color: Colors.black54, fontSize: 11),
+                      InkWell(
+                        onTap: () => _launchCaller(task['customer_phone']),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.phone, size: 14, color: Colors.blue),
+                            const SizedBox(width: 4),
+                            Text(
+                              task['customer_phone'],
+                              style: const TextStyle(
+                                color: Colors.blue, 
+                                fontSize: 11, 
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ],
@@ -342,6 +362,20 @@ class TaskCard extends StatelessWidget {
       }
     } else {
        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ünvan mövcud deyil')));
+    }
+  }
+
+  Future<void> _launchCaller(String phoneNumber) async {
+    final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (cleanPhone.isEmpty) return;
+    
+    final Uri url = Uri.parse('tel:$cleanPhone');
+    try {
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        // Fallback or error log
+      }
+    } catch (e) {
+      // Error log
     }
   }
 }
