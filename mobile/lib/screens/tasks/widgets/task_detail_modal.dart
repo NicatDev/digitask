@@ -155,13 +155,13 @@ class TaskDetailModal extends StatelessWidget {
   String _statusLabel(String status) {
     switch (status) {
       case 'todo':
-        return 'Gözləyir';
+        return 'Gözleyir';
       case 'in_progress':
         return 'İcrada';
       case 'done':
         return 'Tamamlandı';
       case 'cancelled':
-        return 'Ləğv edildi';
+        return 'Legv edildi';
       default:
         return status.isNotEmpty ? status : '-';
     }
