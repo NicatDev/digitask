@@ -30,8 +30,8 @@ export const deleteTaskType = (id) => axiosInstance.delete(`/tasks/task-types/${
 // Tasks API
 export const getTasks = (params) => axiosInstance.get('/tasks/tasks/', { params });
 export const getTask = (id) => axiosInstance.get(`/tasks/tasks/${id}/`);
-export const createTask = (data) => axiosInstance.post('/tasks/tasks/', data);
-export const updateTask = (id, data) => axiosInstance.patch(`/tasks/tasks/${id}/`, data);
+export const createTask = (data) => axiosInstance.post('/tasks/tasks/', data, { timeout: 30000 });
+export const updateTask = (id, data) => axiosInstance.patch(`/tasks/tasks/${id}/`, data, { timeout: 30000 });
 export const deleteTask = (id) => axiosInstance.delete(`/tasks/tasks/${id}/`);
 export const updateTaskStatus = (id, status) => axiosInstance.patch(`/tasks/tasks/${id}/update_status/`, { status });
 export const addTaskAssignee = (taskId, userId) => axiosInstance.post(`/tasks/tasks/${taskId}/add_assignee/`, { user_id: userId });

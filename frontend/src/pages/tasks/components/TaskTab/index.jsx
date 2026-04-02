@@ -188,6 +188,7 @@ const TaskTab = ({ isActive }) => {
             setEditingItem(null);
             fetchData();
         } catch (error) {
+            console.log(error,'---------------------------')
             handleApiError(error, 'Əməliyyat uğursuz oldu');
         }
     };

@@ -1,4 +1,5 @@
 from django.db import models, transaction
+from django.db.models.functions import Cast
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -92,7 +93,8 @@ class TaskViewSet(viewsets.ModelViewSet):
         # Search - title, customer name, register_number, note
         search = self.request.query_params.get('search')
         if search:
-            queryset = queryset.filter(
+            queryset = queryset.annotate(str_id=Cast('id', output_field=models.TextField())).filter(
+                models.Q(str_id__icontains=search) |
                 models.Q(title__icontains=search) |
                 models.Q(customer__full_name__icontains=search) |
                 models.Q(customer__register_number__icontains=search) |

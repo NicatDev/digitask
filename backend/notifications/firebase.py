@@ -56,8 +56,7 @@ def send_fcm_to_users(user_ids, title, body, data=None):
     if not tokens:
         return
     
-    for token in tokens:
-        _send_fcm_message(token, title, body, data)
+    _send_fcm_multicast(tokens, title, body, data)
 
 
 def send_fcm_to_all(title, body, data=None):
@@ -74,8 +73,56 @@ def send_fcm_to_all(title, body, data=None):
     if not tokens:
         return
     
-    for token in tokens:
-        _send_fcm_message(token, title, body, data)
+    _send_fcm_multicast(tokens, title, body, data)
+
+
+def _send_fcm_multicast(tokens, title, body, data=None):
+    """Send an FCM message to multiple device tokens efficiently."""
+    app = _get_firebase_app()
+    if app is None:
+        return
+
+    # FCM limits multicast to 500 tokens per message
+    for i in range(0, len(tokens), 500):
+        batch_tokens = tokens[i:i + 500]
+        
+        android_config = messaging.AndroidConfig(
+            priority='high',
+            notification=messaging.AndroidNotification(
+                title=title,
+                body=body,
+                tag=data.get('tag') if data else None,
+                channel_id='digitask_notifications',
+            ),
+        )
+        
+        message = messaging.MulticastMessage(
+            notification=messaging.Notification(
+                title=title,
+                body=body,
+            ),
+            android=android_config,
+            data=data or {},
+            tokens=batch_tokens,
+        )
+        
+        try:
+            response = messaging.send_each_for_multicast(message)
+            if response.failure_count > 0:
+                responses = response.responses
+                failed_tokens = []
+                for idx, resp in enumerate(responses):
+                    if not resp.success and isinstance(resp.exception, messaging.UnregisteredError):
+                        failed_tokens.append(batch_tokens[idx])
+                
+                # Token is invalid, remove it
+                if failed_tokens:
+                    from django.contrib.auth import get_user_model
+                    User = get_user_model()
+                    User.objects.filter(fcm_token__in=failed_tokens).update(fcm_token=None)
+                    logger.info('Removed %d invalid FCM tokens', len(failed_tokens))
+        except Exception as e:
+            logger.error('FCM multicast send error: %s', e)
 
 
 def _send_fcm_message(token, title, body, data=None):
