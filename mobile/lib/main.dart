@@ -24,8 +24,11 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   
   const AndroidInitializationSettings initializationSettingsAndroid =
       AndroidInitializationSettings('@drawable/ic_notification');
+  const DarwinInitializationSettings initializationSettingsDarwin =
+      DarwinInitializationSettings();
   const InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
+    iOS: initializationSettingsDarwin,
   );
   await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   
@@ -41,11 +44,13 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       tag: message.data['tag'],
     );
     
+    const darwinDetails = DarwinNotificationDetails();
+    
     await flutterLocalNotificationsPlugin.show(
       notification.hashCode,
       notification.title,
       notification.body,
-      NotificationDetails(android: androidDetails),
+      NotificationDetails(android: androidDetails, iOS: darwinDetails),
     );
   }
 }
@@ -58,6 +63,21 @@ void main() async {
   
   // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  
+  // Request iOS notification permissions
+  await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+    provisional: false,
+  );
+  
+  // Set foreground notification presentation options (iOS)
+  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
   
   runApp(const MyApp());
 }

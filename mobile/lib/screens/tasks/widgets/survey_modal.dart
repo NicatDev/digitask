@@ -36,7 +36,7 @@ class _SurveyModalState extends State<SurveyModal> {
     if (linkedServiceIds.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(24),
-        child: const Center(child: Text('No services linked to this task.')),
+        child: const Center(child: Text('Bu tapşırığa xidmət bağlanmayıb.')),
       );
     }
 
@@ -71,7 +71,7 @@ class _SurveyModalState extends State<SurveyModal> {
               margin: const EdgeInsets.only(bottom: 20),
             ),
           ),
-          const Text('Survey (Anket)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text('Anket', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Expanded(
             child: ListView.separated(
@@ -97,8 +97,8 @@ class _SurveyModalState extends State<SurveyModal> {
                         color: Colors.white, size: 20
                       ),
                     ),
-                    title: Text(service['name'] ?? 'Service', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(isFilled ? 'Tap to edit' : 'Tap to fill'),
+                    title: Text(service['name'] ?? 'Xidmət', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(isFilled ? 'Redaktə etmək üçün toxunun' : 'Doldurmaq üçün toxunun'),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () {
                       Navigator.push(
@@ -317,7 +317,7 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.add_a_photo, color: Colors.grey, size: 40),
-                        Text('Tap to upload', style: TextStyle(color: Colors.grey)),
+                        Text('Yükləmək üçün toxunun', style: TextStyle(color: Colors.grey)),
                       ],
                     ),
             ),
@@ -334,7 +334,7 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
           decoration: InputDecoration(
             labelText: label, 
             border: const OutlineInputBorder(),
-            helperText: required ? 'Required (Optional warning)' : null,
+            helperText: required ? 'Tələb olunur (İstəyə bağlı xəbərdarlıq)' : null,
             helperStyle: const TextStyle(color: Colors.orange), // Orange as it is non-blocking
           ),
           maxLines: type == 'text' ? 3 : 1,
@@ -379,10 +379,10 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
             decoration: InputDecoration(
               labelText: label, 
               border: const OutlineInputBorder(),
-              helperText: required ? 'Required (Optional warning)' : null,
+              helperText: required ? 'Tələb olunur (İstəyə bağlı xəbərdarlıq)' : null,
               helperStyle: const TextStyle(color: Colors.orange),
             ),
-            child: Text(_formValues[key] ?? 'Select Date'),
+            child: Text(_formValues[key] ?? 'Tarix seçin'),
           ),
         );
       case 'datetime':
@@ -411,14 +411,14 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
             decoration: InputDecoration(
               labelText: label, 
               border: const OutlineInputBorder(),
-              helperText: required ? 'Required (Optional warning)' : null,
+              helperText: required ? 'Tələb olunur (İstəyə bağlı xəbərdarlıq)' : null,
               helperStyle: const TextStyle(color: Colors.orange),
             ),
-            child: Text(_formValues[key] ?? 'Select Date & Time'),
+            child: Text(_formValues[key] ?? 'Tarix və vaxt seçin'),
           ),
         );
       default:
-        return Text('Unsupported type: $type for $label');
+        return Text('Dəstəklənməyən tip: $type - $label');
     }
   }
 
@@ -449,13 +449,13 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
           children: [
             TextFormField(
               controller: _noteCtrl,
-              decoration: const InputDecoration(labelText: 'Service Note', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'Xidmət qeydi', border: OutlineInputBorder()),
               maxLines: 2,
             ),
             const SizedBox(height: 24),
-            const Text('Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Detalllar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            if (columns.isEmpty) const Text('No custom fields for this service.'),
+            if (columns.isEmpty) const Text('Bu xidmət üçün xüsusi sahə yoxdur.'),
             ...columns.map((c) => _buildField(c)),
             const SizedBox(height: 32),
             SizedBox(
@@ -467,7 +467,7 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16)
                 ),
-                child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text('Save'),
+                child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text('Yadda saxla'),
               ),
             )
           ],

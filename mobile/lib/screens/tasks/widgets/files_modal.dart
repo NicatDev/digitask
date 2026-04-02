@@ -67,7 +67,7 @@ class _FilesModalState extends State<FilesModal> {
       final client = ApiClient().dio;
       await client.delete('/documents/documents/$id/');
       await _fetchDocuments();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deleted')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Silindi')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
@@ -97,7 +97,7 @@ class _FilesModalState extends State<FilesModal> {
     } else {
       // Try resolving manually if backend failed
       // Or show error
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch URL')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('URL açıla bilmədi')));
     }
   }
 
@@ -122,7 +122,7 @@ class _FilesModalState extends State<FilesModal> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Files', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text('Fayllar', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               IconButton(onPressed: _showAddDialog, icon: const Icon(Icons.add_circle, color: Colors.blue, size: 28))
             ],
           ),
@@ -131,7 +131,7 @@ class _FilesModalState extends State<FilesModal> {
             child: _isLoading 
                 ? const Center(child: CircularProgressIndicator())
                 : _documents.isEmpty 
-                    ? const Center(child: Text('No files attached.'))
+                    ? const Center(child: Text('Fayl əlavə olunmayıb.'))
                     : ListView.separated(
                         itemCount: _documents.length,
                         separatorBuilder: (_,__) => const Divider(),
@@ -146,7 +146,7 @@ class _FilesModalState extends State<FilesModal> {
                               ),
                               child: const Icon(Icons.description, color: Colors.blue),
                             ),
-                            title: Text(doc['title'] ?? 'Untitled', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            title: Text(doc['title'] ?? 'Başlıqsız', style: const TextStyle(fontWeight: FontWeight.bold)),
                             subtitle: Text(doc['created_at']?.toString().substring(0, 10) ?? '', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                             trailing: IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
@@ -195,7 +195,7 @@ class _AddFileDisconnectWrapperState extends State<_AddFileDisconnectWrapper> {
   
   Future<void> _upload() async {
     if (_titleCtrl.text.isEmpty || _selectedFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Title and File are required')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Başlıq və Fayl tələb olunur')));
       return;
     }
     
@@ -224,7 +224,7 @@ class _AddFileDisconnectWrapperState extends State<_AddFileDisconnectWrapper> {
     } catch(e) {
       if (mounted) {
         setState(() => _isUploading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Yükləmə uğursuz oldu: $e')));
       }
     }
   }
@@ -232,13 +232,13 @@ class _AddFileDisconnectWrapperState extends State<_AddFileDisconnectWrapper> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Add Document'),
+      title: const Text('Sənəd Əlavə Et'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
             controller: _titleCtrl,
-            decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'Başlıq', border: OutlineInputBorder()),
           ),
           const SizedBox(height: 16),
           InkWell(
@@ -253,7 +253,7 @@ class _AddFileDisconnectWrapperState extends State<_AddFileDisconnectWrapper> {
                 children: [
                   const Icon(Icons.attach_file),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(_selectedFile?.name ?? 'Select Image/Document')),
+                  Expanded(child: Text(_selectedFile?.name ?? 'Şəkil/Sənəd seçin')),
                 ],
               ),
             ),
@@ -261,10 +261,10 @@ class _AddFileDisconnectWrapperState extends State<_AddFileDisconnectWrapper> {
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Ləğv et')),
         ElevatedButton(
           onPressed: _isUploading ? null : _upload, 
-          child: _isUploading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Add')
+          child: _isUploading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Əlavə et')
         ),
       ],
     );

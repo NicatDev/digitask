@@ -35,9 +35,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> with SingleTickerProv
             unselectedLabelColor: Colors.grey,
             indicatorColor: Colors.blue,
             tabs: const [
-              Tab(text: 'Documents'),
-              Tab(text: 'Archive'),
-              Tab(text: 'Shelves'),
+              Tab(text: 'Sənədlər'),
+              Tab(text: 'Arxiv'),
+              Tab(text: 'Rəflər'),
             ],
           ),
         ),
@@ -239,7 +239,7 @@ class _ActiveDocumentsTabState extends State<ActiveDocumentsTab> {
                     controller: _searchController,
                     onChanged: _onSearchChanged,
                     decoration: InputDecoration(
-                      hintText: 'Search...',
+                      hintText: 'Axtar...',
                       prefixIcon: const Icon(Icons.search),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -269,7 +269,7 @@ class _ActiveDocumentsTabState extends State<ActiveDocumentsTab> {
                     children: [
                       Expanded(
                         child: _documents.isEmpty
-                            ? const Center(child: Text('No documents found'))
+                            ? const Center(child: Text('Sənəd tapılmadı'))
                             : ListView.separated(
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 itemCount: _documents.length,
@@ -301,18 +301,18 @@ class _ActiveDocumentsTabState extends State<ActiveDocumentsTab> {
                                   children: [
                                     Icon(Icons.arrow_back, size: 18),
                                     SizedBox(width: 8),
-                                    Text('Prev'),
+                                    Text('Əvvəl'),
                                   ],
                                 ),
                               ),
-                              Text('Page $_currentPage', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text('Səhifə $_currentPage', style: const TextStyle(fontWeight: FontWeight.bold)),
                               ElevatedButton(
                                 onPressed: _hasNextPage ? () => _changePage(_currentPage + 1) : null,
                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.blue),
                                 child: const Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text('Next'),
+                                    Text('Növbəti'),
                                     SizedBox(width: 8),
                                     Icon(Icons.arrow_forward, size: 18),
                                   ],
@@ -473,7 +473,7 @@ class _ArchiveDocumentsTabState extends State<ArchiveDocumentsTab> {
                       controller: _searchController,
                       onChanged: _onSearchChanged,
                       decoration: InputDecoration(
-                        hintText: 'Search archive...',
+                        hintText: 'Arxivdə axtar...',
                         prefixIcon: const Icon(Icons.search),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -499,7 +499,7 @@ class _ArchiveDocumentsTabState extends State<ArchiveDocumentsTab> {
               DropdownButtonFormField<int>(
                 value: _selectedShelfId,
                 decoration: InputDecoration(
-                  labelText: 'Filter by Shelf',
+                  labelText: 'Rəfə görə filtr',
                   labelStyle: const TextStyle(color: Colors.grey),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -511,7 +511,7 @@ class _ArchiveDocumentsTabState extends State<ArchiveDocumentsTab> {
                 ),
                 isExpanded: true,
                 items: [
-                   const DropdownMenuItem<int>(value: null, child: Text('All Shelves')),
+                   const DropdownMenuItem<int>(value: null, child: Text('Bütün Rəflər')),
                    ..._shelves.map((s) => DropdownMenuItem<int>(
                     value: s['id'],
                     child: Text(s['name'] ?? 'Shelf ${s['id']}'),
@@ -532,7 +532,7 @@ class _ArchiveDocumentsTabState extends State<ArchiveDocumentsTab> {
                   children: [
                     Expanded(
                       child: _documents.isEmpty
-                          ? const Center(child: Text('No archived documents found'))
+                          ? const Center(child: Text('Arxivlənmiş sənəd tapılmadı'))
                           : ListView.separated(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               itemCount: _documents.length,
@@ -563,18 +563,18 @@ class _ArchiveDocumentsTabState extends State<ArchiveDocumentsTab> {
                                 children: [
                                   Icon(Icons.arrow_back, size: 18),
                                   SizedBox(width: 8),
-                                  Text('Prev'),
+                                  Text('Əvvəl'),
                                 ],
                               ),
                             ),
-                            Text('Page $_currentPage', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text('Səhifə $_currentPage', style: const TextStyle(fontWeight: FontWeight.bold)),
                             ElevatedButton(
                               onPressed: _hasNextPage ? () => _changePage(_currentPage + 1) : null,
                               style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.blue),
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text('Next'),
+                                  Text('Növbəti'),
                                   SizedBox(width: 8),
                                   Icon(Icons.arrow_forward, size: 18),
                                 ],
@@ -651,7 +651,7 @@ class _ShelvesTabState extends State<ShelvesTab> {
       await ApiClient().dio.delete('/documents/shelves/$id/');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Shelf deleted')),
+          const SnackBar(content: Text('Rəf silindi')),
         );
         _fetchShelves();
       }
@@ -700,7 +700,7 @@ class _ShelvesTabState extends State<ShelvesTab> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _shelves.isEmpty
-                    ? const Center(child: Text('No shelves found'))
+                    ? const Center(child: Text('Rəf tapılmadı'))
                     : ListView.separated(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: _shelves.length,
@@ -736,7 +736,7 @@ class _ShelvesTabState extends State<ShelvesTab> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        shelf['name'] ?? 'Unnamed Shelf',
+                                        shelf['name'] ?? 'Adsız Rəf',
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                       ),
                                       if (shelf['location'] != null && shelf['location'].toString().isNotEmpty)
@@ -873,7 +873,7 @@ class DocumentCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    doc['title'] ?? 'No Title',
+                    doc['title'] ?? 'Başlıqsız',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 4),
@@ -1002,7 +1002,7 @@ class _ArchiveModalState extends State<ArchiveModal> {
   Future<void> _archiveDocument() async {
     if (_selectedShelfId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a shelf')),
+         const SnackBar(content: Text('Rəf seçin')),
       );
       return;
     }
@@ -1017,7 +1017,7 @@ class _ArchiveModalState extends State<ArchiveModal> {
         Navigator.pop(context);
         widget.onSuccess();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Document archived successfully')),
+           const SnackBar(content: Text('Sənəd uğurla arxivləndi')),
         );
       }
     } catch (e) {
@@ -1044,7 +1044,7 @@ class _ArchiveModalState extends State<ArchiveModal> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Move to Archive',
+            'Arxivə köçür',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
@@ -1053,7 +1053,7 @@ class _ArchiveModalState extends State<ArchiveModal> {
               : DropdownButtonFormField<int>(
                   value: _selectedShelfId,
                   decoration: const InputDecoration(
-                    labelText: 'Select Shelf',
+                     labelText: 'Rəf seçin',
                     border: OutlineInputBorder(),
                   ),
                   items: _shelves.map<DropdownMenuItem<int>>((shelf) {
@@ -1080,7 +1080,7 @@ class _ArchiveModalState extends State<ArchiveModal> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text('Confirm'),
+                   : const Text('Təsdiqlə'),
             ),
           ),
         ],
@@ -1135,7 +1135,7 @@ class _ShelfModalState extends State<ShelfModal> {
         Navigator.pop(context);
         widget.onSuccess();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(widget.shelf == null ? 'Shelf created' : 'Shelf updated')),
+           SnackBar(content: Text(widget.shelf == null ? 'Rəf yaradıldı' : 'Rəf yeniləndi')),
         );
       }
     } catch (e) {
@@ -1151,7 +1151,7 @@ class _ShelfModalState extends State<ShelfModal> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.shelf == null ? 'Create Shelf' : 'Edit Shelf'),
+      title: Text(widget.shelf == null ? 'Rəf Yarat' : 'Rəfi Redaktə Et'),
       content: Form(
         key: _formKey,
         child: Column(
@@ -1159,13 +1159,13 @@ class _ShelfModalState extends State<ShelfModal> {
           children: [
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Store Name'),
-              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+               decoration: const InputDecoration(labelText: 'Rəf adı'),
+               validator: (v) => v == null || v.isEmpty ? 'Tələb olunur' : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _locationController,
-              decoration: const InputDecoration(labelText: 'Location (Optional)'),
+               decoration: const InputDecoration(labelText: 'Yer (İstəyə bağlı)'),
             ),
           ],
         ),
@@ -1222,7 +1222,7 @@ class _AddDocumentModalState extends State<AddDocumentModal> {
 
     if (_selectedFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a file')),
+         const SnackBar(content: Text('Fayl seçin')),
       );
       return;
     }
@@ -1257,7 +1257,7 @@ class _AddDocumentModalState extends State<AddDocumentModal> {
         Navigator.pop(context);
         widget.onSuccess();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Document added successfully')),
+           const SnackBar(content: Text('Sənəd uğurla əlavə olundu')),
         );
       }
     } catch (e) {
@@ -1273,7 +1273,7 @@ class _AddDocumentModalState extends State<AddDocumentModal> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Add Document'),
+       title: const Text('Sənəd Əlavə Et'),
       content: Form(
         key: _formKey,
         child: Column(
@@ -1281,15 +1281,15 @@ class _AddDocumentModalState extends State<AddDocumentModal> {
           children: [
             TextFormField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
-              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+               decoration: const InputDecoration(labelText: 'Başlıq'),
+               validator: (v) => v == null || v.isEmpty ? 'Tələb olunur' : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _actionController,
               decoration: const InputDecoration(
-                labelText: 'Action / Process',
-                hintText: 'e.g. Warehouse receipt, Sales invoice...',
+                 labelText: 'Əməliyyat / Proses',
+                 hintText: 'məs: Anbar mədaxili, Satış qaiməsi...',
               ),
               maxLines: 2,
             ),
@@ -1313,7 +1313,7 @@ class _AddDocumentModalState extends State<AddDocumentModal> {
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        _selectedFile?.name ?? 'Select File',
+                         _selectedFile?.name ?? 'Fayl seçin',
                         style: TextStyle(
                           color: _selectedFile != null ? Colors.black : Colors.grey,
                         ),

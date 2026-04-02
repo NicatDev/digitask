@@ -66,7 +66,7 @@ class TaskDetailModal extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   children: [
                     _sectionTitle('Tapşırıq Məlumatları'),
-                    _infoRow('Status', task['status_display'] ?? task['status'] ?? '-'),
+                    _infoRow('Status', _statusLabel(task['status'] ?? '')),
                     _infoRow('Qeyd', task['note'] ?? '-'),
                     _infoRow('İcraçılar', _formatAssigneeNames(task)),
                     _infoRow('Qrup', task['group_name'] ?? '-'),
@@ -131,6 +131,21 @@ class TaskDetailModal extends StatelessWidget {
       return names.join(', ');
     }
     return 'Təyin olunmayıb';
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'todo':
+        return 'Gözləyir';
+      case 'in_progress':
+        return 'İcrada';
+      case 'done':
+        return 'Tamamlandı';
+      case 'cancelled':
+        return 'Ləğv edildi';
+      default:
+        return status.isNotEmpty ? status : '-';
+    }
   }
 
   Widget _infoRow(String label, String value) {

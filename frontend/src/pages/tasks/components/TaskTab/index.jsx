@@ -53,6 +53,7 @@ const TaskTab = ({ isActive }) => {
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
     const [statusFilter, setStatusFilter] = useState(null);
     const [customerFilter, setCustomerFilter] = useState(null);
+    const [groupFilter, setGroupFilter] = useState(null);
     const [assigneeFilter, setAssigneeFilter] = useState(null);
     const [dateRange, setDateRange] = useState(null);
     const [isActiveFilter, setIsActiveFilter] = useState(true);
@@ -96,6 +97,7 @@ const TaskTab = ({ isActive }) => {
                 search: params.search !== undefined ? params.search : debouncedSearchText,
                 status: params.status !== undefined ? params.status : statusFilter,
                 customer: params.customer !== undefined ? params.customer : customerFilter,
+                group: params.group !== undefined ? params.group : groupFilter,
                 assigned_to: params.assigned_to !== undefined ? params.assigned_to : assigneeFilter,
                 is_active: params.is_active !== undefined ? (params.is_active === 'all' ? undefined : params.is_active) : (isActiveFilter === 'all' ? undefined : isActiveFilter),
                 // Date range handling...
@@ -155,7 +157,7 @@ const TaskTab = ({ isActive }) => {
         if (isActive) {
             fetchData({ page: 1 });
         }
-    }, [debouncedSearchText, statusFilter, customerFilter, assigneeFilter, isActiveFilter, dateRange]);
+    }, [debouncedSearchText, statusFilter, customerFilter, groupFilter, assigneeFilter, isActiveFilter, dateRange]);
 
     const handleTableChange = (newPagination) => {
         fetchData({ page: newPagination.current });
@@ -303,6 +305,8 @@ const TaskTab = ({ isActive }) => {
                 setStatusFilter={setStatusFilter}
                 customerFilter={customerFilter}
                 setCustomerFilter={setCustomerFilter}
+                groupFilter={groupFilter}
+                setGroupFilter={setGroupFilter}
                 assigneeFilter={assigneeFilter}
                 setAssigneeFilter={setAssigneeFilter}
                 dateRange={dateRange}
@@ -310,6 +314,7 @@ const TaskTab = ({ isActive }) => {
                 isActiveFilter={isActiveFilter}
                 setIsActiveFilter={setIsActiveFilter}
                 customers={customers}
+                groups={groups}
                 users={users}
                 onNewTask={handleNewTask}
                 disableCreate={!hasPermission(user, PERMISSIONS.TASK_WRITER)}

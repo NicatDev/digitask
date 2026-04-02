@@ -3,18 +3,22 @@ import 'package:flutter/material.dart';
 class TaskFilterModal extends StatefulWidget {
   final List<dynamic> customers;
   final List<dynamic> users;
+  final List<dynamic> groups;
   final String? status;
   final int? customerId;
+  final int? groupId;
   final int? assigneeId;
   final String activeFilter;
-  final Function(String? status, int? custId, int? assignId, String active) onApply;
+  final Function(String? status, int? custId, int? groupId, int? assignId, String active) onApply;
 
   const TaskFilterModal({
     super.key,
     required this.customers,
     required this.users,
+    this.groups = const [],
     this.status,
     this.customerId,
+    this.groupId,
     this.assigneeId,
     required this.activeFilter,
     required this.onApply,
@@ -27,6 +31,7 @@ class TaskFilterModal extends StatefulWidget {
 class _TaskFilterModalState extends State<TaskFilterModal> {
   String? _status;
   int? _customerId;
+  int? _groupId;
   int? _assigneeId;
   String _active = 'active';
 
@@ -44,6 +49,7 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
     super.initState();
     _status = widget.status;
     _customerId = widget.customerId;
+    _groupId = widget.groupId;
     _assigneeId = widget.assigneeId;
     _active = widget.activeFilter;
   }
@@ -52,6 +58,7 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
     setState(() {
       _status = null;
       _customerId = null;
+      _groupId = null;
       _assigneeId = null;
       _active = 'active';
     });
@@ -68,8 +75,8 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Filters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              TextButton(onPressed: _reset, child: const Text('Reset')),
+              const Text('Filtrlər', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              TextButton(onPressed: _reset, child: const Text('Sıfırla')),
             ],
           ),
           const SizedBox(height: 16),
@@ -79,7 +86,7 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
             value: _status,
             decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
             items: [
-              const DropdownMenuItem(value: null, child: Text('All Statuses')),
+              const DropdownMenuItem(value: null, child: Text('Bütün Statuslar')),
               ..._statuses.map((s) => DropdownMenuItem(value: s['value'], child: Text(s['label']!))),
             ],
             onChanged: (v) => setState(() => _status = v),
@@ -89,9 +96,9 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
           // Customer
           DropdownButtonFormField<int>(
             value: _customerId,
-            decoration: const InputDecoration(labelText: 'Customer', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'Müştəri', border: OutlineInputBorder()),
             items: [
-              const DropdownMenuItem(value: null, child: Text('All Customers')),
+              const DropdownMenuItem(value: null, child: Text('Bütün Müştərilər')),
               ...widget.customers.map((c) => DropdownMenuItem<int>(
                 value: c['id'], 
                 child: Text(
@@ -104,12 +111,30 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
           ),
           const SizedBox(height: 16),
 
+          // Group
+          DropdownButtonFormField<int>(
+            value: _groupId,
+            decoration: const InputDecoration(labelText: 'Qrup', border: OutlineInputBorder()),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('Bütün Qruplar')),
+              ...widget.groups.map((g) => DropdownMenuItem<int>(
+                value: g['id'], 
+                child: Text(
+                  _truncate(g['name'] ?? 'Unnamed', 25), 
+                  overflow: TextOverflow.ellipsis
+                )
+              )),
+            ],
+            onChanged: (v) => setState(() => _groupId = v),
+          ),
+          const SizedBox(height: 16),
+
           // Assignee
           DropdownButtonFormField<int>(
             value: _assigneeId,
-            decoration: const InputDecoration(labelText: 'Assignee', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'Təhkim Olunmuş', border: OutlineInputBorder()),
             items: [
-              const DropdownMenuItem(value: null, child: Text('All Users')),
+              const DropdownMenuItem(value: null, child: Text('Bütün İstifadəçilər')),
               ...widget.users.map((u) => DropdownMenuItem<int>(
                 value: u['id'], 
                 child: Text('${u['first_name']} ${u['last_name']}')
@@ -122,11 +147,11 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
           // Active
           DropdownButtonFormField<String>(
             value: _active,
-            decoration: const InputDecoration(labelText: 'Active Status', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'Aktiv Status', border: OutlineInputBorder()),
             items: const [
-              DropdownMenuItem(value: 'all', child: Text('All')),
-              DropdownMenuItem(value: 'active', child: Text('Active Only')),
-              DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
+              DropdownMenuItem(value: 'all', child: Text('Hamısı')),
+              DropdownMenuItem(value: 'active', child: Text('Yalnız Aktiv')),
+              DropdownMenuItem(value: 'inactive', child: Text('Passiv')),
             ],
             onChanged: (v) => setState(() => _active = v!),
           ),
@@ -136,7 +161,7 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                widget.onApply(_status, _customerId, _assigneeId, _active);
+                widget.onApply(_status, _customerId, _groupId, _assigneeId, _active);
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -144,7 +169,7 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Apply Filters'),
+              child: const Text('Filtrləri Tətbiq Et'),
             ),
           ),
         ],

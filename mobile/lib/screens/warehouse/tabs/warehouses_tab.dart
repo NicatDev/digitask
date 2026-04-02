@@ -128,10 +128,10 @@ class _WarehousesTabState extends State<WarehousesTab> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Filter by Status', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Statusa görə filtr', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             ListTile(
-              title: const Text('All'),
+              title: const Text('Hamısı'),
               leading: Radio<String>(
                 value: 'all',
                 groupValue: _activeFilter,
@@ -143,7 +143,7 @@ class _WarehousesTabState extends State<WarehousesTab> {
               ),
             ),
             ListTile(
-              title: const Text('Active'),
+              title: const Text('Aktiv'),
               leading: Radio<String>(
                 value: 'active',
                 groupValue: _activeFilter,
@@ -155,7 +155,7 @@ class _WarehousesTabState extends State<WarehousesTab> {
               ),
             ),
             ListTile(
-              title: const Text('Inactive'),
+              title: const Text('Deaktiv'),
               leading: Radio<String>(
                 value: 'inactive',
                 groupValue: _activeFilter,
@@ -197,11 +197,11 @@ class _WarehousesTabState extends State<WarehousesTab> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Warehouse'),
-        content: const Text('Are you sure you want to delete this warehouse?'),
+        title: const Text('Anbarı Sil'),
+        content: const Text('Bu anbarı silmək istədiyinizə əminsiniz?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Ləğv et')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -210,12 +210,12 @@ class _WarehousesTabState extends State<WarehousesTab> {
       try {
         await ApiClient().dio.patch('/warehouse/warehouses/$id/', data: {'is_active': false});
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Warehouse deleted')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anbar silindi')));
           _fetchWarehouses(refresh: true);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete warehouse')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anbar silinə bilmədi')));
         }
       }
     }
@@ -230,7 +230,7 @@ class _WarehousesTabState extends State<WarehousesTab> {
       builder: (ctx) => LocationMapModal(
         lat: (coords['lat'] as num).toDouble(),
         lng: (coords['lng'] as num).toDouble(),
-        warehouseName: warehouse['name'] ?? 'Warehouse',
+        warehouseName: warehouse['name'] ?? 'Anbar',
       ),
     );
   }
@@ -266,7 +266,7 @@ class _WarehousesTabState extends State<WarehousesTab> {
                     controller: _searchController,
                     onChanged: _onSearchChanged,
                     decoration: InputDecoration(
-                      hintText: 'Search warehouses...',
+                      hintText: 'Anbar axtar...',
                       prefixIcon: const Icon(Icons.search),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                       filled: true,
@@ -297,7 +297,7 @@ class _WarehousesTabState extends State<WarehousesTab> {
                     children: [
                       Expanded(
                         child: _warehouses.isEmpty
-                            ? const Center(child: Text('No warehouses found'))
+                            ? const Center(child: Text('Anbar tapılmadı'))
                             : ListView.separated(
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 itemCount: _warehouses.length,
@@ -323,13 +323,13 @@ class _WarehousesTabState extends State<WarehousesTab> {
                               ElevatedButton(
                                 onPressed: _currentPage > 1 ? () => _changePage(_currentPage - 1) : null,
                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.blue),
-                                child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.arrow_back, size: 18), SizedBox(width: 8), Text('Prev')]),
+                                child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.arrow_back, size: 18), SizedBox(width: 8), Text('Ǝvvəl')]),
                               ),
-                              Text('Page $_currentPage', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text('Səhifə $_currentPage', style: const TextStyle(fontWeight: FontWeight.bold)),
                               ElevatedButton(
                                 onPressed: _hasNextPage ? () => _changePage(_currentPage + 1) : null,
                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.blue),
-                                child: const Row(mainAxisSize: MainAxisSize.min, children: [Text('Next'), SizedBox(width: 8), Icon(Icons.arrow_forward, size: 18)]),
+                                child: const Row(mainAxisSize: MainAxisSize.min, children: [Text('Növbəti'), SizedBox(width: 8), Icon(Icons.arrow_forward, size: 18)]),
                               ),
                             ],
                           ),
@@ -384,7 +384,7 @@ class _AddWarehouseModalState extends State<AddWarehouseModal> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedRegionId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a region')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Region seçin')));
       return;
     }
 
@@ -412,12 +412,12 @@ class _AddWarehouseModalState extends State<AddWarehouseModal> {
         if (mounted) {
           Navigator.pop(context);
           widget.onSuccess();
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Warehouse created successfully')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anbar uğurla yaradıldı')));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to create warehouse')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anbar yaradıla bilmədi')));
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -439,15 +439,15 @@ class _AddWarehouseModalState extends State<AddWarehouseModal> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Add Warehouse', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text('Anbar Əlavə Et', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                 ],
               ),
               const SizedBox(height: 20),
               TextFormField(
                 controller: _nameController,
-                decoration: InputDecoration(labelText: 'Name *', hintText: 'Enter warehouse name', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-                validator: (val) => val?.isEmpty == true ? 'Name is required' : null,
+                decoration: InputDecoration(labelText: 'Ad *', hintText: 'Anbar adını daxil edin', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                validator: (val) => val?.isEmpty == true ? 'Ad tələb olunur' : null,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
@@ -459,7 +459,7 @@ class _AddWarehouseModalState extends State<AddWarehouseModal> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _addressController,
-                decoration: InputDecoration(labelText: 'Address', hintText: 'Enter address', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                decoration: InputDecoration(labelText: 'Ünvan', hintText: 'Ünvan daxil edin', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               ),
               const SizedBox(height: 16),
               InkWell(
@@ -479,7 +479,7 @@ class _AddWarehouseModalState extends State<AddWarehouseModal> {
                         child: Text(
                           _selectedLocation != null
                               ? 'Lat: ${_selectedLocation!.latitude.toStringAsFixed(4)}, Lng: ${_selectedLocation!.longitude.toStringAsFixed(4)}'
-                              : 'Select Location on Map',
+                              : 'Xaritədən məkan seçin',
                           style: TextStyle(color: _selectedLocation != null ? Colors.black : Colors.grey[600]),
                         ),
                       ),
@@ -492,7 +492,7 @@ class _AddWarehouseModalState extends State<AddWarehouseModal> {
               TextFormField(
                 controller: _noteController,
                 maxLines: 3,
-                decoration: InputDecoration(labelText: 'Note', hintText: 'Enter note', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                decoration: InputDecoration(labelText: 'Qeyd', hintText: 'Qeyd daxil edin', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -500,7 +500,7 @@ class _AddWarehouseModalState extends State<AddWarehouseModal> {
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submit,
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: _isSubmitting ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Create Warehouse', style: TextStyle(fontSize: 16)),
+                  child: _isSubmitting ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Anbar Yarat', style: TextStyle(fontSize: 16)),
                 ),
               ),
             ],
@@ -568,7 +568,7 @@ class _EditWarehouseModalState extends State<EditWarehouseModal> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedRegionId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a region')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Region seçin')));
       return;
     }
 
@@ -595,12 +595,12 @@ class _EditWarehouseModalState extends State<EditWarehouseModal> {
         if (mounted) {
           Navigator.pop(context);
           widget.onSuccess();
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Warehouse updated successfully')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anbar uğurla yeniləndi')));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update warehouse')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anbar yenilənə bilmədi')));
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -622,15 +622,15 @@ class _EditWarehouseModalState extends State<EditWarehouseModal> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Edit Warehouse', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text('Anbarı Redaktə Et', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                 ],
               ),
               const SizedBox(height: 20),
               TextFormField(
                 controller: _nameController,
-                decoration: InputDecoration(labelText: 'Name *', hintText: 'Enter warehouse name', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-                validator: (val) => val?.isEmpty == true ? 'Name is required' : null,
+                decoration: InputDecoration(labelText: 'Ad *', hintText: 'Anbar adını daxil edin', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                validator: (val) => val?.isEmpty == true ? 'Ad tələb olunur' : null,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
@@ -642,7 +642,7 @@ class _EditWarehouseModalState extends State<EditWarehouseModal> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _addressController,
-                decoration: InputDecoration(labelText: 'Address', hintText: 'Enter address', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                decoration: InputDecoration(labelText: 'Ünvan', hintText: 'Ünvan daxil edin', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               ),
               const SizedBox(height: 16),
               InkWell(
@@ -662,7 +662,7 @@ class _EditWarehouseModalState extends State<EditWarehouseModal> {
                         child: Text(
                           _selectedLocation != null
                               ? 'Lat: ${_selectedLocation!.latitude.toStringAsFixed(4)}, Lng: ${_selectedLocation!.longitude.toStringAsFixed(4)}'
-                              : 'Select Location on Map',
+                              : 'Xaritədən məkan seçin',
                           style: TextStyle(color: _selectedLocation != null ? Colors.black : Colors.grey[600]),
                         ),
                       ),
@@ -675,7 +675,7 @@ class _EditWarehouseModalState extends State<EditWarehouseModal> {
               TextFormField(
                 controller: _noteController,
                 maxLines: 3,
-                decoration: InputDecoration(labelText: 'Note', hintText: 'Enter note', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                decoration: InputDecoration(labelText: 'Qeyd', hintText: 'Qeyd daxil edin', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -683,7 +683,7 @@ class _EditWarehouseModalState extends State<EditWarehouseModal> {
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submit,
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: _isSubmitting ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Update Warehouse', style: TextStyle(fontSize: 16)),
+                  child: _isSubmitting ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Anbarı Yenilə', style: TextStyle(fontSize: 16)),
                 ),
               ),
             ],

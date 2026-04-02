@@ -44,7 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _usernameController.text = data['username'] ?? '';
           
            // Determine group/role name safely
-          String roleText = 'User';
+           String roleText = 'İstifadəçi';
           if (data['group_name'] != null && data['group_name'].toString().isNotEmpty) {
             roleText = data['group_name'];
           } else if (data['role_name'] != null) {
@@ -59,7 +59,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load profile: $e')),
+          SnackBar(content: Text('Profil yüklənə bilmədi: $e')),
         );
       }
     }
@@ -79,14 +79,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully')),
+          const SnackBar(content: Text('Profil uğurla yeniləndi')),
         );
         _fetchUserProfile(); // Refresh data
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update profile: $e')),
+          SnackBar(content: Text('Profil yenilənə bilmədi: $e')),
         );
       }
     } finally {
@@ -124,14 +124,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Avatar updated successfully')),
+          const SnackBar(content: Text('Avatar uğurla yeniləndi')),
         );
         _fetchUserProfile();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to upload avatar: $e')),
+          SnackBar(content: Text('Avatar yüklənə bilmədi: $e')),
         );
       }
     } finally {
@@ -160,17 +160,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Change Password', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text('Şifrəni dəyiş', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 24),
             TextField(
               controller: passController,
-              decoration: const InputDecoration(labelText: 'New Password', border: OutlineInputBorder()),
+               decoration: const InputDecoration(labelText: 'Yeni şifrə', border: OutlineInputBorder()),
               obscureText: true,
             ),
             const SizedBox(height: 16),
             TextField(
               controller: confirmController,
-              decoration: const InputDecoration(labelText: 'Confirm Password', border: OutlineInputBorder()),
+               decoration: const InputDecoration(labelText: 'Şifrəni təsdiqlə', border: OutlineInputBorder()),
               obscureText: true,
             ),
             const SizedBox(height: 24),
@@ -180,13 +180,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onPressed: () async {
                   if (passController.text != confirmController.text) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Passwords do not match')),
+                      const SnackBar(content: Text('Şifrələr uyğun gəlmir')),
                     );
                     return;
                   }
                   if (passController.text.length < 6) {
                      ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Password must be at least 6 characters')),
+                      const SnackBar(content: Text('Şifrə ən azı 6 simvol olmalıdır')),
                     );
                     return;
                   }
@@ -198,13 +198,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     await ApiClient().dio.patch('/users/me/', data: {'password': passController.text});
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Password changed successfully')),
+                         const SnackBar(content: Text('Şifrə uğurla dəyişdirildi')),
                       );
                     }
                   } catch (e) {
                     if (mounted) {
                        ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to change password: $e')),
+                        SnackBar(content: Text('Şifrə dəyişdirilə bilmədi: $e')),
                       );
                     }
                   } finally {
@@ -216,7 +216,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Update Password'),
+                child: const Text('Şifrəni yenilə'),
               ),
             ),
           ],
@@ -249,7 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100], // Light grey background
       appBar: AppBar(
-        title: const Text('My Profile'),
+        title: const Text('Profilim'),
         elevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.black,
@@ -257,7 +257,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _userData == null
-              ? const Center(child: Text('Failed to load profile'))
+              ? const Center(child: Text('Profil yüklənə bilmədi'))
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
@@ -296,7 +296,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'Tap to change avatar',
+                              'Avatari dəyişdirmək üçün toxunun',
                               style: TextStyle(color: Colors.grey[600], fontSize: 12),
                             ),
                           ],
@@ -311,7 +311,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Account Details',
+                              'Hesab Məlumatları',
                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 24),
@@ -319,7 +319,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               controller: _usernameController,
                               readOnly: true,
                               decoration: const InputDecoration(
-                                labelText: 'Username', 
+                                 labelText: 'İstifadəçi adı', 
                                 border: OutlineInputBorder(),
                                 fillColor: Color(0xFFEEEEEE),
                                 filled: true,
@@ -330,7 +330,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               controller: _roleController,
                               readOnly: true,
                               decoration: const InputDecoration(
-                                labelText: 'Role', 
+                                 labelText: 'Rol', 
                                 border: OutlineInputBorder(),
                                 fillColor: Color(0xFFEEEEEE),
                                 filled: true,
@@ -339,22 +339,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             const SizedBox(height: 16),
                             TextField(
                               controller: _firstNameController,
-                              decoration: const InputDecoration(labelText: 'First Name', border: OutlineInputBorder()),
+                               decoration: const InputDecoration(labelText: 'Ad', border: OutlineInputBorder()),
                             ),
                             const SizedBox(height: 16),
                             TextField(
                               controller: _lastNameController,
-                              decoration: const InputDecoration(labelText: 'Last Name', border: OutlineInputBorder()),
+                               decoration: const InputDecoration(labelText: 'Soyad', border: OutlineInputBorder()),
                             ),
                             const SizedBox(height: 16),
                             TextField(
                               controller: _emailController,
-                              decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+                               decoration: const InputDecoration(labelText: 'E-poçt', border: OutlineInputBorder()),
                             ),
                             const SizedBox(height: 16),
                             TextField(
                               controller: _phoneController,
-                              decoration: const InputDecoration(labelText: 'Phone Number', border: OutlineInputBorder()),
+                               decoration: const InputDecoration(labelText: 'Telefon nömrəsi', border: OutlineInputBorder()),
                             ),
                             const SizedBox(height: 24),
                             if (_isSaving)
@@ -372,7 +372,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  child: const Text('Save Changes'),
+                                   child: const Text('Yadda saxla'),
                                 ),
                               ),
                             const SizedBox(height: 16),
@@ -380,7 +380,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               width: double.infinity,
                               child: TextButton(
                                 onPressed: _showChangePasswordModal,
-                                child: const Text('Change Password', style: TextStyle(color: Colors.red)),
+                                child: const Text('Şifrəni dəyiş', style: TextStyle(color: Colors.red)),
                               ),
                             ),
                           ],

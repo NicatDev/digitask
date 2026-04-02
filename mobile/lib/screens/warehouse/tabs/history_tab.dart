@@ -160,7 +160,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     controller: _searchController,
                     onChanged: _onSearchChanged,
                     decoration: InputDecoration(
-                      hintText: 'Search history...',
+                      hintText: 'Tarixçədə axtar...',
                       prefixIcon: const Icon(Icons.search),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                       filled: true,
@@ -217,13 +217,13 @@ class _HistoryTabState extends State<HistoryTab> {
                               ElevatedButton(
                                 onPressed: _currentPage > 1 ? () => _changePage(_currentPage - 1) : null,
                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.blue),
-                                child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.arrow_back, size: 18), SizedBox(width: 8), Text('Prev')]),
+                                child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.arrow_back, size: 18), SizedBox(width: 8), Text('Ǝvvəl')]),
                               ),
-                              Text('Page $_currentPage', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text('Səhifə $_currentPage', style: const TextStyle(fontWeight: FontWeight.bold)),
                               ElevatedButton(
                                 onPressed: _hasNextPage ? () => _changePage(_currentPage + 1) : null,
                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.blue),
-                                child: const Row(mainAxisSize: MainAxisSize.min, children: [Text('Next'), SizedBox(width: 8), Icon(Icons.arrow_forward, size: 18)]),
+                                child: const Row(mainAxisSize: MainAxisSize.min, children: [Text('Növbəti'), SizedBox(width: 8), Icon(Icons.arrow_forward, size: 18)]),
                               ),
                             ],
                           ),
@@ -281,7 +281,7 @@ class _HistoryFilterModalState extends State<_HistoryFilterModal> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Filter', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text('Filtr', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
           
           DropdownButtonFormField<String>(

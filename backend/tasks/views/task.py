@@ -11,6 +11,7 @@ from ..models import Task, TaskService, TaskProduct
 from ..serializers import TaskSerializer, TaskServiceSerializer, TaskStatusUpdateSerializer, TaskProductSerializer, TaskProductCreateSerializer
 from warehouse.models import WarehouseInventory, StockMovement
 from ..pagination import TaskPagination
+from notifications.services import send_notification  # type: ignore
 
 User = get_user_model()
 
@@ -108,7 +109,6 @@ class TaskViewSet(viewsets.ModelViewSet):
         task = serializer.save()
         
         # Create notification
-        from notifications.services import send_notification
         send_notification(
             title=f"Yeni Task: {task.title}",
             message=f"Müştəri: {task.customer.full_name if task.customer else 'N/A'}",
@@ -157,11 +157,10 @@ class TaskViewSet(viewsets.ModelViewSet):
                 self._deduct_task_products(task, request.user)
                 
                 # Send task completion notification
-                from notifications.models import Notification
-                notification = Notification.objects.create(
+                notification = send_notification(
                     title="Tapşırıq tamamlandı",
                     message=f"{task.title} tapşırığı tamamlandı.",
-                    notification_type=Notification.NotificationType.TASK_COMPLETED,
+                    notification_type='task_completed',
                     related_task=task
                 )
                 # Target all assignees

@@ -17,12 +17,12 @@ class _StatusModalState extends State<StatusModal> {
   bool _loading = false;
 
   final List<Map<String, String>> _statuses = [
-    {'value': 'todo', 'label': 'To Do', 'color': 'grey'},
-    {'value': 'in_progress', 'label': 'In Progress', 'color': 'blue'},
-    {'value': 'arrived', 'label': 'Arrived', 'color': 'purple'},
-    {'value': 'done', 'label': 'Done', 'color': 'green'},
-    {'value': 'pending', 'label': 'Pending', 'color': 'red'},
-    {'value': 'rejected', 'label': 'Rejected', 'color': 'black'},
+    {'value': 'todo', 'label': 'Gözləyir', 'color': 'grey'},
+    {'value': 'in_progress', 'label': 'İcrada', 'color': 'blue'},
+    {'value': 'arrived', 'label': 'Çatıb', 'color': 'purple'},
+    {'value': 'done', 'label': 'Bitib', 'color': 'green'},
+    {'value': 'pending', 'label': 'Gözləmədə', 'color': 'red'},
+    {'value': 'rejected', 'label': 'Rədd edilib', 'color': 'black'},
   ];
 
   @override
@@ -38,12 +38,12 @@ class _StatusModalState extends State<StatusModal> {
       if (mounted) {
         Navigator.pop(context);
         widget.onSuccess();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Status updated')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Status yeniləndi')));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update status')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Status yenilənə bilmədi')));
       }
     }
   }
@@ -69,7 +69,7 @@ class _StatusModalState extends State<StatusModal> {
                 margin: const EdgeInsets.only(bottom: 20),
               ),
             ),
-            const Text('Update Status', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text('Statusu Yenilə', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             ..._statuses.map((s) => Container(
               margin: const EdgeInsets.only(bottom: 8),
@@ -108,7 +108,7 @@ class _StatusModalState extends State<StatusModal> {
                 ),
                 child: _loading 
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                    : const Text('Update Status', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    : const Text('Statusu Yenilə', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             )
           ],
@@ -128,10 +128,10 @@ class DeleteTaskDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Delete Task'),
-      content: const Text('Are you sure you want to delete this task?'),
+      title: const Text('Tapşırığı Sil'),
+      content: const Text('Bu tapşırığı silmək istədiyinizə əminsiniz?'),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Ləğv et')),
         TextButton(
           onPressed: () async {
             try {
@@ -139,13 +139,13 @@ class DeleteTaskDialog extends StatelessWidget {
               if (context.mounted) {
                 Navigator.pop(context);
                 onSuccess();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task deleted')));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tapşırıq silindi')));
               }
             } catch (e) {
               // Error
             }
           },
-          child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          child: const Text('Sil', style: TextStyle(color: Colors.red)),
         ),
       ],
     );
@@ -164,9 +164,9 @@ class SurveyModal extends StatelessWidget {
       child: const Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Survey (Anket)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text('Anket', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           SizedBox(height: 16),
-          Text('Survey functionality coming soon.'),
+          Text('Anket funksionallığı tezliklə əlavə olunacaq.'),
           // Implement fetching questions based on task columns
         ],
       ),
@@ -186,9 +186,9 @@ class FilesModal extends StatelessWidget {
       height: 400,
       child: const Column(
         children: [
-           Text('Files & Documents', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+           Text('Fayllar və Sənədlər', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
            SizedBox(height: 16),
-           Text('File list implementation here.'),
+           Text('Fayl siyahısı burada olacaq.'),
            // Access DocumentsScreen logic here? Or simple list
         ],
       ),
@@ -208,9 +208,9 @@ class ProductsModal extends StatelessWidget {
       height: 400,
       child: const Column(
         children: [
-           Text('Products', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+           Text('Məhsullar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
            SizedBox(height: 16),
-           Text('Product selection coming soon.'),
+           Text('Məhsul seçimi tezliklə əlavə olunacaq.'),
         ],
       ),
     );

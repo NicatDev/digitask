@@ -42,13 +42,13 @@ class TaskCard extends StatelessWidget {
     Color statusColor = Colors.grey;
     final String statusKey = task['status'] ?? 'todo';
     const statusLabels = {
-      'todo': 'TO DO',
-      'in_progress': 'IN PROGRESS',
-      'review': 'REVIEW',
-      'done': 'DONE',
-      'arrived': 'ARRIVED',
-      'pending': 'PENDING',
-      'rejected': 'REJECTED',
+      'todo': 'GÖZLƎYIR',
+      'in_progress': 'ICRADA',
+      'review': 'YOXLAMA',
+      'done': 'BİTİB',
+      'arrived': 'ÇATIB',
+      'pending': 'GÖZLƎMƎDƎ',
+      'rejected': 'RƎDD EDİLİB',
     };
     final String statusLabel = statusLabels[statusKey] ?? statusKey.toUpperCase();
     switch (statusKey) {
@@ -88,7 +88,7 @@ class TaskCard extends StatelessWidget {
                       builder: (_) => TaskDetailModal(task: task),
                     ),
                     child: Text(
-                      task['title'] ?? 'Untitled',
+                       task['title'] ?? 'Başlıqsız',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue),
                     ),
                   ),
@@ -116,7 +116,7 @@ class TaskCard extends StatelessWidget {
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    task['customer_name'] ?? 'No Customer',
+                    task['customer_name'] ?? 'Müştəri yoxdur',
                     style: const TextStyle(color: Colors.black87),
                     overflow: TextOverflow.ellipsis,
                   ),

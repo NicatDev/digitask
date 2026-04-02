@@ -32,6 +32,7 @@ class _TasksTabState extends State<TasksTab> {
   String _searchQuery = '';
   String? _statusFilter;
   int? _customerFilter;
+  int? _groupFilter;
   int? _assigneeFilter;
   String _activeFilter = 'active'; // all, active, inactive
   DateTimeRange? _dateRange;
@@ -141,6 +142,7 @@ class _TasksTabState extends State<TasksTab> {
     };
     if (_statusFilter != null) params['status'] = _statusFilter;
     if (_customerFilter != null) params['customer'] = _customerFilter;
+    if (_groupFilter != null) params['group'] = _groupFilter;
     if (_assigneeFilter != null) params['assigned_to'] = _assigneeFilter;
     
     if (_activeFilter == 'active') params['is_active'] = true;
@@ -165,14 +167,17 @@ class _TasksTabState extends State<TasksTab> {
       builder: (_) => TaskFilterModal(
         customers: _customers,
         users: _users,
+        groups: _groups,
         status: _statusFilter,
         customerId: _customerFilter,
+        groupId: _groupFilter,
         assigneeId: _assigneeFilter,
         activeFilter: _activeFilter,
-        onApply: (status, custId, assignId, active) {
+        onApply: (status, custId, groupId, assignId, active) {
           setState(() {
             _statusFilter = status;
             _customerFilter = custId;
+            _groupFilter = groupId;
             _assigneeFilter = assignId;
             _activeFilter = active;
           });
@@ -274,7 +279,7 @@ class _TasksTabState extends State<TasksTab> {
                   children: [
                     Expanded(
                       child: _tasks.isEmpty
-                          ? const Center(child: Text('No tasks found'))
+                          ? const Center(child: Text('Tapşırıq tapılmadı'))
                           : RefreshIndicator(
                               onRefresh: () => _fetchTasks(refresh: true),
                               child: ListView.separated(
@@ -317,7 +322,7 @@ class _TasksTabState extends State<TasksTab> {
                                 children: [
                                   Icon(Icons.arrow_back, size: 18),
                                   SizedBox(width: 8),
-                                  Text('Prev'),
+                                  Text('Ǝvvəl'),
                                 ],
                               ),
                             ),
@@ -328,7 +333,7 @@ class _TasksTabState extends State<TasksTab> {
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text('Next'),
+                                  Text('Növbəti'),
                                   SizedBox(width: 8),
                                   Icon(Icons.arrow_forward, size: 18),
                                 ],

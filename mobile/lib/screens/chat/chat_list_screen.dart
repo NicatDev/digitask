@@ -32,7 +32,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Messages'),
+        title: const Text('Mesajlar'),
         actions: [
             IconButton(
                 icon: const Icon(Icons.group_add),
@@ -44,7 +44,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
         valueListenable: _chatService.groups,
         builder: (context, groups, child) {
           if (groups.isEmpty) {
-            return const Center(child: Text('No active chats'));
+            return const Center(child: Text('Aktiv söhbət yoxdur'));
           }
           return ListView.separated(
                 itemCount: groups.length,
@@ -78,7 +78,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               )
-                            : const Text('No messages yet'),
+                            : const Text('Hələ mesaj yoxdur'),
                         trailing: Column(
                           mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
