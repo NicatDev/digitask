@@ -18,7 +18,11 @@ import 'package:mobile/screens/warehouse/warehouse_screen.dart';
 import 'package:mobile/screens/users/users_screen.dart';
 import 'package:mobile/screens/map/live_map_screen.dart';
 import 'package:mobile/screens/admin/admin_screen.dart';
+import 'package:mobile/screens/performance/performance_screen.dart';
 import 'package:mobile/models/user_model.dart';
+
+/// Overlay “Daha çox” menyusunda bütün sıra eyni en (veb/mobil uyğun görünüş).
+const double _kMoreMenuItemWidth = 232;
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -117,6 +121,9 @@ class _MainLayoutState extends State<MainLayout> {
     final bool isAdminOrSuper = user.isAdmin || user.isSuperAdmin;
     final bool hasWarehouseAccess =
         user.isWarehouseReader || user.isWarehouseWriter || isAdminOrSuper;
+    final bool hasMapAccess = user.isTaskReader ||
+        user.isTaskWriter ||
+        isAdminOrSuper;
 
     // Bottom nav bar height + system bottom padding ≈ 76px; add 8px gap above it.
     const double menuBottomOffset = 76.0 + 8.0;
@@ -153,7 +160,7 @@ class _MainLayoutState extends State<MainLayout> {
                     icon: Icons.map_outlined,
                     color: Colors.orange,
                     label: 'Xəritə',
-                    hasAccess: isAdminOrSuper,
+                    hasAccess: hasMapAccess,
                     onTap: () => _handleMenuSelection('map'),
                   ),
                   const SizedBox(height: 8),
@@ -163,6 +170,14 @@ class _MainLayoutState extends State<MainLayout> {
                     label: 'İstifadəçilər',
                     hasAccess: isAdminOrSuper,
                     onTap: () => _handleMenuSelection('users'),
+                  ),
+                  const SizedBox(height: 8),
+                  _menuCard(
+                    icon: Icons.bar_chart_outlined,
+                    color: Colors.teal,
+                    label: 'Performans',
+                    hasAccess: isAdminOrSuper,
+                    onTap: () => _handleMenuSelection('performance'),
                   ),
                   const SizedBox(height: 8),
                   _menuCard(
@@ -211,6 +226,15 @@ class _MainLayoutState extends State<MainLayout> {
           MaterialPageRoute<void>(builder: (_) => const AdminScreen()),
         );
         break;
+      case 'performance':
+        final perfUser = ChatService().currentUser.value;
+        if (perfUser != null &&
+            (perfUser.isAdmin || perfUser.isSuperAdmin)) {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const PerformanceScreen()),
+          );
+        }
+        break;
     }
   }
 
@@ -225,7 +249,8 @@ class _MainLayoutState extends State<MainLayout> {
     return GestureDetector(
       onTap: hasAccess ? onTap : null,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        width: _kMoreMenuItemWidth,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -238,7 +263,6 @@ class _MainLayoutState extends State<MainLayout> {
           ],
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
@@ -246,12 +270,16 @@ class _MainLayoutState extends State<MainLayout> {
               color: hasAccess ? color : Colors.grey.withOpacity(0.35),
             ),
             const SizedBox(width: 10),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: hasAccess ? Colors.black87 : Colors.grey.withOpacity(0.45),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: hasAccess ? Colors.black87 : Colors.grey.withOpacity(0.45),
+                ),
               ),
             ),
           ],
@@ -459,11 +487,8 @@ class _MainLayoutState extends State<MainLayout> {
   /// Three-dot "more" button — toggles the custom overlay menu.
   Widget _buildMoreNavItem() {
     final user = ChatService().currentUser.value;
-    final bool isAdminOrSuper =
-        user != null && (user.isAdmin || user.isSuperAdmin);
-    final bool hasWarehouseAccess = user != null &&
-        (user.isWarehouseReader || user.isWarehouseWriter || isAdminOrSuper);
-    final bool hasAnyAccess = hasWarehouseAccess || isAdminOrSuper;
+    // Performans veb ilə uyğun: bütün daxil olmuş istifadəçilər; menyu həmişə açılır.
+    final bool hasAnyAccess = user != null;
 
     final Color dotColor =
         hasAnyAccess ? (_isMoreMenuOpen ? Colors.blue : Colors.grey[700]!) : Colors.grey.withOpacity(0.3);
