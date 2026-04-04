@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Card, Typography, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import styles from './style.module.scss';
 import { useAuth } from '../../context/AuthContext';
 import { loginUser } from '../../axios/api/account';
@@ -67,6 +67,14 @@ const Login = () => {
                         </Button>
                     </Form.Item>
                 </Form>
+                <div className={styles.legalLinks}>
+                    <Link to="/privacy-policy">Məxfilik siyasəti</Link>
+                    <span className={styles.legalSep}>·</span>
+                    <Link to="/terms-conditions">İstifadə şərtləri</Link>
+                </div>
+                <div className={styles.registerHint}>
+                    <Link to="/register">Qeydiyyat / qəbul təsdiqi</Link>
+                </div>
             </Card>
         </div>
     );

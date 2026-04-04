@@ -39,3 +39,24 @@
 .loginFormButton {
     width: 100%;
 }
+
+.legalLinks,
+.registerHint {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 14px;
+}
+
+.legalLinks a,
+.registerHint a {
+    color: #1677ff;
+}
+
+.legalSep {
+    margin: 0 8px;
+    color: #8c8c8c;
+}
+
+.registerHint {
+    margin-top: 8px;
+}
