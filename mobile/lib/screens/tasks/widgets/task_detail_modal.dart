@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:mobile/screens/tasks/widgets/task_display_helpers.dart';
 
 class TaskDetailModal extends StatelessWidget {
   final Map<String, dynamic> task;
+  final List<dynamic> allServices;
 
-  const TaskDetailModal({super.key, required this.task});
+  const TaskDetailModal({
+    super.key,
+    required this.task,
+    this.allServices = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -16,6 +22,14 @@ class TaskDetailModal extends StatelessWidget {
     final updatedAt = task['updated_at'] != null
         ? dateFormat.format(DateTime.parse(task['updated_at']))
         : '-';
+
+    final taskServicesRaw = task['task_services'];
+    List<dynamic>? taskServicesList;
+    if (taskServicesRaw is List && taskServicesRaw.isNotEmpty) {
+      taskServicesList = taskServicesRaw;
+    }
+    final hasTaskServices = taskServicesList != null;
+    final svcLabels = taskServiceLabels(task, allServices);
 
     return DraggableScrollableSheet(
       initialChildSize: 1.0,
@@ -30,7 +44,6 @@ class TaskDetailModal extends StatelessWidget {
           ),
           child: Column(
             children: [
-              // Handle
               Container(
                 margin: const EdgeInsets.symmetric(vertical: 10),
                 width: 40,
@@ -40,7 +53,6 @@ class TaskDetailModal extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              // Title
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
@@ -60,23 +72,55 @@ class TaskDetailModal extends StatelessWidget {
                 ),
               ),
               const Divider(),
-              // Content
               Expanded(
                 child: ListView(
                   controller: scrollController,
                   padding: const EdgeInsets.all(16),
                   children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: taskTypeColorFromApi(task),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black26, width: 0.5),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            taskTypeNameFromApi(task),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                     _sectionTitle('Tapşırıq Məlumatları'),
                     _infoRow('Status', _statusLabel(task['status'] ?? '')),
                     _infoRow('Qeyd', task['note'] ?? '-'),
                     _infoRow('İcraçılar', _formatAssigneeNames(task)),
                     _infoRow('Qrup', task['group_name'] ?? '-'),
                     _infoRow('Region', task['region_name'] ?? '-'),
-                    _infoRow('Tapşırıq Tipi', task['task_type_details']?['name'] ?? '-'),
                     _infoRow('Yaradılma tarixi', createdAt),
                     _infoRow('Son yenilənmə', updatedAt),
                     _infoRow('Aktiv', task['is_active'] == true ? 'Bəli' : 'Xeyr'),
-                    
+
+                    const SizedBox(height: 16),
+                    _sectionTitle('Xidmətlər'),
+                    if (hasTaskServices) ..._buildServicesList(taskServicesList!),
+                    if (!hasTaskServices)
+                      _infoRow(
+                        'Seçilmiş',
+                        svcLabels.isNotEmpty ? svcLabels.join(', ') : '-',
+                      ),
+
                     const SizedBox(height: 16),
                     _sectionTitle('Müştəri Məlumatları'),
                     _infoRow('Ad', task['customer_name'] ?? '-'),
@@ -86,12 +130,14 @@ class TaskDetailModal extends StatelessWidget {
                       child: Row(
                         children: [
                           Expanded(child: _infoRow('Telefon', task['customer_phone'] ?? '-')),
-                          if (task['customer_phone'] != null && task['customer_phone'].toString().isNotEmpty)
+                          if (task['customer_phone'] != null &&
+                              task['customer_phone'].toString().isNotEmpty)
                             ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green,
                                 foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10)),
                               ),
                               onPressed: () => _launchCaller(task['customer_phone']),
                               icon: const Icon(Icons.phone_in_talk),
@@ -101,28 +147,21 @@ class TaskDetailModal extends StatelessWidget {
                       ),
                     ),
                     _infoRow('Qeydiyyat №', task['customer_register_number'] ?? '-'),
-                    
-                    // Services
-                    if (task['task_services'] != null && (task['task_services'] as List).isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      _sectionTitle('Xidmətlər'),
-                      ..._buildServicesList(task['task_services']),
-                    ],
 
-                    // Products
-                    if (task['task_products'] != null && (task['task_products'] as List).isNotEmpty) ...[
+                    if (task['task_products'] != null &&
+                        (task['task_products'] as List).isNotEmpty) ...[
                       const SizedBox(height: 16),
                       _sectionTitle('Məhsullar'),
                       ..._buildProductsList(task['task_products']),
                     ],
 
-                    // Documents
-                    if (task['task_documents'] != null && (task['task_documents'] as List).isNotEmpty) ...[
+                    if (task['task_documents'] != null &&
+                        (task['task_documents'] as List).isNotEmpty) ...[
                       const SizedBox(height: 16),
                       _sectionTitle('Sənədlər'),
                       ..._buildDocumentsList(task['task_documents']),
                     ],
-                    
+
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -175,7 +214,8 @@ class TaskDetailModal extends StatelessWidget {
         children: [
           SizedBox(
             width: 120,
-            child: Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+            child: Text(label,
+                style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
           ),
           Expanded(child: Text(value, style: const TextStyle(color: Colors.black87))),
         ],
@@ -198,9 +238,10 @@ class TaskDetailModal extends StatelessWidget {
               Text(serviceName, style: const TextStyle(fontWeight: FontWeight.bold)),
               if (note.isNotEmpty) Text(note, style: const TextStyle(color: Colors.grey)),
               ...values.map((v) => Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text('${v['column_name'] ?? v['column_key'] ?? '-'}: ${v['value'] ?? '-'}'),
-              )),
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                        '${v['column_name'] ?? v['column_key'] ?? '-'}: ${v['value'] ?? '-'}'),
+                  )),
             ],
           ),
         ),
@@ -236,7 +277,7 @@ class TaskDetailModal extends StatelessWidget {
   Future<void> _launchCaller(String phoneNumber) async {
     final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
     if (cleanPhone.isEmpty) return;
-    
+
     final Uri url = Uri.parse('tel:$cleanPhone');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);

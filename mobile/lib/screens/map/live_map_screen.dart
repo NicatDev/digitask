@@ -544,8 +544,67 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
             point: LatLng(clat, clng),
             width: 40,
             height: 40,
-            child: Tooltip(
-              message: t.customerName,
+            child: GestureDetector(
+              onTap: () {
+                showModalBottomSheet<void>(
+                  context: context,
+                  builder: (ctx) {
+                    final pad = MediaQuery.paddingOf(ctx).bottom;
+                    return Padding(
+                      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + pad),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.home, color: col, size: 28),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  t.customerName.isNotEmpty
+                                      ? t.customerName
+                                      : 'Müştəri',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (t.address != null && t.address!.trim().isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Text(
+                              t.address!,
+                              style: const TextStyle(
+                                color: Colors.black87,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 8),
+                          Text(
+                            'Tapşırıq #${t.id}',
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'İcraçı: ${u.fullName}',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
               child: Icon(Icons.home, color: col, size: 36),
             ),
           ),

@@ -1,38 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
-import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/services/chat_service.dart';
-import 'package:mobile/models/user_model.dart';
 import 'package:mobile/screens/tasks/widgets/interaction_modals.dart' hide SurveyModal, FilesModal, ProductsModal;
 import 'package:mobile/screens/tasks/widgets/survey_modal.dart';
 import 'package:mobile/screens/tasks/widgets/files_modal.dart';
 import 'package:mobile/screens/tasks/widgets/products_modal.dart';
 import 'package:mobile/screens/tasks/widgets/task_detail_modal.dart';
 import 'package:mobile/screens/tasks/widgets/assignee_modal.dart';
-
-Color _taskTypeColorFromApi(Map<String, dynamic> task) {
-  final details = task['task_type_details'];
-  if (details is! Map) return Colors.blueGrey;
-  final hex = details['color']?.toString().trim();
-  if (hex == null || hex.isEmpty) return Colors.blueGrey;
-  var h = hex.replaceFirst('#', '');
-  if (h.length == 6) h = 'FF$h';
-  if (h.length != 8) return Colors.blueGrey;
-  try {
-    return Color(int.parse(h, radix: 16));
-  } catch (_) {
-    return Colors.blueGrey;
-  }
-}
-
-String _taskTypeName(Map<String, dynamic> task) {
-  final details = task['task_type_details'];
-  if (details is Map && details['name'] != null) {
-    return details['name'].toString();
-  }
-  return 'Növ təyin edilməyib';
-}
+import 'package:mobile/screens/tasks/widgets/task_display_helpers.dart';
 
 class TaskCard extends StatelessWidget {
   final Map<String, dynamic> task;
@@ -89,6 +65,7 @@ class TaskCard extends StatelessWidget {
     final List<dynamic> assigneeNames = task['assigned_to_names'] is List ? task['assigned_to_names'] : [];
     final currentUser = ChatService().currentUser.value;
     final bool isCurrentUserAssignee = currentUser != null && assigneeIds.contains(currentUser.id);
+    final svcLabels = taskServiceLabels(task, allServices);
 
     return Card(
       color: Colors.white,
@@ -108,7 +85,10 @@ class TaskCard extends StatelessWidget {
                     onTap: () => showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
-                      builder: (_) => TaskDetailModal(task: task),
+                      builder: (_) => TaskDetailModal(
+                        task: task,
+                        allServices: allServices,
+                      ),
                     ),
                     child: Text(
                        '#${task['id']} - ${task['title'] ?? 'Başlıqsız'}',
@@ -138,7 +118,7 @@ class TaskCard extends StatelessWidget {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    color: _taskTypeColorFromApi(task),
+                    color: taskTypeColorFromApi(task),
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.black26, width: 0.5),
                   ),
@@ -146,7 +126,7 @@ class TaskCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: SelectableText(
-                    _taskTypeName(task),
+                    taskTypeNameFromApi(task),
                     style: const TextStyle(
                       fontSize: 13,
                       color: Colors.black87,
@@ -156,6 +136,22 @@ class TaskCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (svcLabels.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.work_outline, size: 14, color: Colors.grey.shade600),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      svcLabels.join(', '),
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 8),
 
             // Customer & Group
