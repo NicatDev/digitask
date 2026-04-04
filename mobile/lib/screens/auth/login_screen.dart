@@ -1,9 +1,11 @@
 import 'package:mobile/core/api/api_client.dart';
+import 'package:mobile/core/constants.dart';
 import 'package:mobile/screens/main_layout.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile/core/services/location_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -69,6 +71,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _openLegalPage(String path) async {
+    final uri = Uri.parse('${AppConstants.webFrontendOrigin}$path');
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Səhifə açıla bilmədi')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -91,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 48),
-                if (_errorMessage != null)
+                if (_errorMessage != null) ...[
                   Container(
                     padding: const EdgeInsets.all(12),
                     color: Colors.red.withOpacity(0.1),
@@ -102,6 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                ],
                 TextFormField(
                   controller: _usernameController,
                   decoration: const InputDecoration(
@@ -131,6 +144,26 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: _isLoading 
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Text('Daxil ol'),
+                ),
+                const SizedBox(height: 20),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 4,
+                  children: [
+                    TextButton(
+                      onPressed: () => _openLegalPage('/privacy-policy'),
+                      child: const Text('Məxfilik siyasəti'),
+                    ),
+                    Text(
+                      '·',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                    ),
+                    TextButton(
+                      onPressed: () => _openLegalPage('/terms-conditions'),
+                      child: const Text('İstifadə şərtləri'),
+                    ),
+                  ],
                 ),
               ],
             ),

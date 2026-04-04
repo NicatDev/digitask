@@ -15,6 +15,9 @@ import 'dashboard/dashboard_screen.dart';
 import 'documents/documents_screen.dart';
 import 'package:mobile/screens/tasks/tasks_screen.dart';
 import 'package:mobile/screens/warehouse/warehouse_screen.dart';
+import 'package:mobile/screens/users/users_screen.dart';
+import 'package:mobile/screens/map/live_map_screen.dart';
+import 'package:mobile/screens/admin/admin_screen.dart';
 import 'package:mobile/models/user_model.dart';
 
 class MainLayout extends StatefulWidget {
@@ -194,18 +197,18 @@ class _MainLayoutState extends State<MainLayout> {
         setState(() => _currentIndex = 3);
         break;
       case 'users':
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('İstifadəçilər səhifəsi tezliklə')),
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const UsersScreen()),
         );
         break;
       case 'map':
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Xəritə səhifəsi tezliklə')),
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const LiveMapScreen()),
         );
         break;
       case 'admin':
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Admin səhifəsi tezliklə')),
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const AdminScreen()),
         );
         break;
     }

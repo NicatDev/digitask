@@ -7,29 +7,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart'; 
-import '../constants.dart';
 import 'package:mobile/core/services/token_service.dart';
-
-// --- SHARED LOGIC ---
-
-Future<String?> _getWebSocketUrl() async {
-  const storage = FlutterSecureStorage();
-  final token = await storage.read(key: 'access_token');
-  if (token == null) return null;
-
-  final uri = Uri.parse(AppConstants.baseUrl);
-  String host = uri.host;
-  
-  final wsScheme = uri.scheme == 'https' ? 'wss' : 'ws';
-  
-  // Build WebSocket URL - include port only if it's explicitly set (not default 80/443)
-  final portPart = (uri.port != 80 && uri.port != 443 && uri.hasPort) ? ':${uri.port}' : '';
-  
-  return '$wsScheme://$host$portPart/ws/tracking/?token=$token';
-}
+import 'package:mobile/core/tracking_socket_url.dart';
 
 class LocationService {
   // Web State
@@ -72,7 +53,7 @@ class LocationService {
     bool isConnected = false;
     
     Future<void> connectWebSocket() async {
-      final wsUrl = await _getWebSocketUrl();
+      final wsUrl = await getTrackingWebSocketUrl();
       print('[LocationService] WebSocket URL: $wsUrl');
       if (wsUrl == null) {
         print('[LocationService] No token found, cannot connect WebSocket');
@@ -190,7 +171,7 @@ class LocationService {
     print('[LocationService] Starting web tracking...');
 
     Future<void> connectWebSocket() async {
-        final wsUrl = await _getWebSocketUrl();
+        final wsUrl = await getTrackingWebSocketUrl();
         print('[LocationService] Web WebSocket URL: $wsUrl');
         if (wsUrl == null) {
           print('[LocationService] No token found for web tracking');

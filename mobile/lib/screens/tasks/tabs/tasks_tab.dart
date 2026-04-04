@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/screens/tasks/widgets/task_card.dart';
@@ -22,6 +24,10 @@ class _TasksTabState extends State<TasksTab> {
   List<dynamic> _groups = [];
   List<dynamic> _taskTypes = [];
   List<dynamic> _services = [];
+
+  /// True after first successful dropdown fetch (customers, groups, …).
+  bool _dropdownsReady = false;
+  Future<void>? _dropdownsInFlight;
   
   // Pagination State
   int _currentPage = 1;
@@ -40,8 +46,20 @@ class _TasksTabState extends State<TasksTab> {
   @override
   void initState() {
     super.initState();
-    _fetchDropdowns();
+    // Same in-flight future as filter/form open — avoids empty groups on first filter tap.
+    unawaited(_ensureDropdownsLoaded());
     _fetchTasks();
+  }
+
+  /// Waits for (or re-runs) dropdown APIs. Safe to call from initState and before modals.
+  Future<void> _ensureDropdownsLoaded() async {
+    if (_dropdownsReady) return;
+    _dropdownsInFlight ??= _fetchDropdowns();
+    try {
+      await _dropdownsInFlight;
+    } finally {
+      _dropdownsInFlight = null;
+    }
   }
 
   Future<void> _fetchDropdowns() async {
@@ -60,10 +78,12 @@ class _TasksTabState extends State<TasksTab> {
           _groups = _extractResults(groupsRes.data);
           _taskTypes = _extractResults(typesRes.data);
           _services = _extractResults(servicesRes.data);
+          _dropdownsReady = true;
         });
       }
     } catch (e) {
       debugPrint('Error fetching dropdowns: $e');
+      rethrow;
     }
   }
 
@@ -160,7 +180,18 @@ class _TasksTabState extends State<TasksTab> {
     return [];
   }
 
-  void _openFilters() {
+  Future<void> _openFilters() async {
+    try {
+      await _ensureDropdownsLoaded();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Filtr məlumatları yüklənmədi: $e')),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -187,7 +218,18 @@ class _TasksTabState extends State<TasksTab> {
     );
   }
 
-  void _openTaskForm([Map<String, dynamic>? task]) {
+  Future<void> _openTaskForm([Map<String, dynamic>? task]) async {
+    try {
+      await _ensureDropdownsLoaded();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Form məlumatları yüklənmədi: $e')),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

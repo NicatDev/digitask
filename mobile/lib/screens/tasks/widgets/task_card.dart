@@ -11,6 +11,29 @@ import 'package:mobile/screens/tasks/widgets/products_modal.dart';
 import 'package:mobile/screens/tasks/widgets/task_detail_modal.dart';
 import 'package:mobile/screens/tasks/widgets/assignee_modal.dart';
 
+Color _taskTypeColorFromApi(Map<String, dynamic> task) {
+  final details = task['task_type_details'];
+  if (details is! Map) return Colors.blueGrey;
+  final hex = details['color']?.toString().trim();
+  if (hex == null || hex.isEmpty) return Colors.blueGrey;
+  var h = hex.replaceFirst('#', '');
+  if (h.length == 6) h = 'FF$h';
+  if (h.length != 8) return Colors.blueGrey;
+  try {
+    return Color(int.parse(h, radix: 16));
+  } catch (_) {
+    return Colors.blueGrey;
+  }
+}
+
+String _taskTypeName(Map<String, dynamic> task) {
+  final details = task['task_type_details'];
+  if (details is Map && details['name'] != null) {
+    return details['name'].toString();
+  }
+  return 'Növ təyin edilməyib';
+}
+
 class TaskCard extends StatelessWidget {
   final Map<String, dynamic> task;
   final List<dynamic> allServices;
@@ -107,8 +130,34 @@ class TaskCard extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: _taskTypeColorFromApi(task),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.black26, width: 0.5),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SelectableText(
+                    _taskTypeName(task),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
-            
+
             // Customer & Group
             Row(
               children: [

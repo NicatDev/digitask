@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 
 class AppConstants {
+  /// React web app host (e.g. legal pages). API lives on a different host — see [baseUrl].
+  static const String webFrontendOrigin = 'https://digitask.store';
+
   // Production URL for release builds, local URLs for debug
   static String get baseUrl {
     if (kReleaseMode) {
