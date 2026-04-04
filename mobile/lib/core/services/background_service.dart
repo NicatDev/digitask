@@ -69,12 +69,18 @@ void onStart(ServiceInstance service) async {
   // Only available for flutter 3.0.0 and later
   DartPluginRegistrant.ensureInitialized();
 
+  // ⚡ Android 14+: startForeground() must be called within 5 seconds.
+  // Call it IMMEDIATELY before any async work to avoid ForegroundServiceDidNotStartInTimeException.
+  if (service is AndroidServiceInstance) {
+    service.setForegroundNotificationInfo(
+      title: 'DigiTask',
+      content: 'Servis aktiv...',
+    );
+  }
+
   // Initialize LocationService Tracking (notifications are handled by FCM now)
   await LocationService.startBackgroundTracking(service);
 
-  // Bring to foreground
-  // service.invoke('update');
-  
   // Listen for stop
   service.on('stopService').listen((event) {
     service.stopSelf();

@@ -1,13 +1,13 @@
 import 'package:mobile/core/api/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile/screens/auth/login_screen.dart';
-import 'package:flutter/foundation.dart'; // for kIsWeb
+import 'package:flutter/foundation.dart';
 import 'package:mobile/screens/profile/profile_screen.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:mobile/core/services/location_service.dart';
 import 'package:mobile/core/services/notification_service.dart';
-import 'package:mobile/core/services/background_service.dart'; // Ensure this is imported for initializeService
+import 'package:mobile/core/services/background_service.dart';
 import 'package:mobile/core/services/chat_service.dart';
 import 'package:mobile/screens/notifications/notifications_screen.dart';
 import 'package:mobile/screens/chat/chat_list_screen.dart';
@@ -29,6 +29,10 @@ class _MainLayoutState extends State<MainLayout> {
   String? _userAvatar;
   final NotificationService _notificationService = NotificationService();
 
+  // Overlay for the custom "more" menu
+  OverlayEntry? _overlayEntry;
+  bool _isMoreMenuOpen = false;
+
   final List<Widget> _screens = [
     const DashboardScreen(),
     const DocumentsScreen(),
@@ -44,19 +48,22 @@ class _MainLayoutState extends State<MainLayout> {
     ChatService().fetchGroups();
   }
 
+  @override
+  void dispose() {
+    _closeMoreMenu();
+    super.dispose();
+  }
+
   Future<void> _fetchUserData() async {
     try {
       final response = await ApiClient().dio.get('/users/me/');
       if (response.statusCode == 200) {
         final user = User.fromJson(response.data);
-        ChatService().setCurrentUser(user); // Update ChatService with full user object
-        
-        // Start Location Tracking
+        ChatService().setCurrentUser(user);
+
         if (kIsWeb) {
-          // Web: Request permission via geolocator and start tracking
           await LocationService.initialize();
         } else {
-          // Mobile: Request permissions and start background service
           await _requestPermissions();
           await initializeService();
         }
@@ -90,55 +97,211 @@ class _MainLayoutState extends State<MainLayout> {
     }
   }
 
+  // ─── Custom Overlay Menu ───────────────────────────────────────────────────
+
+  void _toggleMoreMenu() {
+    if (_isMoreMenuOpen) {
+      _closeMoreMenu();
+    } else {
+      _openMoreMenu();
+    }
+  }
+
+  void _openMoreMenu() {
+    final user = ChatService().currentUser.value;
+    if (user == null) return;
+
+    final bool isAdminOrSuper = user.isAdmin || user.isSuperAdmin;
+    final bool hasWarehouseAccess =
+        user.isWarehouseReader || user.isWarehouseWriter || isAdminOrSuper;
+
+    // Bottom nav bar height + system bottom padding ≈ 76px; add 8px gap above it.
+    const double menuBottomOffset = 76.0 + 8.0;
+
+    _overlayEntry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          // Transparent barrier – tap outside to close
+          GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: _closeMoreMenu,
+            child: const SizedBox.expand(),
+          ),
+          // Menu items positioned above the bottom nav, right-aligned
+          Positioned(
+            bottom: menuBottomOffset,
+            right: 8,
+            child: Material(
+              color: Colors.transparent,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Shown in reverse so "Anbar" is closest to three-dot button
+                  _menuCard(
+                    icon: Icons.admin_panel_settings_outlined,
+                    color: Colors.purple,
+                    label: 'Admin',
+                    hasAccess: isAdminOrSuper,
+                    onTap: () => _handleMenuSelection('admin'),
+                  ),
+                  const SizedBox(height: 8),
+                  _menuCard(
+                    icon: Icons.map_outlined,
+                    color: Colors.orange,
+                    label: 'Xəritə',
+                    hasAccess: isAdminOrSuper,
+                    onTap: () => _handleMenuSelection('map'),
+                  ),
+                  const SizedBox(height: 8),
+                  _menuCard(
+                    icon: Icons.people_outline,
+                    color: Colors.green,
+                    label: 'İstifadəçilər',
+                    hasAccess: isAdminOrSuper,
+                    onTap: () => _handleMenuSelection('users'),
+                  ),
+                  const SizedBox(height: 8),
+                  _menuCard(
+                    icon: Icons.warehouse_outlined,
+                    color: Colors.blue,
+                    label: 'Anbar',
+                    hasAccess: hasWarehouseAccess,
+                    onTap: () => _handleMenuSelection('warehouse'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+    setState(() => _isMoreMenuOpen = true);
+  }
+
+  void _closeMoreMenu() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    if (mounted) setState(() => _isMoreMenuOpen = false);
+  }
+
+  void _handleMenuSelection(String value) {
+    _closeMoreMenu();
+    switch (value) {
+      case 'warehouse':
+        setState(() => _currentIndex = 3);
+        break;
+      case 'users':
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('İstifadəçilər səhifəsi tezliklə')),
+        );
+        break;
+      case 'map':
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Xəritə səhifəsi tezliklə')),
+        );
+        break;
+      case 'admin':
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Admin səhifəsi tezliklə')),
+        );
+        break;
+    }
+  }
+
+  /// A single floating card button — active or faded.
+  Widget _menuCard({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required bool hasAccess,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: hasAccess ? onTap : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.10),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 22,
+              color: hasAccess ? color : Colors.grey.withOpacity(0.35),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: hasAccess ? Colors.black87 : Colors.grey.withOpacity(0.45),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Build ─────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-
-        title: const Text('DigiTask'), // Or dynamic title based on index
+        title: const Text('DigiTask'),
         actions: [
-           ValueListenableBuilder<int>(
-             valueListenable: _notificationService.unreadCount,
-             builder: (context, count, child) {
-               return Stack(
-                 children: [
-                   IconButton(
-                     icon: const Icon(Icons.notifications_outlined),
-                     onPressed: () {
-                       Navigator.push(
-                         context,
-                         MaterialPageRoute(builder: (context) => const NotificationsScreen()),
-                       );
-                     },
-                   ),
-                   if (count > 0)
-                     Positioned(
-                       right: 8,
-                       top: 8,
-                       child: Container(
-                         padding: const EdgeInsets.all(2),
-                         decoration: BoxDecoration(
-                           color: Colors.red,
-                           borderRadius: BorderRadius.circular(10),
-                         ),
-                         constraints: const BoxConstraints(
-                           minWidth: 16,
-                           minHeight: 16,
-                         ),
-                         child: Text(
-                           '$count',
-                           style: const TextStyle(
-                             color: Colors.white,
-                             fontSize: 10,
-                           ),
-                           textAlign: TextAlign.center,
-                         ),
-                       ),
-                     ),
-                 ],
-               );
-             },
-           ),
+          ValueListenableBuilder<int>(
+            valueListenable: _notificationService.unreadCount,
+            builder: (context, count, child) {
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const NotificationsScreen()),
+                      );
+                    },
+                  ),
+                  if (count > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        child: Text(
+                          '$count',
+                          style: const TextStyle(color: Colors.white, fontSize: 10),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'profile') {
@@ -176,7 +339,8 @@ class _MainLayoutState extends State<MainLayout> {
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0, left: 8.0),
               child: CircleAvatar(
-                backgroundImage: _userAvatar != null ? NetworkImage(_userAvatar!) : null,
+                backgroundImage:
+                    _userAvatar != null ? NetworkImage(_userAvatar!) : null,
                 child: _userAvatar == null ? const Icon(Icons.person) : null,
               ),
             ),
@@ -200,10 +364,7 @@ class _MainLayoutState extends State<MainLayout> {
                     gradient: const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF1565C0), // Dark Blue
-                        Color(0xFF42A5F5), // Light Blue
-                      ],
+                      colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
                     ),
                     boxShadow: [
                       BoxShadow(
@@ -217,13 +378,15 @@ class _MainLayoutState extends State<MainLayout> {
                     backgroundColor: Colors.transparent,
                     elevation: 0,
                     onPressed: () {
-                       Navigator.push(
-                         context,
-                         MaterialPageRoute(builder: (context) => const ChatListScreen()),
-                       );
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const ChatListScreen()),
+                      );
                     },
                     shape: const CircleBorder(),
-                    child: const Icon(Icons.chat_bubble_outline, size: 28, color: Colors.white),
+                    child: const Icon(Icons.chat_bubble_outline,
+                        size: 28, color: Colors.white),
                   ),
                 ),
                 if (unreadCount > 0)
@@ -233,20 +396,15 @@ class _MainLayoutState extends State<MainLayout> {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 20,
-                        minHeight: 20,
-                      ),
+                          color: Colors.red, shape: BoxShape.circle),
+                      constraints:
+                          const BoxConstraints(minWidth: 20, minHeight: 20),
                       child: Text(
                         '$unreadCount',
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -277,11 +435,14 @@ class _MainLayoutState extends State<MainLayout> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNavItem(0, Icons.dashboard_outlined, Icons.dashboard, 'Ana səhifə'),
-                _buildNavItem(1, Icons.description_outlined, Icons.description, 'Sənədlər'),
+                _buildNavItem(
+                    0, Icons.dashboard_outlined, Icons.dashboard, 'Ana səhifə'),
+                _buildNavItem(1, Icons.description_outlined,
+                    Icons.description, 'Sənədlər'),
                 const SizedBox(width: 60), // Gap for FAB
-                _buildNavItem(2, Icons.task_outlined, Icons.task, 'Tapşırıqlar'),
-                _buildNavItem(3, Icons.warehouse_outlined, Icons.warehouse, 'Anbar'),
+                _buildNavItem(
+                    2, Icons.task_outlined, Icons.task, 'Tapşırıqlar'),
+                _buildMoreNavItem(),
               ],
             ),
           ),
@@ -290,90 +451,69 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, IconData activeIcon, String label) {
+  // ─── Nav helpers ──────────────────────────────────────────────────────────
+
+  /// Three-dot "more" button — toggles the custom overlay menu.
+  Widget _buildMoreNavItem() {
+    final user = ChatService().currentUser.value;
+    final bool isAdminOrSuper =
+        user != null && (user.isAdmin || user.isSuperAdmin);
+    final bool hasWarehouseAccess = user != null &&
+        (user.isWarehouseReader || user.isWarehouseWriter || isAdminOrSuper);
+    final bool hasAnyAccess = hasWarehouseAccess || isAdminOrSuper;
+
+    final Color dotColor =
+        hasAnyAccess ? (_isMoreMenuOpen ? Colors.blue : Colors.grey[700]!) : Colors.grey.withOpacity(0.3);
+
+    return InkWell(
+      onTap: hasAnyAccess ? _toggleMoreMenu : null,
+      customBorder: const CircleBorder(),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _dot(dotColor),
+                const SizedBox(width: 3),
+                _dot(dotColor),
+                const SizedBox(width: 3),
+                _dot(dotColor),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Daha çox',
+              style: TextStyle(fontSize: 10, color: dotColor),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dot(Color color) => Container(
+        width: 5,
+        height: 5,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      );
+
+  Widget _buildNavItem(
+      int index, IconData icon, IconData activeIcon, String label) {
+    final user = ChatService().currentUser.value;
+
     if (index == 2) {
-       // Tasks Tab Permission Check
-       final user = ChatService().currentUser.value;
-       final hasAccess = user != null && (user.isTaskReader || user.isTaskWriter);
-       
-       if (!hasAccess) {
-          final isSelected = _currentIndex == index;
-          return Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  color: Colors.grey.withOpacity(0.3),
-                ),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey.withOpacity(0.3),
-                  ),
-                ),
-              ],
-            ),
-          );
-       }
-    }
-    
-    // Documents Tab (Index 1) Permission Check
-    if (index == 1) {
-       final user = ChatService().currentUser.value;
-       final hasAccess = user != null && (user.isDocumentReader || user.isDocumentWriter);
-       
-       if (!hasAccess) {
-          return Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  color: Colors.grey.withOpacity(0.3),
-                ),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey.withOpacity(0.3),
-                  ),
-                ),
-              ],
-            ),
-          );
-       }
+      final hasAccess =
+          user != null && (user.isTaskReader || user.isTaskWriter);
+      if (!hasAccess) return _buildDisabledNavItem(icon, label);
     }
 
-    // Warehouse Tab (Index 3) Permission Check
-    if (index == 3) {
-       final user = ChatService().currentUser.value;
-       final hasAccess = user != null && (user.isWarehouseReader || user.isWarehouseWriter);
-       
-       if (!hasAccess) {
-          return Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  color: Colors.grey.withOpacity(0.3),
-                ),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey.withOpacity(0.3),
-                  ),
-                ),
-              ],
-            ),
-          );
-       }
+    if (index == 1) {
+      final hasAccess =
+          user != null && (user.isDocumentReader || user.isDocumentWriter);
+      if (!hasAccess) return _buildDisabledNavItem(icon, label);
     }
 
     final isSelected = _currentIndex == index;
@@ -393,11 +533,29 @@ class _MainLayoutState extends State<MainLayout> {
               label,
               style: TextStyle(
                 fontSize: 10,
-                color: isSelected ? Theme.of(context).primaryColor : Colors.grey,
+                color:
+                    isSelected ? Theme.of(context).primaryColor : Colors.grey,
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDisabledNavItem(IconData icon, String label) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.grey.withOpacity(0.3)),
+          Text(
+            label,
+            style:
+                TextStyle(fontSize: 10, color: Colors.grey.withOpacity(0.3)),
+          ),
+        ],
       ),
     );
   }
