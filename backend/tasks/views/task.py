@@ -1,4 +1,5 @@
 from django.db import models, transaction
+from django.db.models import Case, IntegerField, Value, When
 from django.db.models.functions import Cast
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, status
@@ -31,7 +32,7 @@ class TaskViewSet(viewsets.ModelViewSet):
             'task_services', 'task_services__service', 'task_services__values',
             'task_products', 'task_products__product', 'task_products__warehouse',
             'task_documents'
-        ).order_by('-created_at')
+        )
         
         user = self.request.user
         
@@ -102,7 +103,20 @@ class TaskViewSet(viewsets.ModelViewSet):
                 models.Q(note__icontains=search)
             )
         
-        return queryset.distinct()
+        queryset = queryset.distinct()
+
+        queryset = queryset.annotate(
+            _reg_task_order=Case(
+                When(
+                    models.Q(assigned_to=user) & ~models.Q(status='todo'),
+                    then=Value(0),
+                ),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+        ).order_by('_reg_task_order', '-created_at')
+
+        return queryset
     
     def perform_create(self, serializer):
         """Create task and trigger notification."""
