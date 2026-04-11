@@ -70,17 +70,31 @@ def send_notification_fcm(instance, target_users=None):
         logger.error('FCM notification error: %s', e)
 
 
+def _broadcast_general_if_still_untargeted(notification_id):
+    """
+    Send general WS + FCM only if nobody was targeted before commit.
+    Avoids duplicate delivery when create() is followed by target_users.set()
+    in the same transaction (e.g. task completed → assignees only).
+    """
+    try:
+        n = Notification.objects.get(pk=notification_id)
+    except Notification.DoesNotExist:
+        return
+    if n.target_users.exists():
+        return
+    send_notification_ws(n, target_users=None)
+    threading.Thread(target=send_notification_fcm, args=(n, None)).start()
+
+
 @receiver(post_save, sender=Notification)
 def broadcast_notification_on_create(sender, instance, created, **kwargs):
     """Broadcast notification via WS+FCM when created without target_users.
-    Notifications WITH target_users are handled by notification_targets_changed signal.
+    If target_users are added in the same DB transaction, the on-commit check
+    skips this broadcast; notification_targets_changed handles targeted delivery.
     """
     if created and not instance.target_users.exists():
-        send_notification_ws(instance, target_users=None)
-        # Run FCM in background thread after transaction commit
-        transaction.on_commit(
-            lambda: threading.Thread(target=send_notification_fcm, args=(instance, None)).start()
-        )
+        nid = instance.pk
+        transaction.on_commit(lambda n_id=nid: _broadcast_general_if_still_untargeted(n_id))
 
 
 @receiver(m2m_changed, sender=Notification.target_users.through)

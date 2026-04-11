@@ -119,15 +119,26 @@ class TaskViewSet(viewsets.ModelViewSet):
         return queryset
     
     def perform_create(self, serializer):
-        """Create task and trigger notification."""
+        """Create task and notify users in the task's group only (not all users)."""
         task = serializer.save()
-        
-        # Create notification
+
+        if not task.group_id:
+            return
+
+        recipient_ids = list(
+            User.objects.filter(group_id=task.group_id, is_active=True).values_list(
+                'pk', flat=True
+            )
+        )
+        if not recipient_ids:
+            return
+
         send_notification(
             title=f"Yeni Task: {task.title}",
             message=f"Müştəri: {task.customer.full_name if task.customer else 'N/A'}",
             notification_type='task_created',
-            related_task=task
+            related_task=task,
+            target_user_ids=recipient_ids,
         )
     
     def destroy(self, request, *args, **kwargs):
