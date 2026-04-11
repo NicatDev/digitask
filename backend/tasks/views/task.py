@@ -51,10 +51,9 @@ class TaskViewSet(viewsets.ModelViewSet):
         
         user = self.request.user
         
-        # Visibility rules — privileged users see everything
+        # Visibility rules — yalnız admin / super_admin / Django superuser hamısını görür
         role = getattr(user, 'role', None)
         is_privileged = (
-            (role and role.is_task_writer) or
             (role and role.is_admin) or
             (role and role.is_super_admin) or
             user.is_superuser
@@ -232,7 +231,6 @@ class TaskViewSet(viewsets.ModelViewSet):
         """Soft delete - set is_active to False. Only privileged users can delete."""
         role = getattr(request.user, 'role', None)
         is_privileged = (
-            (role and role.is_task_writer) or
             (role and role.is_admin) or
             (role and role.is_super_admin) or
             request.user.is_superuser
