@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/screens/tasks/widgets/task_display_helpers.dart';
+import 'package:mobile/screens/tasks/widgets/customer_tasks_history_modal.dart';
 
-class TaskDetailModal extends StatelessWidget {
+class TaskDetailModal extends StatefulWidget {
   final Map<String, dynamic> task;
   final List<dynamic> allServices;
 
@@ -14,7 +16,79 @@ class TaskDetailModal extends StatelessWidget {
   });
 
   @override
+  State<TaskDetailModal> createState() => _TaskDetailModalState();
+}
+
+class _TaskDetailModalState extends State<TaskDetailModal> {
+  List<dynamic> _activities = [];
+  bool _actLoading = true;
+  final _commentCtrl = TextEditingController();
+  bool _sending = false;
+
+  int get _taskId => widget.task['id'] as int;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActivity();
+  }
+
+  @override
+  void dispose() {
+    _commentCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadActivity() async {
+    setState(() => _actLoading = true);
+    try {
+      final res = await ApiClient().dio.get('/tasks/tasks/$_taskId/activity/');
+      final data = res.data;
+      if (data is List) {
+        setState(() => _activities = data);
+      } else {
+        setState(() => _activities = []);
+      }
+    } catch (_) {
+      setState(() => _activities = []);
+    } finally {
+      if (mounted) setState(() => _actLoading = false);
+    }
+  }
+
+  Future<void> _sendComment() async {
+    final text = _commentCtrl.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _sending = true);
+    try {
+      await ApiClient().dio.post('/tasks/tasks/$_taskId/activity/', data: {'body': text});
+      _commentCtrl.clear();
+      await _loadActivity();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şərh əlavə olundu')));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Göndərilmədi')));
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  void _openCustomerHistory() {
+    showDialog(
+      context: context,
+      builder: (ctx) => CustomerTasksHistoryModal(
+        taskId: _taskId,
+        customerName: widget.task['customer_name']?.toString(),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final task = widget.task;
     final dateFormat = DateFormat('dd MMM yyyy, HH:mm');
     final createdAt = task['created_at'] != null
         ? dateFormat.format(DateTime.parse(task['created_at']))
@@ -29,7 +103,7 @@ class TaskDetailModal extends StatelessWidget {
       taskServicesList = taskServicesRaw;
     }
     final hasTaskServices = taskServicesList != null;
-    final svcLabels = taskServiceLabels(task, allServices);
+    final svcLabels = taskServiceLabels(task, widget.allServices);
 
     return DraggableScrollableSheet(
       initialChildSize: 1.0,
@@ -56,7 +130,6 @@ class TaskDetailModal extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: Text(
@@ -73,103 +146,197 @@ class TaskDetailModal extends StatelessWidget {
               ),
               const Divider(),
               Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final wide = constraints.maxWidth >= 600;
+                    return ListView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(16),
                       children: [
-                        Container(
-                          width: 14,
-                          height: 14,
-                          decoration: BoxDecoration(
-                            color: taskTypeColorFromApi(task),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.black26, width: 0.5),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            taskTypeNameFromApi(task),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _sectionTitle('Tapşırıq Məlumatları'),
-                    _infoRow('Status', _statusLabel(task['status'] ?? '')),
-                    _infoRow('Qeyd', task['note'] ?? '-'),
-                    _infoRow('İcraçılar', _formatAssigneeNames(task)),
-                    _infoRow('Qrup', task['group_name'] ?? '-'),
-                    _infoRow('Region', task['region_name'] ?? '-'),
-                    _infoRow('Yaradılma tarixi', createdAt),
-                    _infoRow('Son yenilənmə', updatedAt),
-                    _infoRow('Aktiv', task['is_active'] == true ? 'Bəli' : 'Xeyr'),
-
-                    const SizedBox(height: 16),
-                    _sectionTitle('Xidmətlər'),
-                    if (hasTaskServices) ..._buildServicesList(taskServicesList!),
-                    if (!hasTaskServices)
-                      _infoRow(
-                        'Seçilmiş',
-                        svcLabels.isNotEmpty ? svcLabels.join(', ') : '-',
-                      ),
-
-                    const SizedBox(height: 16),
-                    _sectionTitle('Müştəri Məlumatları'),
-                    _infoRow('Ad', task['customer_name'] ?? '-'),
-                    _infoRow('Ünvan', task['customer_address'] ?? '-'),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        children: [
-                          Expanded(child: _infoRow('Telefon', task['customer_phone'] ?? '-')),
-                          if (task['customer_phone'] != null &&
-                              task['customer_phone'].toString().isNotEmpty)
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10)),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: taskTypeColorFromApi(task),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.black26, width: 0.5),
                               ),
-                              onPressed: () => _launchCaller(task['customer_phone']),
-                              icon: const Icon(Icons.phone_in_talk),
-                              label: const Text('Zəng et'),
                             ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                taskTypeNameFromApi(task),
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        if (wide)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: _taskInfoColumn(context, task, createdAt, updatedAt)),
+                              const SizedBox(width: 16),
+                              Expanded(child: _customerColumn(context, task)),
+                            ],
+                          )
+                        else ...[
+                          _taskInfoColumn(context, task, createdAt, updatedAt),
+                          const SizedBox(height: 16),
+                          _customerColumn(context, task),
                         ],
-                      ),
-                    ),
-                    _infoRow('Qeydiyyat №', task['customer_register_number'] ?? '-'),
-
-                    if (task['task_products'] != null &&
-                        (task['task_products'] as List).isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      _sectionTitle('Məhsullar'),
-                      ..._buildProductsList(task['task_products']),
-                    ],
-
-                    if (task['task_documents'] != null &&
-                        (task['task_documents'] as List).isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      _sectionTitle('Sənədlər'),
-                      ..._buildDocumentsList(task['task_documents']),
-                    ],
-
-                    const SizedBox(height: 24),
-                  ],
+                        TextButton.icon(
+                          onPressed: _openCustomerHistory,
+                          icon: const Icon(Icons.history, size: 18),
+                          label: const Text('Tapşırıq tarixçəsinə bax (müştəri üzrə)'),
+                        ),
+                        const SizedBox(height: 16),
+                        _sectionTitle('Xidmətlər'),
+                        if (hasTaskServices) ..._buildServicesList(taskServicesList!),
+                        if (!hasTaskServices)
+                          _infoRow(
+                            context,
+                            'Seçilmiş',
+                            svcLabels.isNotEmpty ? svcLabels.join(', ') : '-',
+                          ),
+                        if (task['task_products'] != null &&
+                            (task['task_products'] as List).isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _sectionTitle('Məhsullar'),
+                          ..._buildProductsList(task['task_products'] as List),
+                        ],
+                        if (task['task_documents'] != null &&
+                            (task['task_documents'] as List).isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _sectionTitle('Sənədlər'),
+                          ..._buildDocumentsList(task['task_documents'] as List),
+                        ],
+                        const SizedBox(height: 16),
+                        _sectionTitle('Aktivlik və şərhlər'),
+                        if (_actLoading)
+                          const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else if (_activities.isEmpty)
+                          const Text('Hələ qeyd yoxdur.', style: TextStyle(color: Colors.grey))
+                        else
+                          ..._activities.map((a) {
+                            final m = a as Map<String, dynamic>;
+                            final at = m['created_at'] != null
+                                ? dateFormat.format(DateTime.parse(m['created_at']))
+                                : '';
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '$at · ${m['user_name'] ?? ''}',
+                                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                    ),
+                                    Text(
+                                      m['action_display']?.toString() ?? '',
+                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                    ),
+                                    if (m['message'] != null &&
+                                        m['message'].toString().isNotEmpty)
+                                      Text(m['message'].toString()),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _commentCtrl,
+                          maxLines: 3,
+                          maxLength: 2000,
+                          decoration: const InputDecoration(
+                            labelText: 'Şərh',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _sending ? null : _sendComment,
+                            child: _sending
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Text('Göndər'),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _taskInfoColumn(BuildContext context, Map<String, dynamic> task, String createdAt, String updatedAt) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Tapşırıq məlumatları'),
+        _infoRow(context, 'Status', _statusLabel(task['status'] ?? '')),
+        _infoRow(context, 'Qeyd', task['note'] ?? '-'),
+        _infoRow(context, 'İcraçılar', _formatAssigneeNames(task)),
+        _infoRow(context, 'Qrup', task['group_name'] ?? '-'),
+        _infoRow(context, 'Region', task['region_name'] ?? '-'),
+        _infoRow(context, 'Yaradılma tarixi', createdAt),
+        _infoRow(context, 'Son yenilənmə', updatedAt),
+        _infoRow(context, 'Aktiv', task['is_active'] == true ? 'Bəli' : 'Xeyr'),
+      ],
+    );
+  }
+
+  Widget _customerColumn(BuildContext context, Map<String, dynamic> task) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Müştəri məlumatları'),
+        _infoRow(context, 'Ad', task['customer_name'] ?? '-'),
+        _infoRow(context, 'Ünvan', task['customer_address'] ?? '-'),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Expanded(child: _infoRow(context, 'Telefon', task['customer_phone'] ?? '-')),
+              if (task['customer_phone'] != null && task['customer_phone'].toString().isNotEmpty)
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () => _launchCaller(task['customer_phone']),
+                  icon: const Icon(Icons.phone_in_talk),
+                  label: const Text('Zəng et'),
+                ),
+            ],
+          ),
+        ),
+        _infoRow(context, 'Qeydiyyat №', task['customer_register_number'] ?? '-'),
+        _infoRow(context, 'Avadanlıq', task['customer_equipment_name'] ?? '-'),
+        _infoRow(context, 'Optik qutu', task['customer_optic_box_name'] ?? '-'),
+      ],
     );
   }
 
@@ -192,6 +359,7 @@ class TaskDetailModal extends StatelessWidget {
   }
 
   String _statusLabel(String status) {
+    if (status == 'arrived') return 'İcrada';
     switch (status) {
       case 'todo':
         return 'Gözleyir';
@@ -199,14 +367,30 @@ class TaskDetailModal extends StatelessWidget {
         return 'İcrada';
       case 'done':
         return 'Tamamlandı';
-      case 'cancelled':
-        return 'Legv edildi';
+      case 'pending':
+        return 'Gözləmədə';
+      case 'rejected':
+        return 'Rədd edildi';
       default:
         return status.isNotEmpty ? status : '-';
     }
   }
 
-  Widget _infoRow(String label, String value) {
+  Widget _infoRow(BuildContext context, String label, String value) {
+    final narrow = MediaQuery.sizeOf(context).width < 400;
+    if (narrow) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 4),
+            Text(value, style: const TextStyle(color: Colors.black87)),
+          ],
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -214,8 +398,7 @@ class TaskDetailModal extends StatelessWidget {
         children: [
           SizedBox(
             width: 120,
-            child: Text(label,
-                style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+            child: Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
           ),
           Expanded(child: Text(value, style: const TextStyle(color: Colors.black87))),
         ],
@@ -239,8 +422,7 @@ class TaskDetailModal extends StatelessWidget {
               if (note.isNotEmpty) Text(note, style: const TextStyle(color: Colors.grey)),
               ...values.map((v) => Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                        '${v['column_name'] ?? v['column_key'] ?? '-'}: ${v['value'] ?? '-'}'),
+                    child: Text('${v['column_name'] ?? v['column_key'] ?? '-'}: ${v['value'] ?? '-'}'),
                   )),
             ],
           ),
@@ -277,7 +459,6 @@ class TaskDetailModal extends StatelessWidget {
   Future<void> _launchCaller(String phoneNumber) async {
     final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
     if (cleanPhone.isEmpty) return;
-
     final Uri url = Uri.parse('tel:$cleanPhone');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);

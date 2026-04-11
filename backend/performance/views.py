@@ -36,7 +36,7 @@ class UserPerformanceView(views.APIView):
             # Metric 2: Active Tasks (Current snapshot)
             active_tasks = Task.objects.filter(
                 assigned_to=user,
-                status__in=['todo', 'in_progress', 'arrived']
+                status__in=['todo', 'in_progress']
             )
 
             completed_count = completed_tasks.count()

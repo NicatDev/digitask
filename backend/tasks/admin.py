@@ -1,5 +1,16 @@
 from django.contrib import admin
-from .models import TaskType, Task, Customer, Service, Column, TaskService, TaskServiceValue
+from .models import (
+    TaskType,
+    Task,
+    TaskActivity,
+    Customer,
+    Service,
+    Column,
+    TaskService,
+    TaskServiceValue,
+    Equipment,
+    OpticBox,
+)
 
 class TaskServiceValueInline(admin.TabularInline):
     model = TaskServiceValue
@@ -11,6 +22,31 @@ class TaskServiceInline(admin.TabularInline):
     extra = 0
     show_change_link = True
 
+@admin.register(Equipment)
+class EquipmentAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'created_at')
+    search_fields = ('name', 'description')
+    list_filter = ('is_active',)
+    list_per_page = 20
+
+
+@admin.register(OpticBox)
+class OpticBoxAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'created_at')
+    search_fields = ('name', 'description')
+    list_filter = ('is_active',)
+    list_per_page = 20
+
+
+@admin.register(TaskActivity)
+class TaskActivityAdmin(admin.ModelAdmin):
+    list_display = ('task', 'action', 'user', 'created_at')
+    list_filter = ('action', 'created_at')
+    search_fields = ('message', 'task__title')
+    raw_id_fields = ('task', 'user')
+    date_hierarchy = 'created_at'
+
+
 @admin.register(TaskType)
 class TaskTypeAdmin(admin.ModelAdmin):
     list_display = ('name', 'color', 'is_active', 'created_at')
@@ -20,9 +56,12 @@ class TaskTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'register_number', 'phone_number', 'region', 'is_active', 'created_at')
+    list_display = (
+        'full_name', 'register_number', 'phone_number', 'region',
+        'equipment', 'optic_box', 'is_active', 'created_at',
+    )
     search_fields = ('full_name', 'register_number', 'phone_number', 'address')
-    list_filter = ('region', 'is_active', 'created_at')
+    list_filter = ('region', 'equipment', 'optic_box', 'is_active', 'created_at')
     list_per_page = 20
     date_hierarchy = 'created_at'
 

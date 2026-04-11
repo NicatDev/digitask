@@ -1,0 +1,82 @@
+.modal {
+    :global(.ant-modal-body) {
+        max-height: min(85vh, 900px);
+        overflow-y: auto;
+        padding-top: 8px;
+    }
+}
+
+.sectionTitle {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: #1677ff;
+}
+
+.field {
+    margin-bottom: 14px;
+}
+
+.fieldLabel {
+    font-size: 12px;
+    color: #8c8c8c;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-bottom: 4px;
+}
+
+.fieldValue {
+    font-size: 14px;
+    color: #262626;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.historyBtn {
+    margin-top: 8px;
+}
+
+.activityList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.activityItem {
+    padding: 10px 12px;
+    background: #fafafa;
+    border-radius: 8px;
+    border-left: 3px solid #1677ff;
+}
+
+.activityMeta {
+    font-size: 12px;
+    color: #8c8c8c;
+    margin-bottom: 4px;
+}
+
+.activityAction {
+    font-size: 12px;
+    font-weight: 600;
+    color: #595959;
+    margin-bottom: 4px;
+}
+
+.activityMsg {
+    font-size: 14px;
+    white-space: pre-wrap;
+}
+
+.commentBox {
+    margin-top: 12px;
+}
+
+@media (max-width: 768px) {
+    .modal {
+        :global(.ant-modal) {
+            max-width: 100vw !important;
+            margin: 0 !important;
+            padding: 0;
+        }
+    }
+}

@@ -37,6 +37,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
   int? _groupId;
   int? _taskTypeId;
   String _status = 'todo';
+  DateTime? _rescheduledDate;
   bool _isActive = true;
   List<int> _selectedServices = [];
   
@@ -45,7 +46,6 @@ class _TaskFormModalState extends State<TaskFormModal> {
   final List<Map<String, String>> _statuses = [
     {'value': 'todo', 'label': 'Gözləyir'},
     {'value': 'in_progress', 'label': 'İcrada'},
-    {'value': 'arrived', 'label': 'Çatıb'},
     {'value': 'done', 'label': 'Bitib'},
     {'value': 'pending', 'label': 'Gözləmədə'},
     {'value': 'rejected', 'label': 'Rədd edilib'},
@@ -75,10 +75,32 @@ class _TaskFormModalState extends State<TaskFormModal> {
     }
 
     _status = t?['status'] ?? 'todo';
+    if (_status == 'arrived') {
+      _status = 'in_progress';
+    }
     _isActive = t?['is_active'] ?? true;
 
     if (t?['services'] != null) {
        _selectedServices = List<int>.from(t!['services']);
+    }
+
+    final rd = t?['rescheduled_date'];
+    if (rd is String && rd.length >= 10) {
+      _rescheduledDate = DateTime.tryParse(rd.substring(0, 10));
+    }
+  }
+
+  Future<void> _pickRescheduledDate() async {
+    final now = DateTime.now();
+    final initial = _rescheduledDate ?? now;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial.isBefore(now) ? now : initial,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked != null) {
+      setState(() => _rescheduledDate = picked);
     }
   }
 
@@ -95,10 +117,16 @@ class _TaskFormModalState extends State<TaskFormModal> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_status == 'pending' && _rescheduledDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Rescheduled date seçin')),
+      );
+      return;
+    }
     setState(() => _isSaving = true);
 
     try {
-      final data = {
+      final data = <String, dynamic>{
         'title': _titleCtrl.text,
         'note': _noteCtrl.text,
         'status': _status,
@@ -109,6 +137,11 @@ class _TaskFormModalState extends State<TaskFormModal> {
         'task_type': _taskTypeId,
         'services': _selectedServices,
       };
+      if (_status == 'pending' && _rescheduledDate != null) {
+        data['rescheduled_date'] = DateFormat('yyyy-MM-dd').format(_rescheduledDate!);
+      } else {
+        data['rescheduled_date'] = null;
+      }
 
       if (widget.task == null) {
         await ApiClient().dio.post('/tasks/tasks/', data: data);
@@ -165,8 +198,31 @@ class _TaskFormModalState extends State<TaskFormModal> {
                     value: _status,
                     decoration: const InputDecoration(labelText: 'Status'),
                     items: _statuses.map((s) => DropdownMenuItem(value: s['value'], child: Text(s['label']!))).toList(),
-                    onChanged: (v) => setState(() => _status = v!),
+                    onChanged: (v) => setState(() {
+                      _status = v!;
+                      if (_status != 'pending') {
+                        _rescheduledDate = null;
+                      }
+                    }),
                   ),
+                  if (_status == 'pending') ...[
+                    const SizedBox(height: 8),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Rescheduled date', style: TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(
+                        _rescheduledDate == null
+                            ? 'Tarix seçin'
+                            : DateFormat('yyyy-MM-dd').format(_rescheduledDate!),
+                      ),
+                      trailing: const Icon(Icons.calendar_today),
+                      onTap: _pickRescheduledDate,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(color: Colors.grey.shade300),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
 
                   // Customer (searchable by name and register number)

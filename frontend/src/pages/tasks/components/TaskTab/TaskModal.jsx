@@ -1,6 +1,7 @@
 import React from 'react';
-import { Modal, Form, Input, Button, Select, Row, Col } from 'antd';
+import { Modal, Form, Input, Button, Select, Row, Col, DatePicker, Grid } from 'antd';
 import styles from './style.module.scss';
+import { TASK_STATUSES } from './constants';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -17,24 +18,29 @@ const TaskModal = ({
     services,
     taskTypes = []
 }) => {
+    const status = Form.useWatch('status', form);
+    const screens = Grid.useBreakpoint();
+    const modalWidth = screens.md ? 700 : '100%';
+
     return (
         <Modal
             title={editingItem ? "Tapşırığı Düzəlt" : "Yeni Tapşırıq"}
             open={open}
             onCancel={onCancel}
             footer={null}
-            width={700}
+            width={modalWidth}
             className={styles.responsiveModal}
+            style={!screens.md ? { top: 0, paddingBottom: 0 } : undefined}
             destroyOnClose
         >
             <Form form={form} onFinish={onFinish} layout="vertical">
-                <Row gutter={16}>
-                    <Col span={8}>
+                <Row gutter={[16, 0]}>
+                    <Col xs={24} sm={8}>
                         <Form.Item name="title" label="Başlıq" rules={[{ required: true }]}>
                             <Input />
                         </Form.Item>
                     </Col>
-                    <Col span={8}>
+                    <Col xs={24} sm={8}>
                         <Form.Item name="task_type" label="Növ">
                             <Select allowClear>
                                 {taskTypes.map(t => (
@@ -48,7 +54,7 @@ const TaskModal = ({
                             </Select>
                         </Form.Item>
                     </Col>
-                    <Col span={8}>
+                    <Col xs={24} sm={8}>
                         <Form.Item name="customer" label="Müştəri" rules={[{ required: true }]}>
                             <Select
                                 showSearch
@@ -71,8 +77,45 @@ const TaskModal = ({
                     </Col>
                 </Row>
 
-                <Row gutter={16}>
-                    <Col span={12}>
+                <Row gutter={[16, 0]}>
+                    <Col xs={24} sm={12}>
+                        <Form.Item
+                            name="status"
+                            label="Status"
+                            initialValue="todo"
+                            rules={[{ required: true }]}
+                        >
+                            <Select
+                                onChange={(v) => {
+                                    if (v !== 'pending') {
+                                        form.setFieldValue('rescheduled_date', undefined);
+                                    }
+                                }}
+                            >
+                                {TASK_STATUSES.map(s => (
+                                    <Option key={s.value} value={s.value}>
+                                        <span style={{ color: s.color, marginRight: 8 }}>●</span>
+                                        {s.label}
+                                    </Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                    </Col>
+                    {status === 'pending' && (
+                        <Col xs={24} sm={12}>
+                            <Form.Item
+                                name="rescheduled_date"
+                                label="Rescheduled date"
+                                rules={[{ required: true, message: 'Təxirə salındı üçün tarix seçin' }]}
+                            >
+                                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" placeholder="Tarix seçin" />
+                            </Form.Item>
+                        </Col>
+                    )}
+                </Row>
+
+                <Row gutter={[16, 0]}>
+                    <Col xs={24} md={12}>
                         <Form.Item name="group" label="Qrup">
                             <Select showSearch optionFilterProp="children">
                                 {groups.map(g => (
@@ -81,7 +124,7 @@ const TaskModal = ({
                             </Select>
                         </Form.Item>
                     </Col>
-                    <Col span={12}>
+                    <Col xs={24} md={12}>
                         <Form.Item name="assigned_to" label="İcraçılar">
                             <Select
                                 mode="multiple"
@@ -98,7 +141,7 @@ const TaskModal = ({
                     </Col>
                 </Row>
 
-                <Row gutter={16}>
+                <Row gutter={[16, 0]}>
                     <Col span={24}>
                         <Form.Item name="services" label="Servislər">
                             <Select

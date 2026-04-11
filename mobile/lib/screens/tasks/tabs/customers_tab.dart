@@ -16,9 +16,13 @@ class _CustomersTabState extends State<CustomersTab> {
   final TextEditingController _searchController = TextEditingController();
   List<dynamic> _customers = [];
   List<dynamic> _regions = [];
+  List<dynamic> _equipmentList = [];
+  List<dynamic> _opticBoxList = [];
   bool _isLoading = true;
   String _searchQuery = '';
   String _activeFilter = 'all'; // all, active, inactive
+  int? _equipmentFilter;
+  int? _opticBoxFilter;
   int _currentPage = 1;
   bool _hasNextPage = true;
 
@@ -26,7 +30,22 @@ class _CustomersTabState extends State<CustomersTab> {
   void initState() {
     super.initState();
     _fetchRegions();
+    _fetchEquipmentAndOptic();
     _fetchCustomers();
+  }
+
+  Future<void> _fetchEquipmentAndOptic() async {
+    try {
+      final e = await ApiClient().dio.get('/tasks/equipment/', queryParameters: {'is_active': 'true', 'page_size': 100});
+      final o = await ApiClient().dio.get('/tasks/optic-boxes/', queryParameters: {'is_active': 'true', 'page_size': 100});
+      if (!mounted) return;
+      setState(() {
+        final ed = e.data;
+        final od = o.data;
+        _equipmentList = ed is Map && ed.containsKey('results') ? ed['results'] as List : (ed is List ? ed : []);
+        _opticBoxList = od is Map && od.containsKey('results') ? od['results'] as List : (od is List ? od : []);
+      });
+    } catch (_) {}
   }
 
   Future<void> _fetchRegions() async {
@@ -69,6 +88,12 @@ class _CustomersTabState extends State<CustomersTab> {
         params['is_active'] = 'true';
       } else if (_activeFilter == 'inactive') {
         params['is_active'] = 'false';
+      }
+      if (_equipmentFilter != null) {
+        params['equipment'] = _equipmentFilter;
+      }
+      if (_opticBoxFilter != null) {
+        params['optic_box'] = _opticBoxFilter;
       }
 
       final response = await ApiClient().dio.get(
@@ -117,54 +142,111 @@ class _CustomersTabState extends State<CustomersTab> {
   void _showFilterModal() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Statusa görə filtr', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            ListTile(
-              title: const Text('Hamısı'),
-              leading: Radio<String>(
-                value: 'all',
-                groupValue: _activeFilter,
-                onChanged: (val) {
-                  setState(() => _activeFilter = val!);
-                  Navigator.pop(ctx);
-                  _fetchCustomers(refresh: true);
-                },
-              ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Filtr', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                const Text('Status', style: TextStyle(fontWeight: FontWeight.w600)),
+                ListTile(
+                  title: const Text('Hamısı'),
+                  leading: Radio<String>(
+                    value: 'all',
+                    groupValue: _activeFilter,
+                    onChanged: (val) {
+                      setModalState(() {});
+                      setState(() => _activeFilter = val!);
+                      Navigator.pop(ctx);
+                      _fetchCustomers(refresh: true);
+                    },
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Aktiv'),
+                  leading: Radio<String>(
+                    value: 'active',
+                    groupValue: _activeFilter,
+                    onChanged: (val) {
+                      setModalState(() {});
+                      setState(() => _activeFilter = val!);
+                      Navigator.pop(ctx);
+                      _fetchCustomers(refresh: true);
+                    },
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Deaktiv'),
+                  leading: Radio<String>(
+                    value: 'inactive',
+                    groupValue: _activeFilter,
+                    onChanged: (val) {
+                      setModalState(() {});
+                      setState(() => _activeFilter = val!);
+                      Navigator.pop(ctx);
+                      _fetchCustomers(refresh: true);
+                    },
+                  ),
+                ),
+                const Divider(),
+                DropdownButtonFormField<int?>(
+                  value: _equipmentFilter,
+                  decoration: const InputDecoration(labelText: 'Avadanlıq', border: OutlineInputBorder()),
+                  items: [
+                    const DropdownMenuItem<int?>(value: null, child: Text('Hamısı')),
+                    ..._equipmentList.map((x) => DropdownMenuItem<int?>(
+                          value: x['id'] as int,
+                          child: Text(x['name']?.toString() ?? ''),
+                        )),
+                  ],
+                  onChanged: (v) {
+                    setState(() => _equipmentFilter = v);
+                    setModalState(() {});
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int?>(
+                  value: _opticBoxFilter,
+                  decoration: const InputDecoration(labelText: 'Optik qutu', border: OutlineInputBorder()),
+                  items: [
+                    const DropdownMenuItem<int?>(value: null, child: Text('Hamısı')),
+                    ..._opticBoxList.map((x) => DropdownMenuItem<int?>(
+                          value: x['id'] as int,
+                          child: Text(x['name']?.toString() ?? ''),
+                        )),
+                  ],
+                  onChanged: (v) {
+                    setState(() => _opticBoxFilter = v);
+                    setModalState(() {});
+                  },
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _fetchCustomers(refresh: true);
+                    },
+                    child: const Text('Tətbiq et'),
+                  ),
+                ),
+              ],
             ),
-            ListTile(
-              title: const Text('Aktiv'),
-              leading: Radio<String>(
-                value: 'active',
-                groupValue: _activeFilter,
-                onChanged: (val) {
-                  setState(() => _activeFilter = val!);
-                  Navigator.pop(ctx);
-                  _fetchCustomers(refresh: true);
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('Deaktiv'),
-              leading: Radio<String>(
-                value: 'inactive',
-                groupValue: _activeFilter,
-                onChanged: (val) {
-                  setState(() => _activeFilter = val!);
-                  Navigator.pop(ctx);
-                  _fetchCustomers(refresh: true);
-                },
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -175,6 +257,8 @@ class _CustomersTabState extends State<CustomersTab> {
       context: context,
       builder: (ctx) => AddCustomerModal(
         regions: _regions,
+        equipmentList: _equipmentList,
+        opticBoxList: _opticBoxList,
         onSuccess: () => _fetchCustomers(refresh: true),
       ),
     );
@@ -186,6 +270,8 @@ class _CustomersTabState extends State<CustomersTab> {
       builder: (ctx) => EditCustomerModal(
         customer: customer,
         regions: _regions,
+        equipmentList: _equipmentList,
+        opticBoxList: _opticBoxList,
         onSuccess: () => _fetchCustomers(refresh: true),
       ),
     );
@@ -268,7 +354,9 @@ class _CustomersTabState extends State<CustomersTab> {
               IconButton(
                 icon: Icon(
                   Icons.filter_list,
-                  color: _activeFilter != 'all' ? Colors.blue : Colors.grey,
+                  color: (_activeFilter != 'all' || _equipmentFilter != null || _opticBoxFilter != null)
+                      ? Colors.blue
+                      : Colors.grey,
                 ),
                 onPressed: _showFilterModal,
                 style: IconButton.styleFrom(backgroundColor: Colors.white),
@@ -428,6 +516,10 @@ class CustomerCard extends StatelessWidget {
             const Divider(height: 24),
             _buildInfoRow(Icons.phone, customer['phone_number'] ?? '-'),
             const SizedBox(height: 8),
+            _buildInfoRow(Icons.hardware, customer['equipment_name']?.toString() ?? '-'),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.inbox, customer['optic_box_name']?.toString() ?? '-'),
+            const SizedBox(height: 8),
             _buildInfoRow(Icons.place, customer['address'] ?? '-'),
             
             const Divider(height: 24),
@@ -472,9 +564,17 @@ class CustomerCard extends StatelessWidget {
 // ==================== ADD CUSTOMER MODAL ====================
 class AddCustomerModal extends StatefulWidget {
   final List<dynamic> regions;
+  final List<dynamic> equipmentList;
+  final List<dynamic> opticBoxList;
   final VoidCallback onSuccess;
 
-  const AddCustomerModal({super.key, required this.regions, required this.onSuccess});
+  const AddCustomerModal({
+    super.key,
+    required this.regions,
+    required this.equipmentList,
+    required this.opticBoxList,
+    required this.onSuccess,
+  });
 
   @override
   State<AddCustomerModal> createState() => _AddCustomerModalState();
@@ -487,6 +587,8 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
   final _addressController = TextEditingController();
   final _registerNumberController = TextEditingController();
   int? _selectedRegionId;
+  int? _selectedEquipmentId;
+  int? _selectedOpticBoxId;
   LatLng? _selectedLocation;
   bool _isSubmitting = false;
 
@@ -510,7 +612,7 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
     setState(() => _isSubmitting = true);
 
     try {
-      final data = {
+      final data = <String, dynamic>{
         'full_name': _nameController.text.trim(),
         'phone_number': _phoneController.text.trim(),
         'register_number': _registerNumberController.text.trim(),
@@ -518,6 +620,12 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
         'address': _addressController.text.trim(),
         'is_active': true,
       };
+      if (_selectedEquipmentId != null) {
+        data['equipment'] = _selectedEquipmentId;
+      }
+      if (_selectedOpticBoxId != null) {
+        data['optic_box'] = _selectedOpticBoxId;
+      }
 
       if (_selectedLocation != null) {
         data['address_coordinates'] = {
@@ -587,6 +695,32 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
                 onChanged: (val) => setState(() => _selectedRegionId = val),
               ),
               const SizedBox(height: 16),
+              DropdownButtonFormField<int?>(
+                value: _selectedEquipmentId,
+                decoration: InputDecoration(labelText: 'Avadanlıq', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                items: [
+                  const DropdownMenuItem<int?>(value: null, child: Text('—')),
+                  ...widget.equipmentList.map((x) => DropdownMenuItem<int?>(
+                        value: x['id'] as int,
+                        child: Text(x['name']?.toString() ?? ''),
+                      )),
+                ],
+                onChanged: (val) => setState(() => _selectedEquipmentId = val),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int?>(
+                value: _selectedOpticBoxId,
+                decoration: InputDecoration(labelText: 'Optik qutu', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                items: [
+                  const DropdownMenuItem<int?>(value: null, child: Text('—')),
+                  ...widget.opticBoxList.map((x) => DropdownMenuItem<int?>(
+                        value: x['id'] as int,
+                        child: Text(x['name']?.toString() ?? ''),
+                      )),
+                ],
+                onChanged: (val) => setState(() => _selectedOpticBoxId = val),
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _addressController,
                 decoration: InputDecoration(labelText: 'Ünvan', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
@@ -636,9 +770,18 @@ class _AddCustomerModalState extends State<AddCustomerModal> {
 class EditCustomerModal extends StatefulWidget {
   final Map<String, dynamic> customer;
   final List<dynamic> regions;
+  final List<dynamic> equipmentList;
+  final List<dynamic> opticBoxList;
   final VoidCallback onSuccess;
 
-  const EditCustomerModal({super.key, required this.customer, required this.regions, required this.onSuccess});
+  const EditCustomerModal({
+    super.key,
+    required this.customer,
+    required this.regions,
+    required this.equipmentList,
+    required this.opticBoxList,
+    required this.onSuccess,
+  });
 
   @override
   State<EditCustomerModal> createState() => _EditCustomerModalState();
@@ -651,6 +794,8 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
   late TextEditingController _addressController;
   late TextEditingController _registerNumberController;
   int? _selectedRegionId;
+  int? _selectedEquipmentId;
+  int? _selectedOpticBoxId;
   LatLng? _selectedLocation;
   bool _isSubmitting = false;
 
@@ -662,6 +807,8 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
     _addressController = TextEditingController(text: widget.customer['address'] ?? '');
     _registerNumberController = TextEditingController(text: widget.customer['register_number'] ?? '');
     _selectedRegionId = widget.customer['region'];
+    _selectedEquipmentId = widget.customer['equipment'] as int?;
+    _selectedOpticBoxId = widget.customer['optic_box'] as int?;
 
     final coords = widget.customer['address_coordinates'];
     if (coords != null && coords['lat'] != null && coords['lng'] != null) {
@@ -698,12 +845,14 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
     setState(() => _isSubmitting = true);
 
     try {
-      final data = {
+      final data = <String, dynamic>{
         'full_name': _nameController.text.trim(),
         'phone_number': _phoneController.text.trim(),
         'register_number': _registerNumberController.text.trim(),
         'region': _selectedRegionId,
         'address': _addressController.text.trim(),
+        'equipment': _selectedEquipmentId,
+        'optic_box': _selectedOpticBoxId,
       };
 
       if (_selectedLocation != null) {
@@ -772,6 +921,32 @@ class _EditCustomerModalState extends State<EditCustomerModal> {
                 decoration: InputDecoration(labelText: 'Region *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                 items: widget.regions.map((r) => DropdownMenuItem<int>(value: r['id'], child: Text(r['name'] ?? 'Region ${r['id']}'))).toList(),
                 onChanged: (val) => setState(() => _selectedRegionId = val),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int?>(
+                value: _selectedEquipmentId,
+                decoration: InputDecoration(labelText: 'Avadanlıq', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                items: [
+                  const DropdownMenuItem<int?>(value: null, child: Text('—')),
+                  ...widget.equipmentList.map((x) => DropdownMenuItem<int?>(
+                        value: x['id'] as int,
+                        child: Text(x['name']?.toString() ?? ''),
+                      )),
+                ],
+                onChanged: (val) => setState(() => _selectedEquipmentId = val),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int?>(
+                value: _selectedOpticBoxId,
+                decoration: InputDecoration(labelText: 'Optik qutu', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                items: [
+                  const DropdownMenuItem<int?>(value: null, child: Text('—')),
+                  ...widget.opticBoxList.map((x) => DropdownMenuItem<int?>(
+                        value: x['id'] as int,
+                        child: Text(x['name']?.toString() ?? ''),
+                      )),
+                ],
+                onChanged: (val) => setState(() => _selectedOpticBoxId = val),
               ),
               const SizedBox(height: 16),
               TextFormField(

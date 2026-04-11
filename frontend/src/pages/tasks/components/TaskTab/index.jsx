@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Form, message, Grid } from 'antd';
+import dayjs from 'dayjs';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getTasks, createTask, updateTask, deleteTask, updateTaskStatus, getServices, getColumns, getCustomers, getTaskTypes, addTaskAssignee, joinTask } from '../../../../axios/api/tasks';
@@ -177,6 +178,12 @@ const TaskTab = ({ isActive }) => {
     const onFinish = async (values) => {
         try {
             const submitData = { ...values };
+            if (submitData.rescheduled_date && dayjs.isDayjs(submitData.rescheduled_date)) {
+                submitData.rescheduled_date = submitData.rescheduled_date.format('YYYY-MM-DD');
+            }
+            if (submitData.status && submitData.status !== 'pending') {
+                submitData.rescheduled_date = null;
+            }
 
             if (editingItem) {
                 await updateTask(editingItem.id, submitData);
@@ -212,7 +219,11 @@ const TaskTab = ({ isActive }) => {
 
     const handleStatusUpdate = async (values) => {
         try {
-            await updateTaskStatus(editingItem.id, values.status);
+            const payload = { status: values.status };
+            if (values.status === 'pending' && values.rescheduled_date) {
+                payload.rescheduled_date = values.rescheduled_date.format('YYYY-MM-DD');
+            }
+            await updateTaskStatus(editingItem.id, payload);
             message.success('Status yeniləndi');
             setIsStatusModalOpen(false);
             fetchData();
@@ -223,7 +234,7 @@ const TaskTab = ({ isActive }) => {
 
     const handleAcceptTask = async (record) => {
         try {
-            await updateTaskStatus(record.id, 'in_progress');
+            await updateTaskStatus(record.id, { status: 'in_progress' });
             message.success('Tapşırıq qəbul edildi');
             fetchData();
         } catch (error) {
@@ -233,9 +244,12 @@ const TaskTab = ({ isActive }) => {
 
     const openEditModal = (record) => {
         setEditingItem(record);
+        const st = record.status === 'arrived' ? 'in_progress' : record.status;
         form.setFieldsValue({
             ...record,
-            services: record.services
+            status: st,
+            services: record.services,
+            rescheduled_date: record.rescheduled_date ? dayjs(record.rescheduled_date) : undefined
         });
         setIsModalOpen(true);
     };
@@ -264,6 +278,7 @@ const TaskTab = ({ isActive }) => {
     const handleNewTask = () => {
         setEditingItem(null);
         form.resetFields();
+        form.setFieldsValue({ status: 'todo' });
         setSelectedCoords(null);
         setIsModalOpen(true);
     };
@@ -380,6 +395,7 @@ const TaskTab = ({ isActive }) => {
                 onCancel={() => setIsStatusModalOpen(false)}
                 onStatusUpdate={handleStatusUpdate}
                 initialStatus={editingItem?.status}
+                initialRescheduledDate={editingItem?.rescheduled_date}
             />
 
             <MapModal
@@ -408,6 +424,7 @@ const TaskTab = ({ isActive }) => {
                 onCancel={() => setIsDetailModalOpen(false)}
                 task={selectedTaskForDetail}
                 services={services}
+                onRefresh={fetchData}
             />
 
             <AssigneeModal

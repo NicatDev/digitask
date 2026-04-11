@@ -38,7 +38,6 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
   final List<Map<String, String>> _statuses = [
     {'value': 'todo', 'label': 'To Do'},
     {'value': 'in_progress', 'label': 'In Progress'},
-    {'value': 'arrived', 'label': 'Arrived'},
     {'value': 'done', 'label': 'Done'},
     {'value': 'pending', 'label': 'Pending'},
     {'value': 'rejected', 'label': 'Rejected'},

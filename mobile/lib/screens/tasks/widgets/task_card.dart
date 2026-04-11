@@ -39,13 +39,14 @@ class TaskCard extends StatelessWidget {
     
     // Status Color & English labels
     Color statusColor = Colors.grey;
-    final String statusKey = task['status'] ?? 'todo';
+    final String rawStatus = task['status'] ?? 'todo';
+    // Legacy DB rows may still have status "arrived" — treat as in progress for display
+    final String statusKey = rawStatus == 'arrived' ? 'in_progress' : rawStatus;
     const statusLabels = {
       'todo': 'GÖZLEYİR',
       'in_progress': 'ICRADA',
       'review': 'YOXLAMA',
       'done': 'BİTİB',
-      'arrived': 'ÇATIB',
       'pending': 'GÖZLEMEDE',
       'rejected': 'REDD EDİLİB',
     };
@@ -55,7 +56,6 @@ class TaskCard extends StatelessWidget {
       case 'in_progress': statusColor = Colors.blue; break;
       case 'review': statusColor = Colors.orange; break;
       case 'done': statusColor = Colors.green; break;
-      case 'arrived': statusColor = Colors.purple; break;
       case 'pending': statusColor = Colors.red; break;
       case 'rejected': statusColor = Colors.red[900]!; break;
     }
@@ -66,17 +66,11 @@ class TaskCard extends StatelessWidget {
     final currentUser = ChatService().currentUser.value;
     final bool isCurrentUserAssignee = currentUser != null && assigneeIds.contains(currentUser.id);
     final svcLabels = taskServiceLabels(task, allServices);
+    final bool highlightReschedule = isCurrentUserAssignee &&
+        statusKey == 'pending' &&
+        task['rescheduled_date'] != null;
 
-    return Card(
-      color: Colors.white,
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isCurrentUserAssignee
-            ? const BorderSide(color: Colors.blue, width: 2)
-            : BorderSide.none,
-      ),
-      child: Padding(
+    final Widget cardInner = Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -363,7 +357,37 @@ class TaskCard extends StatelessWidget {
             ),
           ],
         ),
+    );
+
+    if (highlightReschedule) {
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.amber.shade700, width: 3),
+        ),
+        padding: const EdgeInsets.all(2),
+        child: Card(
+          color: Colors.white,
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: Colors.red, width: 2),
+          ),
+          child: cardInner,
+        ),
+      );
+    }
+
+    return Card(
+      color: Colors.white,
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isCurrentUserAssignee
+            ? const BorderSide(color: Colors.blue, width: 2)
+            : BorderSide.none,
       ),
+      child: cardInner,
     );
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:mobile/core/api/api_client.dart';
 
 // STATUS MODAL
@@ -14,27 +15,62 @@ class StatusModal extends StatefulWidget {
 
 class _StatusModalState extends State<StatusModal> {
   late String _status;
+  DateTime? _rescheduledDate;
   bool _loading = false;
 
   final List<Map<String, String>> _statuses = [
     {'value': 'todo', 'label': 'Gözləyir', 'color': 'grey'},
     {'value': 'in_progress', 'label': 'İcrada', 'color': 'blue'},
-    {'value': 'arrived', 'label': 'Çatıb', 'color': 'purple'},
     {'value': 'done', 'label': 'Bitib', 'color': 'green'},
     {'value': 'pending', 'label': 'Gözləmədə', 'color': 'red'},
     {'value': 'rejected', 'label': 'Rədd edilib', 'color': 'black'},
   ];
 
+  DateTime? _parseDate(dynamic v) {
+    if (v == null) return null;
+    if (v is String) {
+      return DateTime.tryParse(v.length >= 10 ? v.substring(0, 10) : v);
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
-    _status = widget.task['status'] ?? 'todo';
+    final raw = widget.task['status'] ?? 'todo';
+    _status = raw == 'arrived' ? 'in_progress' : raw.toString();
+    _rescheduledDate = _parseDate(widget.task['rescheduled_date']);
+  }
+
+  Future<void> _pickRescheduledDate() async {
+    final now = DateTime.now();
+    final initial = _rescheduledDate ?? now;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial.isBefore(now) ? now : initial,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked != null) {
+      setState(() => _rescheduledDate = picked);
+    }
   }
 
   Future<void> _updateStatus() async {
+    if (_status == 'pending' && _rescheduledDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Rescheduled date seçin')),
+      );
+      return;
+    }
+
     setState(() => _loading = true);
     try {
-      await ApiClient().dio.patch('/tasks/tasks/${widget.task['id']}/update_status/', data: {'status': _status});
+      final data = <String, dynamic>{'status': _status};
+      if (_status == 'pending' && _rescheduledDate != null) {
+        data['rescheduled_date'] = DateFormat('yyyy-MM-dd').format(_rescheduledDate!);
+      }
+      await ApiClient().dio.patch('/tasks/tasks/${widget.task['id']}/update_status/', data: data);
       if (mounted) {
         Navigator.pop(context);
         widget.onSuccess();
@@ -63,8 +99,8 @@ class _StatusModalState extends State<StatusModal> {
           children: [
             Center(
               child: Container(
-                width: 40, 
-                height: 4, 
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
                 margin: const EdgeInsets.only(bottom: 20),
               ),
@@ -80,7 +116,7 @@ class _StatusModalState extends State<StatusModal> {
               ),
               child: RadioListTile<String>(
                 title: Text(
-                  s['label']!, 
+                  s['label']!,
                   style: TextStyle(
                     fontWeight: _status == s['value'] ? FontWeight.bold : FontWeight.normal,
                     color: _status == s['value'] ? Colors.blue : Colors.black87,
@@ -91,9 +127,32 @@ class _StatusModalState extends State<StatusModal> {
                 activeColor: Colors.blue,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                onChanged: (v) => setState(() => _status = v!),
+                onChanged: (v) => setState(() {
+                  _status = v!;
+                  if (_status != 'pending') {
+                    _rescheduledDate = null;
+                  }
+                }),
               ),
-            )).toList(),
+            )),
+            if (_status == 'pending') ...[
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Rescheduled date', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(
+                  _rescheduledDate == null
+                      ? 'Tarix seçin'
+                      : DateFormat('yyyy-MM-dd').format(_rescheduledDate!),
+                ),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: _pickRescheduledDate,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -106,8 +165,8 @@ class _StatusModalState extends State<StatusModal> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
-                child: _loading 
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+                child: _loading
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                     : const Text('Statusu Yenilə', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             )
@@ -178,7 +237,7 @@ class SurveyModal extends StatelessWidget {
 class FilesModal extends StatelessWidget {
   final Map<String, dynamic> task;
   const FilesModal({super.key, required this.task});
-  
+
   @override
   Widget build(BuildContext context) {
     return Container(

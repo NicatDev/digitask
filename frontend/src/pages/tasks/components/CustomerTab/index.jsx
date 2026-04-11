@@ -5,7 +5,14 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 're
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import styles from './style.module.scss';
-import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../../../../axios/api/tasks';
+import {
+    getCustomers,
+    createCustomer,
+    updateCustomer,
+    deleteCustomer,
+    getEquipment,
+    getOpticBoxes,
+} from '../../../../axios/api/tasks';
 import { getRegions } from '../../../../axios/api/account';
 import { handleApiError } from '../../../../utils/errorHandler';
 
@@ -57,6 +64,8 @@ const MapResizer = () => {
 const CustomerTab = ({ isActive }) => {
     const [data, setData] = useState([]);
     const [regions, setRegions] = useState([]);
+    const [equipmentOptions, setEquipmentOptions] = useState([]);
+    const [opticBoxOptions, setOpticBoxOptions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [pagination, setPagination] = useState({
         current: 1,
@@ -68,6 +77,8 @@ const CustomerTab = ({ isActive }) => {
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
     const [regionFilter, setRegionFilter] = useState(null);
+    const [equipmentFilter, setEquipmentFilter] = useState(null);
+    const [opticBoxFilter, setOpticBoxFilter] = useState(null);
     const [statusFilter, setStatusFilter] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
     const screens = Grid.useBreakpoint();
@@ -149,11 +160,13 @@ const CustomerTab = ({ isActive }) => {
             };
 
             if (regionFilter) apiParams.region = regionFilter;
+            if (equipmentFilter) apiParams.equipment = equipmentFilter;
+            if (opticBoxFilter) apiParams.optic_box = opticBoxFilter;
             if (statusFilter !== 'all') apiParams.is_active = statusFilter;
 
             const [customersRes, regionsRes] = await Promise.all([
                 getCustomers(apiParams),
-                getRegions()
+                getRegions(),
             ]);
 
             const results = customersRes.data.results || [];
@@ -175,7 +188,7 @@ const CustomerTab = ({ isActive }) => {
         } finally {
             setLoading(false);
         }
-    }, [debouncedSearchText, regionFilter, statusFilter, pagination.current, regions.length]);
+    }, [debouncedSearchText, regionFilter, equipmentFilter, opticBoxFilter, statusFilter, pagination.current, regions.length]);
 
     const handleTableChange = (newPagination) => {
         fetchData({ current: newPagination.current });
@@ -185,7 +198,23 @@ const CustomerTab = ({ isActive }) => {
         if (isActive) {
             fetchData({ current: 1 });
         }
-    }, [isActive, debouncedSearchText, regionFilter, statusFilter]); // Trigger on filters change
+    }, [isActive, debouncedSearchText, regionFilter, equipmentFilter, opticBoxFilter, statusFilter]); // Trigger on filters change
+
+    useEffect(() => {
+        if (!isActive) return;
+        (async () => {
+            try {
+                const [e, o] = await Promise.all([
+                    getEquipment({ is_active: true, page_size: 100 }),
+                    getOpticBoxes({ is_active: true, page_size: 100 }),
+                ]);
+                setEquipmentOptions(e.data.results || e.data || []);
+                setOpticBoxOptions(o.data.results || o.data || []);
+            } catch (err) {
+                console.error(err);
+            }
+        })();
+    }, [isActive]);
 
     const handleDelete = async (id) => {
         try {
@@ -201,7 +230,9 @@ const CustomerTab = ({ isActive }) => {
         try {
             const submitData = {
                 ...values,
-                address_coordinates: selectedCoords || {}
+                address_coordinates: selectedCoords || {},
+                equipment: values.equipment ?? null,
+                optic_box: values.optic_box ?? null,
             };
 
             if (editingItem) {
@@ -263,6 +294,8 @@ const CustomerTab = ({ isActive }) => {
         { title: 'Telefon', dataIndex: 'phone_number', key: 'phone_number' },
         { title: 'Qeyd No', dataIndex: 'register_number', key: 'register_number' },
         { title: 'Region', dataIndex: 'region_name', key: 'region_name' },
+        { title: 'Avadanlıq', dataIndex: 'equipment_name', key: 'equipment_name', ellipsis: true },
+        { title: 'Optik qutu', dataIndex: 'optic_box_name', key: 'optic_box_name', ellipsis: true },
         { title: 'Ünvan', dataIndex: 'address', key: 'address', ellipsis: true },
         {
             title: 'Xəritə',
@@ -356,6 +389,26 @@ const CustomerTab = ({ isActive }) => {
                                     ))}
                                 </Select>
                                 <Select
+                                    placeholder="Avadanlıq"
+                                    style={{ width: screens.md ? 160 : '100%' }}
+                                    allowClear
+                                    onChange={setEquipmentFilter}
+                                >
+                                    {equipmentOptions.map((item) => (
+                                        <Option key={item.id} value={item.id}>{item.name}</Option>
+                                    ))}
+                                </Select>
+                                <Select
+                                    placeholder="Optik qutu"
+                                    style={{ width: screens.md ? 160 : '100%' }}
+                                    allowClear
+                                    onChange={setOpticBoxFilter}
+                                >
+                                    {opticBoxOptions.map((item) => (
+                                        <Option key={item.id} value={item.id}>{item.name}</Option>
+                                    ))}
+                                </Select>
+                                <Select
                                     placeholder="Status"
                                     style={{ width: screens.md ? 120 : '100%' }}
                                     value={statusFilter}
@@ -407,6 +460,20 @@ const CustomerTab = ({ isActive }) => {
                         <Select showSearch optionFilterProp="children">
                             {regions.map(r => (
                                 <Option key={r.id} value={r.id}>{r.name}</Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+                    <Form.Item name="equipment" label="Avadanlıq">
+                        <Select allowClear placeholder="Seçin" showSearch optionFilterProp="children">
+                            {equipmentOptions.map((item) => (
+                                <Option key={item.id} value={item.id}>{item.name}</Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+                    <Form.Item name="optic_box" label="Optik qutu">
+                        <Select allowClear placeholder="Seçin" showSearch optionFilterProp="children">
+                            {opticBoxOptions.map((item) => (
+                                <Option key={item.id} value={item.id}>{item.name}</Option>
                             ))}
                         </Select>
                     </Form.Item>

@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -13,29 +14,36 @@ class CustomerViewSet(viewsets.ModelViewSet):
     serializer_class = CustomerSerializer
     pagination_class = TaskPagination
     permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
-        queryset = Customer.objects.all().order_by('-created_at')
-        
-        # Filter by region
+        queryset = Customer.objects.select_related(
+            'region', 'equipment', 'optic_box'
+        ).order_by('-created_at')
+
         region = self.request.query_params.get('region')
         if region:
             queryset = queryset.filter(region_id=region)
-        
-        # Filter by is_active
+
+        equipment = self.request.query_params.get('equipment')
+        if equipment:
+            queryset = queryset.filter(equipment_id=equipment)
+
+        optic_box = self.request.query_params.get('optic_box')
+        if optic_box:
+            queryset = queryset.filter(optic_box_id=optic_box)
+
         is_active = self.request.query_params.get('is_active')
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
-        
-        # Search
+
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(
-                models.Q(full_name__icontains=search) |
-                models.Q(register_number__icontains=search) |
-                models.Q(phone_number__icontains=search)
+                Q(full_name__icontains=search) |
+                Q(register_number__icontains=search) |
+                Q(phone_number__icontains=search)
             )
-        
+
         return queryset
     
     def destroy(self, request, *args, **kwargs):

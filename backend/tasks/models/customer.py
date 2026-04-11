@@ -1,5 +1,6 @@
 from django.db import models
 from users.models import Region
+from .equipment import Equipment, OpticBox
 
 
 class Customer(models.Model):
@@ -10,6 +11,20 @@ class Customer(models.Model):
     passport_image = models.ImageField(upload_to="customers/passports/", null=True, blank=True)
     
     region = models.ForeignKey(Region, on_delete=models.PROTECT, related_name="customers")
+    equipment = models.ForeignKey(
+        Equipment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="customers",
+    )
+    optic_box = models.ForeignKey(
+        OpticBox,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="customers",
+    )
     address = models.CharField(max_length=255, blank=True)
     address_coordinates = models.JSONField(default=dict, blank=True)  # {"lat":..., "lng":...}
     

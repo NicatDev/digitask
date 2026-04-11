@@ -21,6 +21,17 @@ export const createCustomer = (data) => axiosInstance.post('/tasks/customers/', 
 export const updateCustomer = (id, data) => axiosInstance.patch(`/tasks/customers/${id}/`, data);
 export const deleteCustomer = (id) => axiosInstance.delete(`/tasks/customers/${id}/`);
 
+// Equipment & Optic box (admin)
+export const getEquipment = (params) => axiosInstance.get('/tasks/equipment/', { params });
+export const createEquipment = (data) => axiosInstance.post('/tasks/equipment/', data);
+export const updateEquipment = (id, data) => axiosInstance.patch(`/tasks/equipment/${id}/`, data);
+export const deleteEquipment = (id) => axiosInstance.delete(`/tasks/equipment/${id}/`);
+
+export const getOpticBoxes = (params) => axiosInstance.get('/tasks/optic-boxes/', { params });
+export const createOpticBox = (data) => axiosInstance.post('/tasks/optic-boxes/', data);
+export const updateOpticBox = (id, data) => axiosInstance.patch(`/tasks/optic-boxes/${id}/`, data);
+export const deleteOpticBox = (id) => axiosInstance.delete(`/tasks/optic-boxes/${id}/`);
+
 // Task Types API
 export const getTaskTypes = () => axiosInstance.get('/tasks/task-types/');
 export const createTaskType = (data) => axiosInstance.post('/tasks/task-types/', data);
@@ -33,7 +44,20 @@ export const getTask = (id) => axiosInstance.get(`/tasks/tasks/${id}/`);
 export const createTask = (data) => axiosInstance.post('/tasks/tasks/', data, { timeout: 30000 });
 export const updateTask = (id, data) => axiosInstance.patch(`/tasks/tasks/${id}/`, data, { timeout: 30000 });
 export const deleteTask = (id) => axiosInstance.delete(`/tasks/tasks/${id}/`);
-export const updateTaskStatus = (id, status) => axiosInstance.patch(`/tasks/tasks/${id}/update_status/`, { status });
+/** @param {string|{status: string, rescheduled_date?: string}} statusOrPayload */
+export const updateTaskStatus = (id, statusOrPayload) => {
+    const body =
+        typeof statusOrPayload === 'string'
+            ? { status: statusOrPayload }
+            : statusOrPayload;
+    return axiosInstance.patch(`/tasks/tasks/${id}/update_status/`, body);
+};
+
+export const getTaskActivity = (taskId) => axiosInstance.get(`/tasks/tasks/${taskId}/activity/`);
+export const postTaskActivityComment = (taskId, body) =>
+    axiosInstance.post(`/tasks/tasks/${taskId}/activity/`, { body });
+export const getCustomerTasksForTask = (taskId) =>
+    axiosInstance.get(`/tasks/tasks/${taskId}/customer_tasks/`);
 export const addTaskAssignee = (taskId, userId) => axiosInstance.post(`/tasks/tasks/${taskId}/add_assignee/`, { user_id: userId });
 export const joinTask = (taskId) => axiosInstance.post(`/tasks/tasks/${taskId}/join_task/`);
 

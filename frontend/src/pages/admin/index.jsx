@@ -5,6 +5,8 @@ import ColumnTab from './components/ColumnTab';
 
 import styles from './style.module.scss';
 import TaskTypeTab from './components/TaskTypeTab';
+import EquipmentTab from './components/EquipmentTab';
+import OpticBoxTab from './components/OpticBoxTab';
 
 const { Title } = Typography;
 
@@ -26,6 +28,16 @@ const Admin = () => {
             key: '3',
             label: 'Tapşırıq Növləri',
             children: <TaskTypeTab isActive={activeTab === '3'} />,
+        },
+        {
+            key: '4',
+            label: 'Avadanlıq',
+            children: <EquipmentTab isActive={activeTab === '4'} />,
+        },
+        {
+            key: '5',
+            label: 'Optik qutu',
+            children: <OpticBoxTab isActive={activeTab === '5'} />,
         },
     ];
 

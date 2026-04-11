@@ -1,5 +1,9 @@
+from datetime import date
+
 from django.db import models, transaction
+from django.utils import timezone
 from django.db.models import Case, IntegerField, Value, When
+from django.db.models.functions import Coalesce
 from django.db.models.functions import Cast
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, status
@@ -8,8 +12,17 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal
-from ..models import Task, TaskService, TaskProduct
-from ..serializers import TaskSerializer, TaskServiceSerializer, TaskStatusUpdateSerializer, TaskProductSerializer, TaskProductCreateSerializer
+from ..models import Task, TaskService, TaskProduct, TaskActivity
+from ..serializers import (
+    TaskSerializer,
+    TaskServiceSerializer,
+    TaskStatusUpdateSerializer,
+    TaskProductSerializer,
+    TaskProductCreateSerializer,
+    TaskActivitySerializer,
+    TaskCustomerHistorySerializer,
+)
+from ..services.task_activity import log_task_activity, task_status_label
 from warehouse.models import WarehouseInventory, StockMovement
 from ..pagination import TaskPagination
 from notifications.services import send_notification  # type: ignore
@@ -26,7 +39,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = Task.objects.select_related(
-            'customer', 'group', 'group__region'
+            'customer', 'customer__equipment', 'customer__optic_box', 'group', 'group__region'
         ).prefetch_related(
             'assigned_to',
             'task_services', 'task_services__service', 'task_services__values',
@@ -105,6 +118,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         
         queryset = queryset.distinct()
 
+        today = timezone.localdate()
         queryset = queryset.annotate(
             _reg_task_order=Case(
                 When(
@@ -113,14 +127,51 @@ class TaskViewSet(viewsets.ModelViewSet):
                 ),
                 default=Value(1),
                 output_field=IntegerField(),
-            )
-        ).order_by('_reg_task_order', '-created_at')
+            ),
+            _pending_today=Case(
+                When(
+                    models.Q(assigned_to=user)
+                    & models.Q(status=Task.Status.PENDING)
+                    & models.Q(rescheduled_date=today),
+                    then=Value(0),
+                ),
+                default=Value(1),
+                output_field=IntegerField(),
+            ),
+            _pending_boost=Case(
+                When(
+                    models.Q(assigned_to=user)
+                    & models.Q(status=Task.Status.PENDING)
+                    & models.Q(rescheduled_date__isnull=False),
+                    then=Value(0),
+                ),
+                default=Value(1),
+                output_field=IntegerField(),
+            ),
+            _reschedule_sort=Coalesce(
+                'rescheduled_date',
+                Value(date(9999, 12, 31)),
+                output_field=models.DateField(),
+            ),
+        ).order_by(
+            '_pending_today',
+            '_pending_boost',
+            '_reschedule_sort',
+            '_reg_task_order',
+            '-created_at',
+        )
 
         return queryset
     
     def perform_create(self, serializer):
         """Create task and notify users in the task's group only (not all users)."""
         task = serializer.save()
+        log_task_activity(
+            task,
+            self.request.user,
+            TaskActivity.Action.TASK_CREATED,
+            message=task.title,
+        )
 
         if not task.group_id:
             return
@@ -140,6 +191,24 @@ class TaskViewSet(viewsets.ModelViewSet):
             related_task=task,
             target_user_ids=recipient_ids,
         )
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        old_title = instance.title
+        old_note = instance.note
+        task = serializer.save()
+        changed = []
+        if task.title != old_title:
+            changed.append('başlıq')
+        if task.note != old_note:
+            changed.append('qeyd')
+        if changed:
+            log_task_activity(
+                task,
+                self.request.user,
+                TaskActivity.Action.TASK_UPDATED,
+                message=', '.join(changed) + ' yeniləndi',
+            )
     
     def destroy(self, request, *args, **kwargs):
         """Soft delete - set is_active to False. Only privileged users can delete."""
@@ -160,22 +229,70 @@ class TaskViewSet(viewsets.ModelViewSet):
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
+    @action(detail=True, methods=['get', 'post'])
+    def activity(self, request, pk=None):
+        """GET: timeline; POST: { body } comment."""
+        task = self.get_object()
+        if request.method == 'GET':
+            qs = TaskActivity.objects.filter(task=task).select_related('user').order_by('-created_at')
+            return Response(TaskActivitySerializer(qs, many=True).data)
+        body = (request.data.get('body') or '').strip()
+        if not body:
+            return Response({'error': 'body is required'}, status=status.HTTP_400_BAD_REQUEST)
+        act = log_task_activity(
+            task,
+            request.user,
+            TaskActivity.Action.COMMENT,
+            message=body,
+        )
+        return Response(TaskActivitySerializer(act).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'])
+    def customer_tasks(self, request, pk=None):
+        """Same müştərinin bütün tapşırıqları (icazə qaydaları ilə), köhnədən yeniyə."""
+        task = self.get_object()
+        qs = (
+            self.get_queryset()
+            .filter(customer_id=task.customer_id)
+            .order_by('created_at')
+            .prefetch_related('assigned_to')
+        )
+        return Response(TaskCustomerHistorySerializer(qs, many=True).data)
+
     @action(detail=True, methods=['patch'])
     def update_status(self, request, pk=None):
         """Update task status."""
         task = self.get_object()
+        old_status = task.status
         serializer = TaskStatusUpdateSerializer(data=request.data)
         
         if serializer.is_valid():
             new_status = serializer.validated_data['status']
+            rd = serializer.validated_data.get('rescheduled_date')
             task.status = new_status
-            
+            if new_status == Task.Status.PENDING:
+                task.rescheduled_date = rd
+            else:
+                task.rescheduled_date = None
+
             # Auto-assign if status changes to IN_PROGRESS and no assignees
             if new_status == Task.Status.IN_PROGRESS and not task.assigned_to.exists():
                 task.save()
                 task.assigned_to.add(request.user)
             else:
                 task.save()
+
+            log_meta = {'from': old_status, 'to': new_status}
+            if task.rescheduled_date:
+                log_meta['rescheduled_date'] = str(task.rescheduled_date)
+            log_task_activity(
+                task,
+                request.user,
+                TaskActivity.Action.STATUS_CHANGE,
+                message=f"{task_status_label(old_status)} → {task_status_label(new_status)}"
+                + (f" (tarix: {task.rescheduled_date})" if task.rescheduled_date else ''),
+                meta=log_meta,
+            )
             
             # DONE olduqda task_products-ları anbardan çıxar
             if new_status == Task.Status.DONE:
@@ -216,6 +333,13 @@ class TaskViewSet(viewsets.ModelViewSet):
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         
         task.assigned_to.add(user)
+        log_task_activity(
+            task,
+            request.user,
+            TaskActivity.Action.ASSIGNEE_ADDED,
+            message=f"{user.get_full_name() or user.username} əlavə edildi",
+            meta={'added_user_id': user.id},
+        )
         return Response(TaskSerializer(task).data)
     
     @action(detail=True, methods=['post'])
@@ -223,6 +347,13 @@ class TaskViewSet(viewsets.ModelViewSet):
         """Allow current user to join the task as an assignee."""
         task = self.get_object()
         task.assigned_to.add(request.user)
+        log_task_activity(
+            task,
+            request.user,
+            TaskActivity.Action.ASSIGNEE_ADDED,
+            message=f"{request.user.get_full_name() or request.user.username} icraya qoşuldu",
+            meta={'self_join': True},
+        )
         return Response(TaskSerializer(task).data)
     
     def _deduct_task_products(self, task, user):
@@ -297,3 +428,23 @@ class TaskServiceViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(task_id=task)
         
         return queryset
+
+    def perform_create(self, serializer):
+        ts = serializer.save()
+        log_task_activity(
+            ts.task,
+            self.request.user,
+            TaskActivity.Action.SURVEY_SAVED,
+            message=f"Anket: {ts.service.name}",
+            meta={'task_service_id': ts.id, 'service_id': ts.service_id},
+        )
+
+    def perform_update(self, serializer):
+        ts = serializer.save()
+        log_task_activity(
+            ts.task,
+            self.request.user,
+            TaskActivity.Action.SURVEY_SAVED,
+            message=f"Anket yeniləndi: {ts.service.name}",
+            meta={'task_service_id': ts.id},
+        )

@@ -7,6 +7,7 @@ import styles from '../../style.module.scss';
 
 // Helper to get status label
 const getStatusLabel = (status) => {
+    if (status === 'arrived') return 'İcrada';
     const found = TASK_STATUSES.find(s => s.value === status);
     return found ? found.label : status;
 };
@@ -200,11 +201,14 @@ const TaskTable = ({
             dataIndex: 'status',
             width: 125,
             key: 'status',
-            render: (status) => (
-                <span className={`${styles.statusBadge} ${styles[status]}`}>
-                    {getStatusLabel(status)}
-                </span>
-            )
+            render: (status) => {
+                const badgeKey = status === 'arrived' ? 'in_progress' : status;
+                return (
+                    <span className={`${styles.statusBadge} ${styles[badgeKey] || ''}`}>
+                        {getStatusLabel(status)}
+                    </span>
+                );
+            }
         },
         {
             title: 'Aktiv',
@@ -242,6 +246,16 @@ const TaskTable = ({
         },
     ];
 
+    const rowClassName = (record) => {
+        const assigneeIds = record.assigned_to || [];
+        const isAssignee = user && assigneeIds.includes(user.id);
+        const st = record.status === 'arrived' ? 'in_progress' : record.status;
+        if (isAssignee && st === 'pending' && record.rescheduled_date) {
+            return styles.rowPendingRescheduled;
+        }
+        return '';
+    };
+
     return (
         <Table
             columns={tableColumns}
@@ -251,6 +265,7 @@ const TaskTable = ({
             scroll={{ x: 1600 }}
             pagination={pagination}
             onChange={onChange}
+            rowClassName={rowClassName}
         />
     );
 };

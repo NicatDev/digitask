@@ -28,6 +28,9 @@ class TaskProductViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='bulk-create')
     def bulk_create(self, request):
         """Toplu TaskProduct yaratmaq."""
+        from tasks.models import Task, TaskActivity
+        from tasks.services.task_activity import log_task_activity
+
         serializer = TaskProductCreateSerializer(data=request.data)
         
         if serializer.is_valid():
@@ -63,6 +66,19 @@ class TaskProductViewSet(viewsets.ModelViewSet):
                     created_products.append(TaskProductSerializer(tp).data)
                 except (Product.DoesNotExist, Warehouse.DoesNotExist):
                     continue
+
+            if created_products:
+                try:
+                    task = Task.objects.get(pk=task_id)
+                    log_task_activity(
+                        task,
+                        request.user,
+                        TaskActivity.Action.PRODUCT_ADDED,
+                        message=f"{len(created_products)} məhsul əlavə edildi",
+                        meta={'count': len(created_products)},
+                    )
+                except Task.DoesNotExist:
+                    pass
             
             return Response({'created': created_products}, status=status.HTTP_201_CREATED)
         

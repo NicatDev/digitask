@@ -15,12 +15,10 @@ class UserLocationSerializer(serializers.ModelSerializer):
         fields = ['user_id', 'full_name', 'avatar', 'role', 'latitude', 'longitude', 'is_online', 'last_seen', 'active_tasks']
         
     def get_active_tasks(self, obj):
-        # Find all active tasks for this user
-        # Task status IN_PROGRESS or ARRIVED
-        
+        # Find all active tasks for this user (in progress only)
         tasks = Task.objects.filter(
-            assigned_to=obj.user, 
-            status__in=['in_progress', 'arrived']
+            assigned_to=obj.user,
+            status__in=['in_progress']
         ).select_related('customer')
         
         result = []

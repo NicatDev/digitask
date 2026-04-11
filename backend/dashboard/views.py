@@ -54,7 +54,7 @@ class DashboardStatsView(views.APIView):
             'assigned_to__avatar'
         ).annotate(
             total_tasks=Count('id'),
-            active_tasks=Count('id', filter=Q(status__in=['todo', 'in_progress', 'arrived'])),
+            active_tasks=Count('id', filter=Q(status__in=['todo', 'in_progress'])),
             done_tasks=Count('id', filter=Q(status='done'))
         ).order_by('-total_tasks')[:5]
 

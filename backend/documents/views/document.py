@@ -93,17 +93,28 @@ class TaskDocumentViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def perform_create(self, serializer):
+        from tasks.models import TaskActivity
+        from tasks.services.task_activity import log_task_activity
+
         stock_movement = serializer.validated_data.get('stock_movement')
         action_text = serializer.validated_data.get('action')
         task = serializer.validated_data.get('task')
-        
+
         # If stock_movement is provided and no action, generate action text
         if stock_movement and not action_text:
             action_text = f"{stock_movement.warehouse.name} - {stock_movement.get_movement_type_display()}"
-            serializer.save(action=action_text)
+            instance = serializer.save(action=action_text)
         # If task is provided and no action, generate action text
         elif task and not action_text:
             action_text = f"Tapşırıq: {task.title}"
-            serializer.save(action=action_text)
+            instance = serializer.save(action=action_text)
         else:
-            serializer.save()
+            instance = serializer.save()
+
+        if instance.task_id:
+            log_task_activity(
+                instance.task,
+                self.request.user,
+                TaskActivity.Action.DOCUMENT_ADDED,
+                message=instance.title or action_text or 'Sənəd',
+            )
