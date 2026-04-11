@@ -1204,7 +1204,7 @@ class _AddDocumentModalState extends State<AddDocumentModal> {
   bool _isSaving = false;
 
   Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       type: FileType.any,
       allowMultiple: false,
       withData: true,

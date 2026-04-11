@@ -30,7 +30,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     android: initializationSettingsAndroid,
     iOS: initializationSettingsDarwin,
   );
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  await flutterLocalNotificationsPlugin.initialize(
+    settings: initializationSettings,
+  );
   
   final notification = message.notification;
   if (notification != null) {
@@ -47,10 +49,11 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     const darwinDetails = DarwinNotificationDetails();
     
     await flutterLocalNotificationsPlugin.show(
-      notification.hashCode,
-      notification.title,
-      notification.body,
-      NotificationDetails(android: androidDetails, iOS: darwinDetails),
+      id: notification.hashCode,
+      title: notification.title,
+      body: notification.body,
+      notificationDetails:
+          NotificationDetails(android: androidDetails, iOS: darwinDetails),
     );
   }
 }

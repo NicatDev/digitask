@@ -122,10 +122,10 @@ class LocationService {
 
         if (isForeground) {
           flutterLocalNotificationsPlugin.show(
-            888,
-            'DigiTask Tracking',
-            'Tracking is active',
-            const NotificationDetails(
+            id: 888,
+            title: 'DigiTask Tracking',
+            body: 'Tracking is active',
+            notificationDetails: const NotificationDetails(
               android: AndroidNotificationDetails(
                 'digitask_location_channel',
                 'Location Service',

@@ -160,7 +160,7 @@ class _AddFileDisconnectWrapperState extends State<_AddFileDisconnectWrapper> {
 
   Future<void> _pickFile() async {
     try {
-      final result = await FilePicker.platform.pickFiles();
+      final result = await FilePicker.pickFiles();
       if (result != null) {
         setState(() => _selectedFile = result.files.first);
       }
