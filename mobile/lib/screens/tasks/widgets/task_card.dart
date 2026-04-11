@@ -360,21 +360,14 @@ class TaskCard extends StatelessWidget {
     );
 
     if (highlightReschedule) {
-      return Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.amber.shade700, width: 3),
+      return Card(
+        color: Colors.white,
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.amber.shade700, width: 2),
         ),
-        padding: const EdgeInsets.all(2),
-        child: Card(
-          color: Colors.white,
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.red, width: 2),
-          ),
-          child: cardInner,
-        ),
+        child: cardInner,
       );
     }
 

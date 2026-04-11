@@ -13,6 +13,7 @@ import {
     getEquipment,
     getOpticBoxes,
 } from '../../../../axios/api/tasks';
+import CustomerHistoryModal from '../TaskTab/components/CustomerHistoryModal';
 import { getRegions } from '../../../../axios/api/account';
 import { handleApiError } from '../../../../utils/errorHandler';
 
@@ -91,6 +92,9 @@ const CustomerTab = ({ isActive }) => {
     // Location View Modal state
     const [locationModalOpen, setLocationModalOpen] = useState(false);
     const [viewingCustomer, setViewingCustomer] = useState(null);
+
+    const [taskHistoryOpen, setTaskHistoryOpen] = useState(false);
+    const [taskHistoryCustomer, setTaskHistoryCustomer] = useState(null);
 
     // OSM Address Search state
     const [addressSearchText, setAddressSearchText] = useState('');
@@ -288,6 +292,11 @@ const CustomerTab = ({ isActive }) => {
         setIsModalOpen(true);
     };
 
+    const openTaskHistoryModal = (record) => {
+        setTaskHistoryCustomer({ id: record.id, full_name: record.full_name });
+        setTaskHistoryOpen(true);
+    };
+
     const columns = [
         { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
         { title: 'Ad Soyad', dataIndex: 'full_name', key: 'full_name' },
@@ -333,8 +342,12 @@ const CustomerTab = ({ isActive }) => {
         {
             title: 'Əməliyyat',
             key: 'action',
+            width: 280,
             render: (_, record) => (
                 <>
+                    <Button type="link" onClick={() => openTaskHistoryModal(record)}>
+                        Tapşırıq tarixçəsi
+                    </Button>
                     <Button type="link" onClick={() => openEditModal(record)}>Düzəliş</Button>
                     <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => handleDelete(record.id)}>
                         <Button type="link" danger>Sil</Button>
@@ -432,9 +445,19 @@ const CustomerTab = ({ isActive }) => {
                 dataSource={data}
                 rowKey="id"
                 loading={loading}
-                scroll={{ x: 900 }}
+                scroll={{ x: 1100 }}
                 pagination={pagination}
                 onChange={handleTableChange}
+            />
+
+            <CustomerHistoryModal
+                open={taskHistoryOpen}
+                onCancel={() => {
+                    setTaskHistoryOpen(false);
+                    setTaskHistoryCustomer(null);
+                }}
+                customerId={taskHistoryCustomer?.id}
+                customerName={taskHistoryCustomer?.full_name}
             />
 
             <Modal

@@ -58,6 +58,9 @@ export const postTaskActivityComment = (taskId, body) =>
     axiosInstance.post(`/tasks/tasks/${taskId}/activity/`, { body });
 export const getCustomerTasksForTask = (taskId) =>
     axiosInstance.get(`/tasks/tasks/${taskId}/customer_tasks/`);
+/** Müştəri ID ilə tapşırıq tarixçəsi (yüngül siyahı) — modal açılanda çağırın */
+export const getCustomerTaskHistoryByCustomerId = (customerId) =>
+    axiosInstance.get('/tasks/tasks/by-customer/', { params: { customer: customerId } });
 export const addTaskAssignee = (taskId, userId) => axiosInstance.post(`/tasks/tasks/${taskId}/add_assignee/`, { user_id: userId });
 export const joinTask = (taskId) => axiosInstance.post(`/tasks/tasks/${taskId}/join_task/`);
 

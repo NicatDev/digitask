@@ -3,15 +3,21 @@ import 'package:intl/intl.dart';
 import 'package:mobile/core/api/api_client.dart';
 
 /// Müştərinin bütün tapşırıqları — yalnız modal açılanda sorğu.
+/// [taskId] və ya [customerId] — tək biri verilməlidir.
 class CustomerTasksHistoryModal extends StatefulWidget {
-  final int taskId;
+  final int? taskId;
+  final int? customerId;
   final String? customerName;
 
   const CustomerTasksHistoryModal({
     super.key,
-    required this.taskId,
+    this.taskId,
+    this.customerId,
     this.customerName,
-  });
+  }) : assert(
+          (taskId != null) ^ (customerId != null),
+          'Either taskId or customerId must be set',
+        );
 
   @override
   State<CustomerTasksHistoryModal> createState() => _CustomerTasksHistoryModalState();
@@ -34,7 +40,13 @@ class _CustomerTasksHistoryModalState extends State<CustomerTasksHistoryModal> {
       _error = null;
     });
     try {
-      final res = await ApiClient().dio.get('/tasks/tasks/${widget.taskId}/customer_tasks/');
+      final String url;
+      if (widget.customerId != null) {
+        url = '/tasks/tasks/by-customer/?customer=${widget.customerId}';
+      } else {
+        url = '/tasks/tasks/${widget.taskId}/customer_tasks/';
+      }
+      final res = await ApiClient().dio.get(url);
       final data = res.data;
       if (data is List) {
         setState(() => _rows = data);

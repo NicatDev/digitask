@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Spin, Tag, Empty } from 'antd';
 import dayjs from 'dayjs';
-import { getCustomerTasksForTask } from '../../../../../../axios/api/tasks';
+import {
+    getCustomerTasksForTask,
+    getCustomerTaskHistoryByCustomerId,
+} from '../../../../../../axios/api/tasks';
 import { handleApiError } from '../../../../../../utils/errorHandler';
 import { TASK_STATUSES } from '../../constants';
 import styles from './style.module.scss';
@@ -11,17 +14,20 @@ const statusColor = (status) => {
     return found?.color || '#888';
 };
 
-const CustomerHistoryModal = ({ open, onCancel, taskId, customerName }) => {
+/** `taskId` və ya `customerId` — biri; modal açılanda sorğu gedir */
+const CustomerHistoryModal = ({ open, onCancel, taskId, customerId, customerName }) => {
     const [loading, setLoading] = useState(false);
     const [rows, setRows] = useState([]);
 
     useEffect(() => {
-        if (!open || !taskId) return;
+        if (!open || (!taskId && !customerId)) return;
         let cancelled = false;
         (async () => {
             setLoading(true);
             try {
-                const res = await getCustomerTasksForTask(taskId);
+                const res = customerId
+                    ? await getCustomerTaskHistoryByCustomerId(customerId)
+                    : await getCustomerTasksForTask(taskId);
                 if (!cancelled) {
                     setRows(Array.isArray(res.data) ? res.data : []);
                 }
@@ -35,7 +41,7 @@ const CustomerHistoryModal = ({ open, onCancel, taskId, customerName }) => {
         return () => {
             cancelled = true;
         };
-    }, [open, taskId]);
+    }, [open, taskId, customerId]);
 
     return (
         <Modal

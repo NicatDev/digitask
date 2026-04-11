@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/core/api/api_client.dart';
+import 'package:mobile/screens/tasks/widgets/customer_tasks_history_modal.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mobile/core/services/chat_service.dart';
@@ -305,6 +306,18 @@ class _CustomersTabState extends State<CustomersTab> {
     }
   }
 
+  void _showTaskHistoryModal(Map<String, dynamic> customer) {
+    final id = customer['id'];
+    if (id == null) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => CustomerTasksHistoryModal(
+        customerId: id is int ? id : int.parse(id.toString()),
+        customerName: customer['full_name']?.toString(),
+      ),
+    );
+  }
+
   void _showLocationModal(Map<String, dynamic> customer) {
     final coords = customer['address_coordinates'];
     if (coords == null || coords['lat'] == null || coords['lng'] == null) return;
@@ -401,6 +414,7 @@ class _CustomersTabState extends State<CustomersTab> {
                                   onEdit: isWriter ? () => _showEditCustomerModal(customer) : null,
                                   onDelete: isWriter ? () => _deleteCustomer(customer['id']) : null,
                                   onLocation: _hasValidCoordinates(customer) ? () => _showLocationModal(customer) : null,
+                                  onTaskHistory: () => _showTaskHistoryModal(customer),
                                 );
                               },
                             ),
@@ -454,8 +468,16 @@ class CustomerCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onLocation;
+  final VoidCallback? onTaskHistory;
 
-  const CustomerCard({super.key, required this.customer, this.onEdit, this.onDelete, this.onLocation});
+  const CustomerCard({
+    super.key,
+    required this.customer,
+    this.onEdit,
+    this.onDelete,
+    this.onLocation,
+    this.onTaskHistory,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -527,6 +549,11 @@ class CustomerCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                IconButton(
+                  icon: Icon(Icons.history, color: onTaskHistory != null ? Colors.teal : Colors.grey.shade300),
+                  onPressed: onTaskHistory,
+                  tooltip: 'Tapşırıq tarixçəsi',
+                ),
                 IconButton(
                   icon: Icon(Icons.location_on, color: hasLocation ? Colors.blue : Colors.grey.shade300),
                   onPressed: onLocation,

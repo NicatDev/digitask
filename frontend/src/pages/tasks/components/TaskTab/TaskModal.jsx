@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Modal, Form, Input, Button, Select, Row, Col, DatePicker, Grid } from 'antd';
 import styles from './style.module.scss';
 import { TASK_STATUSES } from './constants';
 
 const { Option } = Select;
 const { TextArea } = Input;
+
+/** Desktop: ekrandan çıxmır; scroll yalnız .ant-modal-body-də */
+const TASK_MODAL_MAX_HEIGHT = 'min(600px, 85vh)';
 
 const TaskModal = ({
     open,
@@ -20,7 +23,74 @@ const TaskModal = ({
 }) => {
     const status = Form.useWatch('status', form);
     const screens = Grid.useBreakpoint();
-    const modalWidth = screens.md ? 700 : '100%';
+    const isDesktop = !!screens.md;
+    const modalWidth = isDesktop ? 700 : '100%';
+
+    /* Səhifə (html/body) scroll-unu kilidlə — arxa fon sürüşməsin */
+    useEffect(() => {
+        if (!open) return undefined;
+        const prevHtmlOverflow = document.documentElement.style.overflow;
+        const prevBodyOverflow = document.body.style.overflow;
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.documentElement.style.overflow = prevHtmlOverflow;
+            document.body.style.overflow = prevBodyOverflow;
+        };
+    }, [open]);
+
+    const modalStyles = useMemo(() => {
+        if (!isDesktop) {
+            return {
+                wrapper: { overflow: 'hidden', maxHeight: '100vh' },
+                content: {
+                    maxHeight: '100vh',
+                    height: '100vh',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    borderRadius: 0,
+                    padding: 0
+                },
+                header: { flexShrink: 0 },
+                body: {
+                    flex: 1,
+                    minHeight: 0,
+                    overflowY: 'auto',
+                    overflowX: 'hidden'
+                }
+            };
+        }
+        return {
+            /* wrapper 60vh kimi məhdud olmasın — məzmun kəsilməsin */
+            wrapper: { overflow: 'hidden', maxHeight: '100vh' },
+            container: {
+                maxHeight: TASK_MODAL_MAX_HEIGHT,
+                minHeight: 0,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column'
+            },
+            content: {
+                maxHeight: TASK_MODAL_MAX_HEIGHT,
+                height: 'auto',
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                flex: '1 1 auto'
+            },
+            header: { flexShrink: 0, flex: '0 0 auto' },
+            body: {
+                flex: '1 1 auto',
+                minHeight: 0,
+                maxHeight: '100%',
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                position: 'relative'
+            }
+        };
+    }, [isDesktop]);
 
     return (
         <Modal
@@ -29,8 +99,14 @@ const TaskModal = ({
             onCancel={onCancel}
             footer={null}
             width={modalWidth}
+            centered={isDesktop}
             className={styles.responsiveModal}
-            style={!screens.md ? { top: 0, paddingBottom: 0 } : undefined}
+            styles={modalStyles}
+            style={
+                !isDesktop
+                    ? { top: 0, paddingBottom: 0, margin: 0, maxWidth: '100vw' }
+                    : undefined
+            }
             destroyOnClose
         >
             <Form form={form} onFinish={onFinish} layout="vertical">

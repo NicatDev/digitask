@@ -6,13 +6,15 @@ from django.db.models import Case, IntegerField, Value, When
 from django.db.models.functions import Coalesce
 from django.db.models.functions import Cast
 from django.contrib.auth import get_user_model
+from django.http import Http404
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal
-from ..models import Task, TaskService, TaskProduct, TaskActivity
+from ..models import Task, TaskService, TaskProduct, TaskActivity, Customer
 from ..serializers import (
     TaskSerializer,
     TaskServiceSerializer,
@@ -161,8 +163,24 @@ class TaskViewSet(viewsets.ModelViewSet):
             '-created_at',
         )
 
-        return queryset
-    
+        # Annotasiyada assigned_to (M2M) join-u eyni Task üçün bir neçə sətir yarada bilər;
+        # əks halda .get(pk=...) → MultipleObjectsReturned (məs. /tasks/116/activity/).
+        return queryset.distinct()
+
+    def get_object(self):
+        """filter_queryset + M2M annotasiya səbəbindən təkrarlanan sətirlərdə .get() əvəzinə."""
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        assert lookup_url_kwarg in self.kwargs, (
+            f'Expected URL keyword argument "{lookup_url_kwarg}".'
+        )
+        filter_kwargs = {self.lookup_field: self.kwargs[lookup_url_kwarg]}
+        obj = queryset.filter(**filter_kwargs).first()
+        if obj is None:
+            raise Http404
+        self.check_object_permissions(self.request, obj)
+        return obj
+
     def perform_create(self, serializer):
         """Create task and notify users in the task's group only (not all users)."""
         task = serializer.save()
@@ -254,6 +272,24 @@ class TaskViewSet(viewsets.ModelViewSet):
         qs = (
             self.get_queryset()
             .filter(customer_id=task.customer_id)
+            .order_by('created_at')
+            .prefetch_related('assigned_to')
+        )
+        return Response(TaskCustomerHistorySerializer(qs, many=True).data)
+
+    @action(detail=False, methods=['get'], url_path='by-customer')
+    def by_customer(self, request):
+        """Müştəri ID-si ilə tapşırıq tarixçəsi — eyni icazə qaydaları; performans üçün ayrıca çağırış."""
+        customer_id = request.query_params.get('customer')
+        if not customer_id:
+            return Response(
+                {'error': 'customer query parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        get_object_or_404(Customer, pk=customer_id)
+        qs = (
+            self.get_queryset()
+            .filter(customer_id=customer_id)
             .order_by('created_at')
             .prefetch_related('assigned_to')
         )

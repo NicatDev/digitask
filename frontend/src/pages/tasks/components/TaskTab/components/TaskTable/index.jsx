@@ -12,6 +12,14 @@ const getStatusLabel = (status) => {
     return found ? found.label : status;
 };
 
+/** Siz icraçısınız, təxirə salınıb və tarix qeyd olunub — cizgi + ID-də ! */
+const isPendingRescheduledHighlight = (record, user) => {
+    const assigneeIds = record.assigned_to || [];
+    const isAssignee = user && assigneeIds.includes(user.id);
+    const st = record.status === 'arrived' ? 'in_progress' : record.status;
+    return Boolean(isAssignee && st === 'pending' && record.rescheduled_date);
+};
+
 const getIconUrl = (iconPath) => {
     if (!iconPath) return null;
     if (iconPath.startsWith('http')) return iconPath;
@@ -46,7 +54,28 @@ const TaskTable = ({
     const { user } = useAuth();
 
     const tableColumns = [
-        { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
+        {
+            title: 'ID',
+            dataIndex: 'id',
+            key: 'id',
+            width: 72,
+            render: (id, record) => {
+                const mark = isPendingRescheduledHighlight(record, user);
+                return (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                        {mark && (
+                            <span
+                                style={{ color: '#f5222d', fontWeight: 700, lineHeight: 1 }}
+                                title="Təxirə salınıb"
+                            >
+                                !
+                            </span>
+                        )}
+                        <span>{id}</span>
+                    </span>
+                );
+            }
+        },
         {
             title: 'Başlıq',
             dataIndex: 'title',
@@ -246,16 +275,6 @@ const TaskTable = ({
         },
     ];
 
-    const rowClassName = (record) => {
-        const assigneeIds = record.assigned_to || [];
-        const isAssignee = user && assigneeIds.includes(user.id);
-        const st = record.status === 'arrived' ? 'in_progress' : record.status;
-        if (isAssignee && st === 'pending' && record.rescheduled_date) {
-            return styles.rowPendingRescheduled;
-        }
-        return '';
-    };
-
     return (
         <Table
             columns={tableColumns}
@@ -265,7 +284,6 @@ const TaskTable = ({
             scroll={{ x: 1600 }}
             pagination={pagination}
             onChange={onChange}
-            rowClassName={rowClassName}
         />
     );
 };

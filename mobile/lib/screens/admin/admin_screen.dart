@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile/screens/admin/tabs/admin_services_tab.dart';
 import 'package:mobile/screens/admin/tabs/admin_columns_tab.dart';
 import 'package:mobile/screens/admin/tabs/admin_task_types_tab.dart';
+import 'package:mobile/screens/admin/tabs/admin_equipment_optic_tabs.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -17,7 +18,7 @@ class _AdminScreenState extends State<AdminScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -43,6 +44,8 @@ class _AdminScreenState extends State<AdminScreen>
             Tab(text: 'Servislər'),
             Tab(text: 'Sütunlar'),
             Tab(text: 'Tapşırıq növləri'),
+            Tab(text: 'Avadanlıq'),
+            Tab(text: 'Optik qutu'),
           ],
         ),
       ),
@@ -52,6 +55,8 @@ class _AdminScreenState extends State<AdminScreen>
           AdminServicesTab(),
           AdminColumnsTab(),
           AdminTaskTypesTab(),
+          AdminEquipmentTab(),
+          AdminOpticBoxTab(),
         ],
       ),
     );
