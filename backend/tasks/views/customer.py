@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from ..models import Customer
 from ..serializers import CustomerSerializer
+from rest_framework.pagination import PageNumberPagination
 
 from ..pagination import TaskPagination
 
