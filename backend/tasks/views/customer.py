@@ -7,12 +7,14 @@ from ..serializers import CustomerSerializer
 
 from ..pagination import TaskPagination
 
+class CustomerMaxPagination(PageNumberPagination):
+    page_size = 150
 
 class CustomerViewSet(viewsets.ModelViewSet):
     """ViewSet for Customer CRUD operations."""
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
-    pagination_class = TaskPagination
+    pagination_class = CustomerMaxPagination
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
