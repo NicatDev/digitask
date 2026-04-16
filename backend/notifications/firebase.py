@@ -9,6 +9,11 @@ logger = logging.getLogger(__name__)
 # Initialize Firebase Admin SDK
 _firebase_app = None
 
+
+def _dedupe_tokens(tokens):
+    # Preserve order while dropping duplicate device tokens.
+    return list(dict.fromkeys(tokens))
+
 def _get_firebase_app():
     global _firebase_app
     if _firebase_app is not None:
@@ -52,6 +57,7 @@ def send_fcm_to_users(user_ids, title, body, data=None):
         .exclude(fcm_token='')
         .values_list('fcm_token', flat=True)
     )
+    tokens = _dedupe_tokens(tokens)
     
     if not tokens:
         return
@@ -69,6 +75,7 @@ def send_fcm_to_all(title, body, data=None):
         .exclude(fcm_token='')
         .values_list('fcm_token', flat=True)
     )
+    tokens = _dedupe_tokens(tokens)
     
     if not tokens:
         return

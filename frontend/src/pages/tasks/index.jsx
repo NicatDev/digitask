@@ -3,6 +3,7 @@ import { Tabs, Typography } from 'antd';
 import TaskTab from './components/TaskTab';
 import CustomerTab from './components/CustomerTab';
 import CustomerImportTab from './components/CustomerImportTab';
+import { useAuth } from '../../context/AuthContext';
 
 import styles from './style.module.scss';
 
@@ -10,6 +11,8 @@ const { Title } = Typography;
 
 const Tasks = () => {
     const [activeTab, setActiveTab] = useState('1');
+    const { user } = useAuth();
+    const canSeeBulkImport = Boolean(user?.is_admin || user?.is_super_admin);
 
     const items = [
         {
@@ -22,11 +25,15 @@ const Tasks = () => {
             label: 'Müştərilər',
             children: <CustomerTab isActive={activeTab === '2'} />,
         },
-        {
-            key: '3',
-            label: 'Bulk Import',
-            children: <CustomerImportTab />,
-        },
+        ...(canSeeBulkImport
+            ? [
+                {
+                    key: '3',
+                    label: 'Bulk Import',
+                    children: <CustomerImportTab />,
+                },
+            ]
+            : []),
     ];
 
     const onChange = (key) => {

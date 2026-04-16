@@ -20,7 +20,7 @@ const CustomerRemoteSelect = ({ value, onChange }) => {
     const lastRequestKeyRef = useRef('');
 
     useEffect(() => {
-        const t = setTimeout(() => setDebouncedSearch(search), 350);
+        const t = setTimeout(() => setDebouncedSearch(search), 500);
         return () => clearTimeout(t);
     }, [search]);
 
@@ -29,8 +29,10 @@ const CustomerRemoteSelect = ({ value, onChange }) => {
         lastRequestKeyRef.current = requestKey;
         setLoading(true);
         try {
+            const normalizedSearch = debouncedSearch.trim();
+            const hasSearch = normalizedSearch.length >= 2;
             const res = await getCustomerOptions({
-                search: debouncedSearch || undefined,
+                search: hasSearch ? normalizedSearch : undefined,
                 page: nextPage,
                 page_size: 10,
                 is_active: true,
@@ -97,6 +99,13 @@ const CustomerRemoteSelect = ({ value, onChange }) => {
         <Select
             value={value}
             onChange={onChange}
+            allowClear
+            style={{ width: '100%' }}
+            onClear={() => {
+                onChange?.(undefined);
+                setSearch('');
+                setDebouncedSearch('');
+            }}
             showSearch
             filterOption={false}
             placeholder="Müştəri seçin..."
@@ -213,12 +222,12 @@ const TaskModal = ({
         >
             <Form form={form} onFinish={onFinish} layout="vertical">
                 <Row gutter={[16, 0]}>
-                    <Col xs={24} sm={8}>
+                    <Col xs={24} sm={12}>
                         <Form.Item name="title" label="Başlıq" rules={[{ required: true }]}>
                             <Input />
                         </Form.Item>
                     </Col>
-                    <Col xs={24} sm={8}>
+                    <Col xs={24} sm={12}>
                         <Form.Item name="task_type" label="Növ">
                             <Select allowClear>
                                 {taskTypes.map(t => (
@@ -232,7 +241,10 @@ const TaskModal = ({
                             </Select>
                         </Form.Item>
                     </Col>
-                    <Col xs={24} sm={8}>
+                </Row>
+
+                <Row gutter={[16, 0]}>
+                    <Col xs={24}>
                         <Form.Item name="customer" label="Müştəri" rules={[{ required: true }]}>
                             <CustomerRemoteSelect />
                         </Form.Item>

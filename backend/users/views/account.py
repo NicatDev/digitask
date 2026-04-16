@@ -66,10 +66,14 @@ class UserViewSet(BaseSoftDeleteViewSet):
     @action(detail=False, methods=['post'], url_path='register-fcm-token')
     def register_fcm_token(self, request):
         """Register FCM token for push notifications."""
-        token = request.data.get('fcm_token')
+        token = (request.data.get('fcm_token') or '').strip()
         if not token:
             return Response({'error': 'fcm_token is required'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        request.user.fcm_token = token
-        request.user.save(update_fields=['fcm_token'])
+
+        # Ensure one device token maps to one user only.
+        User.objects.filter(fcm_token=token).exclude(pk=request.user.pk).update(fcm_token=None)
+
+        if request.user.fcm_token != token:
+            request.user.fcm_token = token
+            request.user.save(update_fields=['fcm_token'])
         return Response({'status': 'FCM token registered'})
