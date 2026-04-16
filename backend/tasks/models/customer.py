@@ -8,7 +8,7 @@ class Customer(models.Model):
     """Customer model for task assignments."""
     full_name = models.CharField(max_length=200)
     register_number = models.CharField(max_length=60, blank=True)
-    phone_number = models.CharField(max_length=30, blank=True)
+    phone_number = models.CharField(max_length=200, blank=True)
     passport_image = models.ImageField(upload_to="customers/passports/", null=True, blank=True)
     
     region = models.ForeignKey(Region, on_delete=models.PROTECT, related_name="customers")
