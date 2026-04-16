@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Input, Avatar, List, Modal, Form, Select, message as antMessage, Switch } from 'antd';
-import { SendOutlined, SettingOutlined, UserAddOutlined, DeleteOutlined, UserOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { SendOutlined, SettingOutlined, UserAddOutlined, DeleteOutlined, UserOutlined, ArrowLeftOutlined, RollbackOutlined, CloseOutlined } from '@ant-design/icons';
 import styles from '../style.module.scss';
+import { decodeReply, encodeReply } from '../utils/replyCodec';
 
 const { TextArea } = Input;
 
@@ -19,6 +20,7 @@ const ChatArea = ({
     onBack // Prop for back button
 }) => {
     const [inputValue, setInputValue] = useState('');
+    const [replyTo, setReplyTo] = useState(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [allUsers, setAllUsers] = useState([]);
     const [selectedUserToAdd, setSelectedUserToAdd] = useState(null);
@@ -52,9 +54,12 @@ const ChatArea = ({
     };
 
     const handleSend = () => {
-        if (!inputValue.trim()) return;
-        onSendMessage(inputValue);
+        const t = inputValue.trim();
+        if (!t) return;
+        const payload = encodeReply(t, replyTo);
+        onSendMessage(payload);
         setInputValue('');
+        setReplyTo(null);
     };
 
     const handleKeyPress = (e) => {
@@ -117,12 +122,36 @@ const ChatArea = ({
                 {messages.map((msg, index) => {
                     const isMe = msg.is_me || msg.sender.id === currentUser?.id;
                     const showSender = !isMe && (index === 0 || messages[index - 1].sender.id !== msg.sender.id);
+                    const { reply, body } = decodeReply(msg.content);
 
                     return (
-                        <div key={msg.id || index} className={`${styles.messageBubble} ${isMe ? styles.myMessage : styles.otherMessage}`}>
-                            {showSender && <div className={styles.sender}>{msg.sender.first_name || msg.sender.email}</div>}
-                            <div className={styles.content}>{msg.content}</div>
-                            <div className={styles.time}>{formatDate(msg.created_at)}</div>
+                        <div key={msg.id || index} className={`${styles.messageRow} ${isMe ? styles.myRow : styles.otherRow}`}>
+                            <Button
+                                type="text"
+                                size="small"
+                                className={styles.replyBtn}
+                                icon={<RollbackOutlined />}
+                                onClick={() =>
+                                    setReplyTo({
+                                        id: msg.id,
+                                        sender: msg.sender?.first_name || msg.sender?.email || '',
+                                        snippet: (body || '').slice(0, 80),
+                                    })
+                                }
+                            />
+                            <div className={`${styles.messageBubble} ${isMe ? styles.myMessage : styles.otherMessage}`}>
+                                {showSender && <div className={styles.sender}>{msg.sender.first_name || msg.sender.email}</div>}
+                                {reply ? (
+                                    <div className={styles.replyPreviewInBubble}>
+                                        <div className={styles.replyMeta}>
+                                            Cavab: {reply.sender || ''} #{reply.id}
+                                        </div>
+                                        <div className={styles.replySnippet}>{reply.snippet || ''}</div>
+                                    </div>
+                                ) : null}
+                                <div className={styles.content}>{body}</div>
+                                <div className={styles.time}>{formatDate(msg.created_at)}</div>
+                            </div>
                         </div>
                     );
                 })}
@@ -130,23 +159,33 @@ const ChatArea = ({
             </div>
 
             <div className={styles.inputArea}>
-                <TextArea
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder={(!isOwner && group.only_owner_can_send) ? "Yalnız qrup rəhbəri yaza bilər" : "Mesajınızı yazın..."}
-                    autoSize={{ minRows: 1, maxRows: 4 }}
-                    style={{ borderRadius: 20 }}
-                    disabled={!isOwner && group.only_owner_can_send}
-                />
-                <Button
-                    type="primary"
-                    shape="circle"
-                    icon={<SendOutlined />}
-                    size="large"
-                    onClick={handleSend}
-                    disabled={!isOwner && group.only_owner_can_send}
-                />
+                {replyTo ? (
+                    <div className={styles.replyBar}>
+                        <div className={styles.replyBarText}>
+                            Cavab: {replyTo.sender} #{replyTo.id} — {replyTo.snippet}
+                        </div>
+                        <Button type="text" size="small" icon={<CloseOutlined />} onClick={() => setReplyTo(null)} />
+                    </div>
+                ) : null}
+                <div className={styles.inputRow}>
+                    <TextArea
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder={(!isOwner && group.only_owner_can_send) ? "Yalnız qrup rəhbəri yaza bilər" : "Mesajınızı yazın..."}
+                        autoSize={{ minRows: 1, maxRows: 4 }}
+                        style={{ borderRadius: 20 }}
+                        disabled={!isOwner && group.only_owner_can_send}
+                    />
+                    <Button
+                        type="primary"
+                        shape="circle"
+                        icon={<SendOutlined />}
+                        size="large"
+                        onClick={handleSend}
+                        disabled={!isOwner && group.only_owner_can_send}
+                    />
+                </div>
             </div>
 
             {/* Settings Modal */}

@@ -6,6 +6,7 @@ class User {
   final String? avatar;
   final bool isTaskReader;
   final bool isTaskWriter;
+  final bool isTaskViewAll;
   final bool isDocumentReader;
   final bool isDocumentWriter;
   final bool isWarehouseReader;
@@ -21,6 +22,7 @@ class User {
     this.avatar,
     this.isTaskReader = false,
     this.isTaskWriter = false,
+    this.isTaskViewAll = false,
     this.isDocumentReader = false,
     this.isDocumentWriter = false,
     this.isWarehouseReader = false,
@@ -43,6 +45,7 @@ class User {
       avatar: json['avatar'],
       isTaskReader: json['is_task_reader'] ?? false,
       isTaskWriter: json['is_task_writer'] ?? false,
+      isTaskViewAll: json['is_task_view_all'] ?? false,
       isDocumentReader: json['is_document_reader'] ?? false,
       isDocumentWriter: json['is_document_writer'] ?? false,
       isWarehouseReader: json['is_warehouse_reader'] ?? false,

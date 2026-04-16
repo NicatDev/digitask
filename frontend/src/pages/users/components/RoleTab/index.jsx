@@ -225,6 +225,15 @@ const RoleTab = ({ isActive }) => {
                             </Form.Item>
                         </Col>
                         <Col span={12}>
+                            <Form.Item
+                                name="is_task_view_all"
+                                label="Tapşırıq (Hamısını gör)"
+                                valuePropName="checked"
+                            >
+                                <Switch />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
                             <Form.Item name="is_warehouse_writer" label="Anbar (Yazmaq)" valuePropName="checked">
                                 <Switch />
                             </Form.Item>

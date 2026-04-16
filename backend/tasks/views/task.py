@@ -51,11 +51,13 @@ class TaskViewSet(viewsets.ModelViewSet):
         
         user = self.request.user
         
-        # Visibility rules — yalnız admin / super_admin / Django superuser hamısını görür
+        # Visibility rules — admin / super_admin / Django superuser hamısını görür.
+        # Bundan əlavə: role.is_task_view_all seçiləndə (admin olmasa da) hamısını görür.
         role = getattr(user, 'role', None)
         is_privileged = (
             (role and role.is_admin) or
             (role and role.is_super_admin) or
+            (role and getattr(role, 'is_task_view_all', False)) or
             user.is_superuser
         )
         
@@ -303,6 +305,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             new_status = serializer.validated_data['status']
             rd = serializer.validated_data.get('rescheduled_date')
+            reject_note = serializer.validated_data.get('reject_note')
             task.status = new_status
             if new_status == Task.Status.PENDING:
                 task.rescheduled_date = rd
@@ -319,12 +322,19 @@ class TaskViewSet(viewsets.ModelViewSet):
             log_meta = {'from': old_status, 'to': new_status}
             if task.rescheduled_date:
                 log_meta['rescheduled_date'] = str(task.rescheduled_date)
+            if reject_note:
+                log_meta['reject_note'] = reject_note
+            status_msg = (
+                f"{task_status_label(old_status)} → {task_status_label(new_status)}"
+                + (f" (tarix: {task.rescheduled_date})" if task.rescheduled_date else '')
+            )
+            if reject_note:
+                status_msg = f"{status_msg}\nQeyd: {reject_note}"
             log_task_activity(
                 task,
                 request.user,
                 TaskActivity.Action.STATUS_CHANGE,
-                message=f"{task_status_label(old_status)} → {task_status_label(new_status)}"
-                + (f" (tarix: {task.rescheduled_date})" if task.rescheduled_date else ''),
+                message=status_msg,
                 meta=log_meta,
             )
             

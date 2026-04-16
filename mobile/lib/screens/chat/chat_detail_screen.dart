@@ -5,6 +5,7 @@ import 'package:mobile/core/services/chat_service.dart';
 import 'package:mobile/models/chat_model.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/screens/chat/group_settings_modal.dart';
+import 'package:mobile/screens/chat/reply_codec.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final int groupId;
@@ -23,6 +24,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   int _currentPage = 1;
   bool _isLoadingMore = false;
   int? _currentUserId;
+  ChatMessage? _replyTo;
 
   @override
   void initState() {
@@ -65,9 +67,25 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   void _sendMessage() {
-    if (_controller.text.trim().isEmpty) return;
-    _chatService.sendMessage(widget.groupId, _controller.text.trim());
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+
+    String payload = text;
+    final r = _replyTo;
+    if (r != null) {
+      final decoded = decodeReply(r.content);
+      final snippet = decoded.body.trim();
+      payload = encodeReply(
+        body: text,
+        replyId: r.id,
+        replySender: r.senderName,
+        replySnippet: snippet.length > 80 ? snippet.substring(0, 80) : snippet,
+      );
+    }
+
+    _chatService.sendMessage(widget.groupId, payload);
     _controller.clear();
+    setState(() => _replyTo = null);
   }
 
   @override
@@ -135,25 +153,59 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: 'Type a message...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(20)),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                if (_replyTo != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.blue.withOpacity(0.2)),
                     ),
-                    onSubmitted: (_) => _sendMessage(),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Cavab: ${_replyTo!.senderName} #${_replyTo!.id} — ${stripReply(_replyTo!.content)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => setState(() => _replyTo = null),
+                          icon: const Icon(Icons.close, size: 18),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        )
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send, color: Colors.blue),
-                  onPressed: _sendMessage,
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        decoration: const InputDecoration(
+                          hintText: 'Type a message...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(20)),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        ),
+                        onSubmitted: (_) => _sendMessage(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.send, color: Colors.blue),
+                      onPressed: _sendMessage,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -164,52 +216,120 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Widget _buildMessageBubble(ChatMessage message, bool isMe) {
+      final decoded = decodeReply(message.content);
       return Align(
           alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                  color: isMe ? Colors.blue : Colors.white,
-                  boxShadow: [
+          child: Dismissible(
+            key: ValueKey('msg_${message.id}'),
+            direction: DismissDirection.endToStart, // swipe left
+            confirmDismiss: (dir) async {
+              setState(() => _replyTo = message);
+              return false;
+            },
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 16),
+              color: Colors.transparent,
+              child: const Icon(Icons.reply, color: Colors.blue),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.reply, size: 18),
+                  color: Colors.blueGrey,
+                  onPressed: () => setState(() => _replyTo = message),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isMe ? Colors.blue : Colors.white,
+                    boxShadow: [
                       if (!isMe)
                         BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
-                            spreadRadius: 1,
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
                         )
-                  ],
-                  borderRadius: BorderRadius.only(
+                    ],
+                    borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(12),
                       topRight: const Radius.circular(12),
                       bottomLeft: isMe ? const Radius.circular(12) : Radius.zero,
                       bottomRight: isMe ? Radius.zero : const Radius.circular(12),
+                    ),
                   ),
-              ),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                      if (!isMe) 
-                          Text(message.senderName, style: TextStyle(
-                              fontSize: 10, 
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade600,
-                          )),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!isMe)
+                        Text(
+                          message.senderName,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      if (decoded.reply != null) ...[
+                        Container(
+                          margin: const EdgeInsets.only(top: 6, bottom: 8),
+                          padding: const EdgeInsets.only(left: 10),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              left: BorderSide(
+                                color: isMe ? Colors.white70 : Colors.black26,
+                                width: 3,
+                              ),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Cavab: ${decoded.reply?['sender'] ?? ''} #${decoded.reply?['id'] ?? ''}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isMe ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                              Text(
+                                (decoded.reply?['snippet'] ?? '').toString(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isMe ? Colors.white70 : Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       Text(
-                          message.content,
-                          style: TextStyle(color: isMe ? Colors.white : Colors.black87),
+                        decoded.body,
+                        style: TextStyle(color: isMe ? Colors.white : Colors.black87),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                          DateFormat('HH:mm').format(message.createdAt),
-                          style: TextStyle(
-                              fontSize: 10,
-                              color: isMe ? Colors.white70 : Colors.black54,
-                          ),
+                        DateFormat('HH:mm').format(message.createdAt),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isMe ? Colors.white70 : Colors.black54,
+                        ),
                       ),
-                  ],
-              ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
       );
   }

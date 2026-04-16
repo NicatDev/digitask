@@ -20,6 +20,7 @@ import ProductSelectionModal from './components/ProductSelectionModal';
 import DocumentModal from './components/DocumentModal';
 import TaskDetailModal from './components/TaskDetailModal';
 import AssigneeModal from './components/AssigneeModal';
+import TaskAddressEditModal from './components/TaskAddressEditModal';
 
 // Styles
 import styles from './style.module.scss'; // Kept primarily for Status Badge styles used in Table
@@ -77,6 +78,8 @@ const TaskTab = ({ isActive }) => {
     const [selectedTaskForDetail, setSelectedTaskForDetail] = useState(null);
     const [isAssigneeModalOpen, setIsAssigneeModalOpen] = useState(false);
     const [currentTaskForAssignee, setCurrentTaskForAssignee] = useState(null);
+    const [isAddressEditOpen, setIsAddressEditOpen] = useState(false);
+    const [addressEditCustomer, setAddressEditCustomer] = useState(null);
 
     const [form] = Form.useForm();
 
@@ -220,6 +223,9 @@ const TaskTab = ({ isActive }) => {
             if (values.status === 'pending' && values.rescheduled_date) {
                 payload.rescheduled_date = values.rescheduled_date.format('YYYY-MM-DD');
             }
+            if (values.status === 'rejected') {
+                payload.reject_note = values.reject_note;
+            }
             await updateTaskStatus(editingItem.id, payload);
             message.success('Status yeniləndi');
             setIsStatusModalOpen(false);
@@ -306,6 +312,11 @@ const TaskTab = ({ isActive }) => {
         }
     };
 
+    const handleOpenAddressEditor = ({ id, name }) => {
+        setAddressEditCustomer({ id, name });
+        setIsAddressEditOpen(true);
+    };
+
     return (
         <div>
             <TaskToolbar
@@ -368,6 +379,7 @@ const TaskTab = ({ isActive }) => {
                 users={users}
                 services={services}
                 taskTypes={taskTypes}
+                onEditCustomerAddress={handleOpenAddressEditor}
             />
 
             <QuestionnaireModal
@@ -428,6 +440,20 @@ const TaskTab = ({ isActive }) => {
                 task={currentTaskForAssignee}
                 users={users}
                 onAddAssignee={handleAddAssignee}
+            />
+
+            <TaskAddressEditModal
+                open={isAddressEditOpen}
+                onCancel={() => setIsAddressEditOpen(false)}
+                customerId={addressEditCustomer?.id}
+                customerName={addressEditCustomer?.name}
+                onSaved={() => {
+                    fetchData();
+                    if (editingItem?.id) {
+                        const refreshed = data.find((t) => t.id === editingItem.id);
+                        if (refreshed) setEditingItem(refreshed);
+                    }
+                }}
             />
         </div>
     );

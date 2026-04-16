@@ -8,6 +8,7 @@ import 'package:mobile/core/constants.dart';
 import 'package:mobile/models/chat_model.dart';
 import 'package:mobile/models/user_model.dart';
 import 'package:mobile/core/services/token_service.dart';
+import 'package:mobile/screens/chat/reply_codec.dart';
 
 class ChatService {
   static final ChatService _instance = ChatService._internal();
@@ -351,7 +352,7 @@ class ChatService {
               onlyOwnerCanSend: group.onlyOwnerCanSend,
               createdAt: group.createdAt,
               unreadCount: newUnread,
-              lastMessage: chatMessage.content,
+              lastMessage: stripReply(chatMessage.content),
               lastMessageSender: chatMessage.senderName,
               lastMessageAt: chatMessage.createdAt
           );
@@ -399,7 +400,7 @@ class ChatService {
                   onlyOwnerCanSend: group.onlyOwnerCanSend,
                   createdAt: group.createdAt,
                   unreadCount: group.unreadCount + 1, // Increment unread
-                  lastMessage: data['message_content'],
+                  lastMessage: stripReply((data['message_content'] ?? '').toString()),
                   lastMessageSender: data['sender_name'],
                   lastMessageAt: DateTime.parse(data['created_at'])
               );

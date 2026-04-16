@@ -13,6 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
     # Flattened Permissions from Role
     is_task_reader = serializers.BooleanField(source='role.is_task_reader', read_only=True)
     is_task_writer = serializers.BooleanField(source='role.is_task_writer', read_only=True)
+    is_task_view_all = serializers.BooleanField(source='role.is_task_view_all', read_only=True)
     is_warehouse_reader = serializers.BooleanField(source='role.is_warehouse_reader', read_only=True)
     is_warehouse_writer = serializers.BooleanField(source='role.is_warehouse_writer', read_only=True)
     is_document_reader = serializers.BooleanField(source='role.is_document_reader', read_only=True)
@@ -28,7 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'email', 'phone_number', 'avatar', 'first_name', 'last_name', 
             'role', 'role_name', 'group', 'group_name', 'is_active', 'password', 'address', 'address_coordinates',
-            'is_task_reader', 'is_task_writer', 'is_warehouse_reader', 'is_warehouse_writer',
+            'is_task_reader', 'is_task_writer', 'is_task_view_all', 'is_warehouse_reader', 'is_warehouse_writer',
             'is_document_reader', 'is_document_writer', 'is_admin', 'is_super_admin',
             'is_online', 'last_seen'
         ]

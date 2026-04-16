@@ -1,6 +1,6 @@
 from .service import ServiceSerializer, ColumnSerializer
 from .equipment import EquipmentSerializer, OpticBoxSerializer
-from .customer import CustomerSerializer
+from .customer import CustomerSerializer, CustomerOptionSerializer, CustomerImportJobSerializer
 from .task import (
     TaskSerializer,
     TaskServiceSerializer,

@@ -119,9 +119,11 @@ const TaskModal = ({
     groups,
     users,
     services,
-    taskTypes = []
+    taskTypes = [],
+    onEditCustomerAddress
 }) => {
     const status = Form.useWatch('status', form);
+    const selectedCustomerId = Form.useWatch('customer', form);
     const screens = Grid.useBreakpoint();
     const isDesktop = !!screens.md;
     const modalWidth = isDesktop ? 700 : '100%';
@@ -320,6 +322,21 @@ const TaskModal = ({
                 <Form.Item name="note" label="Qeyd">
                     <TextArea rows={3} />
                 </Form.Item>
+
+                {editingItem && status !== 'todo' && selectedCustomerId ? (
+                    <Button
+                        style={{ marginBottom: 12 }}
+                        onClick={() =>
+                            onEditCustomerAddress?.({
+                                id: selectedCustomerId,
+                                name: editingItem.customer_name,
+                            })
+                        }
+                        block
+                    >
+                        Müştəri ünvanını redaktə et
+                    </Button>
+                ) : null}
 
                 <Button type="primary" htmlType="submit" block>
                     Təsdiqlə

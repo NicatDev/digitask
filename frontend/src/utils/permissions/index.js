@@ -25,6 +25,7 @@ export const PERMISSIONS = {
     // Task
     TASK_READER: 'is_task_reader',
     TASK_WRITER: 'is_task_writer',
+    TASK_VIEW_ALL: 'is_task_view_all',
 
     // Warehouse
     WAREHOUSE_READER: 'is_warehouse_reader',

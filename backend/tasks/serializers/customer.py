@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ..models import Customer
+from ..models import Customer, CustomerImportJob
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -14,7 +14,7 @@ class CustomerSerializer(serializers.ModelSerializer):
             'passport_image', 'region', 'region_name',
             'equipment', 'equipment_name', 'optic_box', 'optic_box_name',
             'address',
-            'address_coordinates', 'is_active', 'created_at'
+            'address_coordinates', 'bulk_created', 'is_active', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
 
@@ -30,3 +30,22 @@ class CustomerOptionSerializer(serializers.ModelSerializer):
         if obj.register_number:
             return f"{obj.full_name} - {obj.register_number}"
         return obj.full_name
+
+
+class CustomerImportJobSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomerImportJob
+        fields = [
+            "id",
+            "status",
+            "total_rows",
+            "processed_rows",
+            "created_count",
+            "skipped_count",
+            "error_count",
+            "sample_errors",
+            "started_at",
+            "finished_at",
+            "duration_ms",
+            "created_at",
+        ]

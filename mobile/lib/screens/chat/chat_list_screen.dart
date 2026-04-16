@@ -4,6 +4,7 @@ import 'package:mobile/models/chat_model.dart';
 import 'package:mobile/screens/chat/chat_detail_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/screens/chat/create_group_modal.dart';
+import 'package:mobile/screens/chat/reply_codec.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -74,7 +75,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         title: Text(group.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: group.lastMessage != null 
                             ? Text(
-                                '${group.lastMessageSender ?? "User"}: ${group.lastMessage}',
+                                '${group.lastMessageSender ?? "User"}: ${stripReply(group.lastMessage ?? "")}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               )

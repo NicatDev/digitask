@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Modal, Form, Select, Button, DatePicker, Grid } from 'antd';
+import { Modal, Form, Select, Button, DatePicker, Grid, Input } from 'antd';
 import dayjs from 'dayjs';
 import { TASK_STATUSES } from '../../constants';
 
@@ -50,6 +50,9 @@ const StatusModal = ({
                             if (v !== 'pending') {
                                 form.setFieldValue('rescheduled_date', undefined);
                             }
+                            if (v !== 'rejected') {
+                                form.setFieldValue('reject_note', undefined);
+                            }
                         }}
                     >
                         {TASK_STATUSES.map(s => (
@@ -76,6 +79,18 @@ const StatusModal = ({
                             format="YYYY-MM-DD"
                             placeholder="Tarix seçin"
                         />
+                    </Form.Item>
+                )}
+                {status === 'rejected' && (
+                    <Form.Item
+                        name="reject_note"
+                        label="Reject note"
+                        rules={[
+                            { required: true, message: 'Reject note mütləqdir' },
+                            { whitespace: true, message: 'Reject note mütləqdir' },
+                        ]}
+                    >
+                        <Input.TextArea rows={3} placeholder="Rədd etmə səbəbini yazın..." />
                     </Form.Item>
                 )}
                 <Button type="primary" htmlType="submit" block>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Tabs, Typography } from 'antd';
 import TaskTab from './components/TaskTab';
 import CustomerTab from './components/CustomerTab';
+import CustomerImportTab from './components/CustomerImportTab';
 
 import styles from './style.module.scss';
 
@@ -20,6 +21,11 @@ const Tasks = () => {
             key: '2',
             label: 'Müştərilər',
             children: <CustomerTab isActive={activeTab === '2'} />,
+        },
+        {
+            key: '3',
+            label: 'Bulk Import',
+            children: <CustomerImportTab />,
         },
     ];
 

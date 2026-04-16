@@ -279,6 +279,7 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
   late final TextEditingController _description;
   late bool _taskWriter;
   late bool _taskReader;
+  late bool _taskViewAll;
   late bool _whWriter;
   late bool _whReader;
   late bool _docWriter;
@@ -295,6 +296,7 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
     _description = TextEditingController(text: e?['description']?.toString() ?? '');
     _taskWriter = e?['is_task_writer'] == true;
     _taskReader = e?['is_task_reader'] == true;
+    _taskViewAll = e?['is_task_view_all'] == true;
     _whWriter = e?['is_warehouse_writer'] == true;
     _whReader = e?['is_warehouse_reader'] == true;
     _docWriter = e?['is_document_writer'] == true;
@@ -323,6 +325,7 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
       'description': _description.text.isEmpty ? '' : _description.text,
       'is_task_writer': _taskWriter,
       'is_task_reader': _taskReader,
+      'is_task_view_all': _taskViewAll,
       'is_warehouse_writer': _whWriter,
       'is_warehouse_reader': _whReader,
       'is_document_writer': _docWriter,
@@ -393,6 +396,11 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
               title: const Text('Tapşırıq (oxumaq)'),
               value: _taskReader,
               onChanged: (v) => setState(() => _taskReader = v),
+            ),
+            SwitchListTile(
+              title: const Text('Tapşırıq (hamısını gör)'),
+              value: _taskViewAll,
+              onChanged: (v) => setState(() => _taskViewAll = v),
             ),
             SwitchListTile(
               title: const Text('Anbar (yazmaq)'),

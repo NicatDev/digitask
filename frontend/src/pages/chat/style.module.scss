@@ -113,9 +113,84 @@ $header-height: 64px;
         border-top: 1px solid #f0f0f0;
         background: #fff;
         display: flex;
+        flex-direction: column;
         gap: 10px;
-        align-items: center;
     }
+}
+
+.inputRow {
+    width: 100%;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.replyBar {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid #e6f7ff;
+    background: #f0f8ff;
+    border-radius: 12px;
+}
+
+.replyBarText {
+    font-size: 12px;
+    color: #333;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.messageRow {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.myRow {
+    justify-content: flex-end;
+}
+
+.otherRow {
+    justify-content: flex-start;
+}
+
+.replyBtn {
+    opacity: 0.65;
+    transition: opacity 0.15s ease;
+}
+
+.messageRow:hover .replyBtn {
+    opacity: 1;
+}
+
+.replyPreviewInBubble {
+    border-left: 3px solid rgba(0, 0, 0, 0.12);
+    padding-left: 10px;
+    margin-bottom: 8px;
+    opacity: 0.95;
+}
+
+.myMessage .replyPreviewInBubble {
+    border-left-color: rgba(255, 255, 255, 0.7);
+}
+
+.replyMeta {
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.replySnippet {
+    font-size: 12px;
+    opacity: 0.9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 // ... bubble styles ...

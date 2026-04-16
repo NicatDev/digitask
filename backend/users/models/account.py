@@ -9,6 +9,7 @@ class Role(models.Model):
     # Permission flags (as per user input)
     is_task_reader = models.BooleanField(default=False)
     is_task_writer = models.BooleanField(default=False)
+    is_task_view_all = models.BooleanField(default=False)
 
     is_document_reader = models.BooleanField(default=False)
     is_document_writer = models.BooleanField(default=False)

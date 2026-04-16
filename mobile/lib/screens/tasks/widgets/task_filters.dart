@@ -36,11 +36,11 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
   String _active = 'active';
 
   final List<Map<String, String>> _statuses = [
-    {'value': 'todo', 'label': 'To Do'},
-    {'value': 'in_progress', 'label': 'In Progress'},
-    {'value': 'done', 'label': 'Done'},
-    {'value': 'pending', 'label': 'Pending'},
-    {'value': 'rejected', 'label': 'Rejected'},
+    {'value': 'todo', 'label': 'Gözləyir'},
+    {'value': 'in_progress', 'label': 'İcrada'},
+    {'value': 'done', 'label': 'Tamamlandı'},
+    {'value': 'pending', 'label': 'Təxirə salındı'},
+    {'value': 'rejected', 'label': 'Rədd edildi'},
   ];
 
   @override

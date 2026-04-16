@@ -17,6 +17,7 @@ class _StatusModalState extends State<StatusModal> {
   late String _status;
   DateTime? _rescheduledDate;
   bool _loading = false;
+  final TextEditingController _rejectNoteCtrl = TextEditingController();
 
   final List<Map<String, String>> _statuses = [
     {'value': 'todo', 'label': 'Gözləyir', 'color': 'grey'},
@@ -42,6 +43,12 @@ class _StatusModalState extends State<StatusModal> {
     _rescheduledDate = _parseDate(widget.task['rescheduled_date']);
   }
 
+  @override
+  void dispose() {
+    _rejectNoteCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _pickRescheduledDate() async {
     final now = DateTime.now();
     final initial = _rescheduledDate ?? now;
@@ -63,12 +70,21 @@ class _StatusModalState extends State<StatusModal> {
       );
       return;
     }
+    if (_status == 'rejected' && _rejectNoteCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Reject note mütləqdir')),
+      );
+      return;
+    }
 
     setState(() => _loading = true);
     try {
       final data = <String, dynamic>{'status': _status};
       if (_status == 'pending' && _rescheduledDate != null) {
         data['rescheduled_date'] = DateFormat('yyyy-MM-dd').format(_rescheduledDate!);
+      }
+      if (_status == 'rejected') {
+        data['reject_note'] = _rejectNoteCtrl.text.trim();
       }
       await ApiClient().dio.patch('/tasks/tasks/${widget.task['id']}/update_status/', data: data);
       if (mounted) {
@@ -132,6 +148,9 @@ class _StatusModalState extends State<StatusModal> {
                   if (_status != 'pending') {
                     _rescheduledDate = null;
                   }
+                  if (_status != 'rejected') {
+                    _rejectNoteCtrl.clear();
+                  }
                 }),
               ),
             )),
@@ -150,6 +169,17 @@ class _StatusModalState extends State<StatusModal> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
+            ],
+            if (_status == 'rejected') ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: _rejectNoteCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Reject note',
+                  border: OutlineInputBorder(),
                 ),
               ),
             ],

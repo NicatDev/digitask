@@ -3,6 +3,7 @@ import { List, Avatar, Badge, Button, Modal, Form, Input, Popconfirm } from 'ant
 import { PlusOutlined, UsergroupAddOutlined, DeleteOutlined } from '@ant-design/icons';
 import styles from '../style.module.scss';
 import dayjs from 'dayjs';
+import { stripReply } from '../utils/replyCodec';
 
 const GroupList = ({ groups, selectedGroupId, onSelectGroup, onAddGroup, onDeleteGroup }) => {
     const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -50,7 +51,7 @@ const GroupList = ({ groups, selectedGroupId, onSelectGroup, onAddGroup, onDelet
                                     {item.last_message ? (
                                         <>
                                             <strong>{item.last_message.sender}: </strong>
-                                            {item.last_message.content}
+                                            {stripReply(item.last_message.content)}
                                         </>
                                     ) : (
                                         <span>Mesaj yoxdur</span>

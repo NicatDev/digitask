@@ -226,6 +226,7 @@ class TaskSerializer(serializers.ModelSerializer):
 class TaskStatusUpdateSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Task.Status.choices)
     rescheduled_date = serializers.DateField(required=False, allow_null=True)
+    reject_note = serializers.CharField(required=False, allow_blank=False, trim_whitespace=True)
 
     def validate(self, attrs):
         st = attrs['status']
@@ -235,6 +236,11 @@ class TaskStatusUpdateSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     {'rescheduled_date': 'Təxirə salındı üçün tarix seçin (Rescheduled date).'}
                 )
+        if st == Task.Status.REJECTED:
+            note = (attrs.get('reject_note') or '').strip()
+            if not note:
+                raise serializers.ValidationError({'reject_note': 'Rədd etmə səbəbi (reject note) mütləqdir.'})
+            attrs['reject_note'] = note
         return attrs
 
 
