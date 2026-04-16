@@ -3,7 +3,7 @@ import { Modal, Form, Input, AutoComplete, Button, Spin, message } from 'antd';
 import { AimOutlined, SearchOutlined } from '@ant-design/icons';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { getCustomer, updateCustomer } from '../../../../../../../axios/api/tasks';
+import { getCustomer, updateCustomer } from '../../../../../../axios/api/tasks';
 
 const MapClickHandler = ({ onLocationSelect }) => {
     useMapEvents({
