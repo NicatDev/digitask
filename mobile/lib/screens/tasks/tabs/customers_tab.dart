@@ -83,6 +83,7 @@ class _CustomersTabState extends State<CustomersTab> {
       final params = <String, dynamic>{
         'search': _searchQuery,
         'page': _currentPage,
+        'page_size': 10,
       };
       
       if (_activeFilter == 'active') {

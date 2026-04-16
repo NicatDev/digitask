@@ -70,7 +70,7 @@ const CustomerTab = ({ isActive }) => {
     const [loading, setLoading] = useState(false);
     const [pagination, setPagination] = useState({
         current: 1,
-        pageSize: 5,
+        pageSize: 10,
         total: 0
     });
 
@@ -160,6 +160,7 @@ const CustomerTab = ({ isActive }) => {
             const page = params.current || pagination.current;
             const apiParams = {
                 page: page,
+                page_size: 10,
                 search: debouncedSearchText,
             };
 
@@ -446,7 +447,7 @@ const CustomerTab = ({ isActive }) => {
                 rowKey="id"
                 loading={loading}
                 scroll={{ x: 1100 }}
-                pagination={pagination}
+                pagination={{ ...pagination, pageSize: 10, showSizeChanger: false }}
                 onChange={handleTableChange}
             />
 

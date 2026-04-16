@@ -65,7 +65,10 @@ class _TasksTabState extends State<TasksTab> {
   Future<void> _fetchDropdowns() async {
     try {
       final client = ApiClient().dio;
-      final custRes = await client.get('/tasks/customers/');
+      final custRes = await client.get(
+        '/tasks/customers/options/',
+        queryParameters: {'page_size': 100, 'is_active': 'true'},
+      );
       final usersRes = await client.get('/users/');
       final groupsRes = await client.get('/groups/');
       final typesRes = await client.get('/tasks/task-types/');
@@ -236,7 +239,6 @@ class _TasksTabState extends State<TasksTab> {
       useSafeArea: true,
       builder: (_) => TaskFormModal(
         task: task,
-        customers: _customers,
         users: _users,
         groups: _groups,
         taskTypes: _taskTypes,

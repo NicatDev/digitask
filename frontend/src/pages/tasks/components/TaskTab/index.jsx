@@ -3,7 +3,7 @@ import { Form, message, Grid } from 'antd';
 import dayjs from 'dayjs';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { getTasks, createTask, updateTask, deleteTask, updateTaskStatus, getServices, getColumns, getCustomers, getTaskTypes, addTaskAssignee, joinTask } from '../../../../axios/api/tasks';
+import { getTasks, createTask, updateTask, deleteTask, updateTaskStatus, getServices, getColumns, getTaskTypes, addTaskAssignee, joinTask } from '../../../../axios/api/tasks';
 import { getGroups, getUsers } from '../../../../axios/api/account';
 import { handleApiError } from '../../../../utils/errorHandler';
 import { useAuth } from '../../../../context/AuthContext';
@@ -34,7 +34,6 @@ L.Icon.Default.mergeOptions({
 
 const TaskTab = ({ isActive }) => {
     const [data, setData] = useState([]);
-    const [customers, setCustomers] = useState([]);
     const [groups, setGroups] = useState([]);
     const [users, setUsers] = useState([]);
     const [services, setServices] = useState([]);
@@ -109,9 +108,8 @@ const TaskTab = ({ isActive }) => {
                 queryParams.date_to = dateRange[1].format('YYYY-MM-DD');
             }
 
-            const [tasksRes, customersRes, groupsRes, usersRes, servicesRes, columnsRes, taskTypesRes] = await Promise.all([
+            const [tasksRes, groupsRes, usersRes, servicesRes, columnsRes, taskTypesRes] = await Promise.all([
                 getTasks(queryParams),
-                getCustomers(),
                 getGroups(),
                 getUsers(),
                 getServices(),
@@ -132,7 +130,6 @@ const TaskTab = ({ isActive }) => {
                 setData(taskData); // Fallback for non-paginated
             }
 
-            setCustomers(customersRes.data.results || customersRes.data);
             setGroups(groupsRes.data.results || groupsRes.data);
             setUsers(usersRes.data.results || usersRes.data);
             setServices(servicesRes.data.results || servicesRes.data);
@@ -328,7 +325,6 @@ const TaskTab = ({ isActive }) => {
                 setDateRange={setDateRange}
                 isActiveFilter={isActiveFilter}
                 setIsActiveFilter={setIsActiveFilter}
-                customers={customers}
                 groups={groups}
                 users={users}
                 onNewTask={handleNewTask}
@@ -368,7 +364,6 @@ const TaskTab = ({ isActive }) => {
                 onFinish={onFinish}
                 form={form}
                 editingItem={editingItem}
-                customers={customers}
                 groups={groups}
                 users={users}
                 services={services}

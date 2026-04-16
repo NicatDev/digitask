@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 
 class TaskFormModal extends StatefulWidget {
   final Map<String, dynamic>? task;
-  final List<dynamic> customers;
   final List<dynamic> users;
   final List<dynamic> groups;
   final List<dynamic> taskTypes;
@@ -14,7 +13,6 @@ class TaskFormModal extends StatefulWidget {
   const TaskFormModal({
     super.key,
     this.task,
-    required this.customers,
     required this.users,
     required this.groups,
     required this.taskTypes,
@@ -33,6 +31,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
   late TextEditingController _noteCtrl;
   
   int? _customerId;
+  String _customerLabel = '';
   List<int> _assigneeIds = [];
   int? _groupId;
   int? _taskTypeId;
@@ -59,6 +58,10 @@ class _TaskFormModalState extends State<TaskFormModal> {
     _noteCtrl = TextEditingController(text: t?['note'] ?? '');
     
     _customerId = t?['customer'];
+    _customerLabel = _formatCustomerLabel(
+      t?['customer_name']?.toString(),
+      t?['customer_register_number']?.toString(),
+    );
     
     if (t != null && t['group'] != null) {
        _groupId = t['group'] is Map ? t['group']['id'] : t['group'];
@@ -88,6 +91,11 @@ class _TaskFormModalState extends State<TaskFormModal> {
     if (rd is String && rd.length >= 10) {
       _rescheduledDate = DateTime.tryParse(rd.substring(0, 10));
     }
+
+    // If editing an older task payload without customer_name fields, fetch label lazily.
+    if (_customerId != null && _customerLabel.isEmpty) {
+      _ensureCustomerLabelLoaded();
+    }
   }
 
   Future<void> _pickRescheduledDate() async {
@@ -104,19 +112,54 @@ class _TaskFormModalState extends State<TaskFormModal> {
     }
   }
 
-  String _getCustomerLabel(int customerId) {
-    final c = widget.customers.firstWhere(
-      (c) => c['id'] == customerId,
-      orElse: () => <String, dynamic>{},
+  static String _formatCustomerLabel(String? name, String? regNum) {
+    final n = (name ?? '').trim();
+    final r = (regNum ?? '').trim();
+    if (n.isEmpty) return '';
+    if (r.isEmpty) return n;
+    return '$n - $r';
+  }
+
+  Future<void> _ensureCustomerLabelLoaded() async {
+    final id = _customerId;
+    if (id == null || _customerLabel.isNotEmpty) return;
+    try {
+      final res = await ApiClient().dio.get('/tasks/customers/$id/');
+      final data = res.data;
+      if (!mounted) return;
+      if (data is Map) {
+        setState(() {
+          _customerLabel = _formatCustomerLabel(
+            data['full_name']?.toString(),
+            data['register_number']?.toString(),
+          );
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _pickCustomer() async {
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => const _CustomerPickerSheet(),
     );
-    if (c.isEmpty) return '';
-    final name = c['full_name'] ?? 'Adsız';
-    final regNum = c['register_number'];
-    return regNum != null ? '$name - $regNum' : name;
+    if (result == null) return;
+    setState(() {
+      _customerId = result['id'] as int?;
+      _customerLabel = (result['label'] ?? '').toString();
+    });
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_customerId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Müştəri seçin')),
+      );
+      return;
+    }
     if (_status == 'pending' && _rescheduledDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Rescheduled date seçin')),
@@ -226,62 +269,28 @@ class _TaskFormModalState extends State<TaskFormModal> {
                   const SizedBox(height: 16),
 
                   // Customer (searchable by name and register number)
-                  Autocomplete<Map<String, dynamic>>(
-                    initialValue: _customerId != null
-                        ? TextEditingValue(text: _getCustomerLabel(_customerId!))
-                        : null,
-                    optionsBuilder: (TextEditingValue textEditingValue) {
-                      final query = textEditingValue.text.toLowerCase();
-                      return widget.customers.cast<Map<String, dynamic>>().where((c) {
-                        final name = (c['full_name'] ?? '').toString().toLowerCase();
-                        final regNum = (c['register_number'] ?? '').toString().toLowerCase();
-                        return name.contains(query) || regNum.contains(query);
-                      });
-                    },
-                    displayStringForOption: (c) {
-                      final name = c['full_name'] ?? 'Adsız';
-                      final regNum = c['register_number'];
-                      return regNum != null ? '$name - $regNum' : name;
-                    },
-                    onSelected: (c) => setState(() => _customerId = c['id']),
-                    fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
-                      return TextFormField(
-                        controller: controller,
-                        focusNode: focusNode,
-                        decoration: const InputDecoration(
-                          labelText: 'Müştəri',
-                          suffixIcon: Icon(Icons.search),
+                  InkWell(
+                    onTap: _pickCustomer,
+                    borderRadius: BorderRadius.circular(8),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Müştəri *',
+                        border: OutlineInputBorder(),
+                        suffixIcon: Icon(Icons.search),
+                      ),
+                      child: Text(
+                        _customerLabel.isNotEmpty ? _customerLabel : 'Seçin',
+                        style: TextStyle(
+                          color: _customerLabel.isNotEmpty ? Colors.black : Colors.grey,
                         ),
-                        validator: (v) => _customerId == null ? 'Tələb olunur' : null,
-                      );
-                    },
-                    optionsViewBuilder: (context, onSelected, options) {
-                      return Align(
-                        alignment: Alignment.topLeft,
-                        child: Material(
-                          elevation: 4,
-                          borderRadius: BorderRadius.circular(8),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxHeight: 200),
-                            child: ListView.builder(
-                              padding: EdgeInsets.zero,
-                              shrinkWrap: true,
-                              itemCount: options.length,
-                              itemBuilder: (context, index) {
-                                final c = options.elementAt(index);
-                                 final name = c['full_name'] ?? 'Adsız';
-                                final regNum = c['register_number'];
-                                return ListTile(
-                                  title: Text(regNum != null ? '$name - $regNum' : name),
-                                  onTap: () => onSelected(c),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
+                  if (_customerId == null)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text('Tələb olunur', style: TextStyle(color: Colors.red, fontSize: 12)),
+                    ),
                   const SizedBox(height: 16),
 
                   // Group
@@ -377,6 +386,169 @@ class _TaskFormModalState extends State<TaskFormModal> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CustomerPickerSheet extends StatefulWidget {
+  const _CustomerPickerSheet();
+
+  @override
+  State<_CustomerPickerSheet> createState() => _CustomerPickerSheetState();
+}
+
+class _CustomerPickerSheetState extends State<_CustomerPickerSheet> {
+  final _searchCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
+
+  List<dynamic> _items = [];
+  bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasNext = true;
+  int _page = 1;
+  String _search = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch(page: 1, append: false);
+    _scrollCtrl.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_hasNext || _loadingMore || _loading) return;
+    if (_scrollCtrl.position.pixels >= _scrollCtrl.position.maxScrollExtent - 100) {
+      _fetch(page: _page + 1, append: true);
+    }
+  }
+
+  Future<void> _fetch({required int page, required bool append}) async {
+    if (!append) {
+      setState(() {
+        _loading = true;
+        _items = [];
+        _page = 1;
+        _hasNext = true;
+      });
+    } else {
+      setState(() => _loadingMore = true);
+    }
+
+    try {
+      final res = await ApiClient().dio.get(
+        '/tasks/customers/options/',
+        queryParameters: {
+          'page': page,
+          'page_size': 10,
+          'search': _search.isEmpty ? null : _search,
+          'is_active': 'true',
+        },
+      );
+      final data = res.data;
+      if (!mounted) return;
+      if (data is Map && data.containsKey('results')) {
+        final results = data['results'] as List;
+        setState(() {
+          _items = append ? [..._items, ...results] : results;
+          _hasNext = data['next'] != null;
+          _page = page;
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      // keep previous items
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadingMore = false;
+      });
+    }
+  }
+
+  void _onSearchChanged(String v) {
+    _search = v.trim();
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      if (_searchCtrl.text.trim() == _search) {
+        _fetch(page: 1, append: false);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.of(context).size.height * 0.85;
+    return SizedBox(
+      height: height,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Müştəri seçin',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: _onSearchChanged,
+              decoration: const InputDecoration(
+                hintText: 'Ad soyad və ya qeydiyyat nömrəsi...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.separated(
+                    controller: _scrollCtrl,
+                    itemCount: _items.length + (_loadingMore ? 1 : 0),
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      if (_loadingMore && index == _items.length) {
+                        return const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final c = _items[index];
+                      final id = c['id'];
+                      final label = c['label'] ?? c['full_name'] ?? '';
+                      return ListTile(
+                        title: Text(label.toString(), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        onTap: () => Navigator.pop(context, {
+                          'id': id is int ? id : int.tryParse(id.toString()),
+                          'label': label.toString(),
+                        }),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }

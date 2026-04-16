@@ -17,6 +17,7 @@ export const deleteColumn = (id) => axiosInstance.delete(`/tasks/columns/${id}/`
 // Customers API
 export const getCustomers = (params) => axiosInstance.get('/tasks/customers/', { params });
 export const getCustomer = (id) => axiosInstance.get(`/tasks/customers/${id}/`);
+export const getCustomerOptions = (params) => axiosInstance.get('/tasks/customers/options/', { params });
 export const createCustomer = (data) => axiosInstance.post('/tasks/customers/', data);
 export const updateCustomer = (id, data) => axiosInstance.patch(`/tasks/customers/${id}/`, data);
 export const deleteCustomer = (id) => axiosInstance.delete(`/tasks/customers/${id}/`);

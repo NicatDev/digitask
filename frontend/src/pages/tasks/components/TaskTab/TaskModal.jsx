@@ -1,13 +1,114 @@
-import React, { useEffect, useMemo } from 'react';
-import { Modal, Form, Input, Button, Select, Row, Col, DatePicker, Grid } from 'antd';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Modal, Form, Input, Button, Select, Row, Col, DatePicker, Grid, Spin } from 'antd';
 import styles from './style.module.scss';
 import { TASK_STATUSES } from './constants';
+import { getCustomer, getCustomerOptions } from '../../../../axios/api/tasks';
 
-const { Option } = Select;
 const { TextArea } = Input;
 
 /** Desktop: ekrandan çıxmır; scroll yalnız .ant-modal-body-də */
 const TASK_MODAL_MAX_HEIGHT = 'min(600px, 85vh)';
+
+const CustomerRemoteSelect = ({ value, onChange }) => {
+    const [open, setOpen] = useState(false);
+    const [options, setOptions] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [page, setPage] = useState(1);
+    const [hasNext, setHasNext] = useState(false);
+    const lastRequestKeyRef = useRef('');
+
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(search), 350);
+        return () => clearTimeout(t);
+    }, [search]);
+
+    const fetchPage = useCallback(async ({ nextPage, append }) => {
+        const requestKey = `${debouncedSearch}::${nextPage}`;
+        lastRequestKeyRef.current = requestKey;
+        setLoading(true);
+        try {
+            const res = await getCustomerOptions({
+                search: debouncedSearch || undefined,
+                page: nextPage,
+                page_size: 10,
+                is_active: true,
+            });
+            // Drop outdated responses (fast typing)
+            if (lastRequestKeyRef.current !== requestKey) return;
+            const results = res.data?.results || [];
+            setHasNext(!!res.data?.next);
+            setPage(nextPage);
+            setOptions((prev) => {
+                const incoming = results.map((r) => ({
+                    value: r.id,
+                    label: r.label || r.full_name,
+                }));
+                if (!append) return incoming;
+                const merged = [...prev];
+                const seen = new Set(merged.map((x) => x.value));
+                for (const item of incoming) {
+                    if (!seen.has(item.value)) merged.push(item);
+                }
+                return merged;
+            });
+        } finally {
+            setLoading(false);
+        }
+    }, [debouncedSearch]);
+
+    // Load first page on open or search change
+    useEffect(() => {
+        if (!open) return;
+        fetchPage({ nextPage: 1, append: false });
+    }, [open, debouncedSearch, fetchPage]);
+
+    // Ensure current value exists as an option (editing existing task)
+    useEffect(() => {
+        if (!value) return;
+        if (options.some((o) => o.value === value)) return;
+        (async () => {
+            try {
+                const res = await getCustomer(value);
+                const c = res.data;
+                const label = c?.register_number ? `${c.full_name} - ${c.register_number}` : c?.full_name;
+                if (!label) return;
+                setOptions((prev) => {
+                    if (prev.some((o) => o.value === value)) return prev;
+                    return [{ value, label }, ...prev];
+                });
+            } catch (_) {
+                // ignore
+            }
+        })();
+    }, [value, options]);
+
+    const onPopupScroll = (e) => {
+        const target = e.target;
+        if (!target) return;
+        const nearBottom = target.scrollTop + target.offsetHeight >= target.scrollHeight - 24;
+        if (nearBottom && hasNext && !loading) {
+            fetchPage({ nextPage: page + 1, append: true });
+        }
+    };
+
+    return (
+        <Select
+            value={value}
+            onChange={onChange}
+            showSearch
+            filterOption={false}
+            placeholder="Müştəri seçin..."
+            onSearch={setSearch}
+            onDropdownVisibleChange={setOpen}
+            options={options}
+            notFoundContent={loading ? <Spin size="small" /> : null}
+            onPopupScroll={onPopupScroll}
+            loading={loading && options.length === 0}
+        />
+    );
+};
 
 const TaskModal = ({
     open,
@@ -15,7 +116,6 @@ const TaskModal = ({
     onFinish,
     form,
     editingItem,
-    customers,
     groups,
     users,
     services,
@@ -132,23 +232,7 @@ const TaskModal = ({
                     </Col>
                     <Col xs={24} sm={8}>
                         <Form.Item name="customer" label="Müştəri" rules={[{ required: true }]}>
-                            <Select
-                                showSearch
-                                filterOption={(input, option) => {
-                                    const customer = customers.find(c => c.id === option.value);
-                                    if (!customer) return false;
-                                    const searchText = input.toLowerCase();
-                                    const name = (customer.full_name || '').toLowerCase();
-                                    const regNum = (customer.register_number || '').toLowerCase();
-                                    return name.includes(searchText) || regNum.includes(searchText);
-                                }}
-                            >
-                                {customers.filter(c => c.is_active).map(c => (
-                                    <Option key={c.id} value={c.id}>
-                                        {c.full_name}{c.register_number ? ` - ${c.register_number}` : ''}
-                                    </Option>
-                                ))}
-                            </Select>
+                            <CustomerRemoteSelect />
                         </Form.Item>
                     </Col>
                 </Row>

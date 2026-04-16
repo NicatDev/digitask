@@ -1,21 +1,22 @@
 from django.db.models import Q
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from ..models import Customer
-from ..serializers import CustomerSerializer
+from ..serializers import CustomerSerializer, CustomerOptionSerializer
 from rest_framework.pagination import PageNumberPagination
 
-from ..pagination import TaskPagination
-
-class CustomerMaxPagination(PageNumberPagination):
-    page_size = 150
+class CustomerPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class CustomerViewSet(viewsets.ModelViewSet):
     """ViewSet for Customer CRUD operations."""
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
-    pagination_class = CustomerMaxPagination
+    pagination_class = CustomerPagination
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -48,6 +49,34 @@ class CustomerViewSet(viewsets.ModelViewSet):
             )
 
         return queryset
+
+    @action(detail=False, methods=['get'], url_path='options')
+    def options(self, request):
+        """
+        Optimized endpoint for customer selects (mobile/web).
+        Supports backend search + pagination for infinite scroll.
+        """
+        qs = Customer.objects.all().only('id', 'full_name', 'register_number', 'is_active')
+
+        is_active = request.query_params.get('is_active')
+        if is_active is not None:
+            qs = qs.filter(is_active=is_active.lower() == 'true')
+
+        search = request.query_params.get('search')
+        if search:
+            qs = qs.filter(
+                Q(full_name__icontains=search) | Q(register_number__icontains=search)
+            )
+
+        qs = qs.order_by('full_name', 'id')
+
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = CustomerOptionSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = CustomerOptionSerializer(qs, many=True)
+        return Response(serializer.data)
     
     def destroy(self, request, *args, **kwargs):
         """Soft delete - set is_active to False."""

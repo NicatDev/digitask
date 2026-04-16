@@ -17,3 +17,16 @@ class CustomerSerializer(serializers.ModelSerializer):
             'address_coordinates', 'is_active', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
+
+
+class CustomerOptionSerializer(serializers.ModelSerializer):
+    label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Customer
+        fields = ['id', 'full_name', 'register_number', 'is_active', 'label']
+
+    def get_label(self, obj):
+        if obj.register_number:
+            return f"{obj.full_name} - {obj.register_number}"
+        return obj.full_name
