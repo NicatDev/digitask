@@ -304,10 +304,27 @@ class _TaskFormModalState extends State<TaskFormModal> {
                     onTap: _pickCustomer,
                     borderRadius: BorderRadius.circular(8),
                     child: InputDecorator(
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Müştəri *',
-                        border: OutlineInputBorder(),
-                        suffixIcon: Icon(Icons.search),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_customerId != null)
+                              IconButton(
+                                icon: const Icon(Icons.clear),
+                                tooltip: 'Müştərini ləğv et',
+                                onPressed: () {
+                                  setState(() {
+                                    _customerId = null;
+                                    _customerLabel = '';
+                                  });
+                                },
+                              ),
+                            const Icon(Icons.search),
+                            const SizedBox(width: 8),
+                          ],
+                        ),
                       ),
                       child: Text(
                         _customerLabel.isNotEmpty ? _customerLabel : 'Seçin',
