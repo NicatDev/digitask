@@ -42,7 +42,7 @@ const TaskTab = ({ isActive }) => {
     const [taskTypes, setTaskTypes] = useState([]);
     const [pagination, setPagination] = useState({
         current: 1,
-        pageSize: 5, // Matching backend page_size=1
+        pageSize: 5,
         total: 0
     });
 
@@ -97,6 +97,7 @@ const TaskTab = ({ isActive }) => {
             // Prepare query params
             const queryParams = {
                 page: params.page || pagination.current,
+                page_size: params.pageSize || pagination.pageSize,
                 search: params.search !== undefined ? params.search : debouncedSearchText,
                 status: params.status !== undefined ? params.status : statusFilter,
                 customer: params.customer !== undefined ? params.customer : customerFilter,
@@ -127,6 +128,7 @@ const TaskTab = ({ isActive }) => {
                 setPagination(prev => ({
                     ...prev,
                     current: queryParams.page,
+                    pageSize: queryParams.page_size,
                     total: taskData.count
                 }));
             } else {
@@ -161,7 +163,10 @@ const TaskTab = ({ isActive }) => {
     }, [debouncedSearchText, statusFilter, customerFilter, groupFilter, assigneeFilter, isActiveFilter, dateRange]);
 
     const handleTableChange = (newPagination) => {
-        fetchData({ page: newPagination.current });
+        fetchData({
+            page: newPagination.current,
+            pageSize: newPagination.pageSize,
+        });
     };
 
     const handleDelete = async (id) => {

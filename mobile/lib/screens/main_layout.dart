@@ -19,6 +19,7 @@ import 'package:mobile/screens/users/users_screen.dart';
 import 'package:mobile/screens/map/live_map_screen.dart';
 import 'package:mobile/screens/admin/admin_screen.dart';
 import 'package:mobile/screens/performance/performance_screen.dart';
+import 'package:mobile/screens/support/support_screen.dart';
 import 'package:mobile/models/user_model.dart';
 
 /// Overlay “Daha çox” menyusunda bütün sıra eyni en (veb/mobil uyğun görünüş).
@@ -181,6 +182,14 @@ class _MainLayoutState extends State<MainLayout> {
                   ),
                   const SizedBox(height: 8),
                   _menuCard(
+                    icon: Icons.support_agent_outlined,
+                    color: Colors.indigo,
+                    label: 'Support',
+                    hasAccess: hasMapAccess,
+                    onTap: () => _handleMenuSelection('support'),
+                  ),
+                  const SizedBox(height: 8),
+                  _menuCard(
                     icon: Icons.warehouse_outlined,
                     color: Colors.blue,
                     label: 'Anbar',
@@ -234,6 +243,11 @@ class _MainLayoutState extends State<MainLayout> {
             MaterialPageRoute<void>(builder: (_) => const PerformanceScreen()),
           );
         }
+        break;
+      case 'support':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const SupportScreen()),
+        );
         break;
     }
   }

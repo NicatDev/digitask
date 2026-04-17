@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layout, Menu, Drawer } from 'antd';
-import { TeamOutlined, ShopOutlined, SettingOutlined, FileTextOutlined, GlobalOutlined, BellOutlined, FolderOutlined, HomeOutlined, BarChartOutlined, SolutionOutlined } from '@ant-design/icons';
+import { TeamOutlined, ShopOutlined, SettingOutlined, FileTextOutlined, GlobalOutlined, BellOutlined, FolderOutlined, HomeOutlined, BarChartOutlined, SolutionOutlined, CustomerServiceOutlined } from '@ant-design/icons';
 import styles from './style.module.scss';
 import logo from '../../../assets/logo.svg';
 import { hasPermission } from '../../../utils/permissions';
@@ -26,6 +26,12 @@ const AppSider = ({ collapsed, mobileOpen, setMobileOpen, location, navigate }) 
             key: '/tasks',
             icon: <FileTextOutlined />,
             label: 'Tapşırıqlar',
+            permission: ['is_task_reader', 'is_task_writer']
+        },
+        {
+            key: '/support',
+            icon: <CustomerServiceOutlined />,
+            label: 'Support',
             permission: ['is_task_reader', 'is_task_writer']
         },
         {

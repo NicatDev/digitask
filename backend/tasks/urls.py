@@ -10,6 +10,7 @@ from .views import (
     TaskServiceViewSet,
     TaskProductViewSet,
     TaskTypeViewSet,
+    SupportRequestViewSet,
 )
 
 router = DefaultRouter()
@@ -23,6 +24,7 @@ router.register(r'task-services', TaskServiceViewSet)
 router.register(r'task-products', TaskProductViewSet)
 
 router.register(r'task-types', TaskTypeViewSet)
+router.register(r'support-requests', SupportRequestViewSet, basename='support-request')
 
 urlpatterns = [
     path('', include(router.urls)),

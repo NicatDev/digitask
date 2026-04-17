@@ -8,6 +8,7 @@ import 'package:mobile/screens/tasks/widgets/files_modal.dart';
 import 'package:mobile/screens/tasks/widgets/products_modal.dart';
 import 'package:mobile/screens/tasks/widgets/task_detail_modal.dart';
 import 'package:mobile/screens/tasks/widgets/assignee_modal.dart';
+import 'package:mobile/screens/tasks/widgets/customer_address_edit_modal.dart';
 import 'package:mobile/screens/tasks/widgets/task_display_helpers.dart';
 
 class TaskCard extends StatelessWidget {
@@ -183,6 +184,17 @@ class TaskCard extends StatelessWidget {
                   child: const Padding(
                     padding: EdgeInsets.all(4.0),
                     child: Icon(Icons.location_on, color: Colors.red, size: 20),
+                  ),
+                ),
+                InkWell(
+                  onTap: () => _openCustomerAddressEditor(
+                    context: context,
+                    isCurrentUserAssignee: isCurrentUserAssignee,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4.0),
+                    child: Icon(Icons.edit_location_alt, color: Colors.orange, size: 20),
                   ),
                 ),
               ],
@@ -409,6 +421,50 @@ class TaskCard extends StatelessWidget {
         child: Icon(icon, color: color, size: 20),
       ),
     );
+  }
+
+  Future<void> _openCustomerAddressEditor({
+    required BuildContext context,
+    required bool isCurrentUserAssignee,
+  }) async {
+    if (!isCurrentUserAssignee) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Yalnız icraçılar müştəri ünvanını redaktə edə bilər')),
+        );
+      }
+      return;
+    }
+
+    final rawCustomerId = task['customer'];
+    final customerId = rawCustomerId is int ? rawCustomerId : int.tryParse(rawCustomerId?.toString() ?? '');
+    if (customerId == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Müştəri məlumatı tapılmadı')),
+        );
+      }
+      return;
+    }
+
+    final customerName = task['customer_name']?.toString().trim() ?? '';
+    final registerNumber = task['customer_register_number']?.toString().trim() ?? '';
+    final customerLabel = registerNumber.isNotEmpty ? '$customerName - $registerNumber' : customerName;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => CustomerAddressEditModal(
+        customerId: customerId,
+        customerLabel: customerLabel.isEmpty ? 'Müştəri' : customerLabel,
+      ),
+    );
+
+    if (saved == true && context.mounted) {
+      onRefresh();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Müştəri ünvanı yeniləndi')),
+      );
+    }
   }
 
   Future<void> _launchMaps(BuildContext context, Map<String, dynamic>? coords, String address) async {

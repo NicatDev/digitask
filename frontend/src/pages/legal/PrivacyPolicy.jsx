@@ -26,26 +26,34 @@ const PrivacyPolicy = () => (
       coordination of internal operations, and improvement of the platform.
     </Paragraph>
 
-    <Title level={4}>4. Sale to third parties and advertising</Title>
+    <Title level={4}>4. Location permission</Title>
+    <Paragraph>
+      Where location access is requested, it is used only to support the
+      <strong> correct and proper execution of tasks</strong> (for example, identifying the relevant
+      customer location, navigation, and operational verification). Location permission is not used
+      for advertising purposes.
+    </Paragraph>
+
+    <Title level={4}>5. Sale to third parties and advertising</Title>
     <Paragraph>
       Your personal data is <strong>not sold to advertising companies or any third party</strong> and
       is not transferred for commercial marketing purposes. Data may be stored or shared only for the
       purposes described in this policy and where required by law.
     </Paragraph>
 
-    <Title level={4}>5. Retention and security</Title>
+    <Title level={4}>6. Retention and security</Title>
     <Paragraph>
       Information is protected using appropriate technical and organisational measures. Retention
       periods are determined according to service needs and legal requirements.
     </Paragraph>
 
-    <Title level={4}>6. Your rights</Title>
+    <Title level={4}>7. Your rights</Title>
     <Paragraph>
       Subject to applicable law, you may submit requests regarding access to, correction of, or
       deletion of your data through your organisation&apos;s administrator.
     </Paragraph>
 
-    <Title level={4}>7. Contact</Title>
+    <Title level={4}>8. Contact</Title>
     <Paragraph>
       For privacy-related questions, contact your organisation&apos;s DigiTask administrator or your
       designated support channel.

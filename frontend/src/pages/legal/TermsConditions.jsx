@@ -34,13 +34,20 @@ const TermsConditions = () => (
       prohibited.
     </Paragraph>
 
-    <Title level={4}>5. Availability and changes</Title>
+    <Title level={4}>5. Location permission</Title>
+    <Paragraph>
+      If the application requests location access, this permission is used only for
+      <strong> proper task execution</strong> (such as reaching the correct customer location and
+      operational verification in task workflows). It is not used for advertising activity.
+    </Paragraph>
+
+    <Title level={4}>6. Availability and changes</Title>
     <Paragraph>
       The service is provided &quot;as is&quot;. Features and terms may be updated to meet organisational
       needs; material changes may be communicated through your organisation.
     </Paragraph>
 
-    <Title level={4}>6. Contact</Title>
+    <Title level={4}>7. Contact</Title>
     <Paragraph>
       For questions about these terms, contact your organisation&apos;s administrator.
     </Paragraph>

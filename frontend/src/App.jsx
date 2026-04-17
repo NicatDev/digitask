@@ -17,6 +17,7 @@ import DocumentsPage from './pages/documents';
 import ProfilePage from './pages/profile';
 import ReportsPage from './pages/reports';
 import PerformancePage from './pages/performance';
+import SupportPage from './pages/support';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -90,6 +91,14 @@ const App = () => {
                 element={
                   <ProtectedRoute requiredPermissions={['is_task_reader', 'is_task_writer']}>
                     <LiveMap />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/support"
+                element={
+                  <ProtectedRoute requiredPermissions={['is_task_reader', 'is_task_writer']}>
+                    <SupportPage />
                   </ProtectedRoute>
                 }
               />

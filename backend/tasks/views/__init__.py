@@ -5,3 +5,4 @@ from .task import TaskViewSet, TaskServiceViewSet
 
 from .product import TaskProductViewSet
 from .task_type import TaskTypeViewSet
+from .support import SupportRequestViewSet

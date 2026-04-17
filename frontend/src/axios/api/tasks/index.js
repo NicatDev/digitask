@@ -107,3 +107,13 @@ export const getShelf = (id) => axiosInstance.get(`/documents/shelves/${id}/`);
 export const createShelf = (data) => axiosInstance.post('/documents/shelves/', data);
 export const updateShelf = (id, data) => axiosInstance.patch(`/documents/shelves/${id}/`, data);
 export const deleteShelf = (id) => axiosInstance.delete(`/documents/shelves/${id}/`);
+
+// Support API
+export const getSupportRequests = (params) => axiosInstance.get('/tasks/support-requests/', { params });
+export const getSupportRequest = (id) => axiosInstance.get(`/tasks/support-requests/${id}/`);
+export const createSupportRequest = (data) => axiosInstance.post('/tasks/support-requests/', data, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+});
+export const updateSupportRequest = (id, data) => axiosInstance.patch(`/tasks/support-requests/${id}/`, data);
+export const setSupportStatus = (id, data) => axiosInstance.patch(`/tasks/support-requests/${id}/set_status/`, data);
+export const addSupportComment = (id, body) => axiosInstance.post(`/tasks/support-requests/${id}/comment/`, { body });

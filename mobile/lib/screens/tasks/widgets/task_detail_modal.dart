@@ -89,6 +89,7 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
+    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
     final dateFormat = DateFormat('dd MMM yyyy, HH:mm');
     final createdAt = task['created_at'] != null
         ? dateFormat.format(DateTime.parse(task['created_at']))
@@ -111,12 +112,16 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
       minChildSize: 0.5,
       expand: false,
       builder: (context, scrollController) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
+        return AnimatedPadding(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(bottom: keyboardInset),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
             children: [
               Container(
                 margin: const EdgeInsets.symmetric(vertical: 10),
@@ -151,7 +156,8 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
                     final wide = constraints.maxWidth >= 600;
                     return ListView(
                       controller: scrollController,
-                      padding: const EdgeInsets.all(16),
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + keyboardInset),
                       children: [
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -284,6 +290,7 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
                 ),
               ),
             ],
+            ),
           ),
         );
       },

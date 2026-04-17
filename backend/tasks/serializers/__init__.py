@@ -11,3 +11,4 @@ from .task import (
 from .task_activity import TaskActivitySerializer
 
 from .product import TaskProductSerializer, TaskProductCreateSerializer
+from .support import SupportRequestSerializer, SupportCommentSerializer
