@@ -38,6 +38,17 @@ class SupportRequestViewSet(viewsets.ModelViewSet):
         status_param = (self.request.query_params.get("status") or "").strip()
         if status_param:
             queryset = queryset.filter(status=status_param)
+        else:
+            scope = (self.request.query_params.get("scope") or "active").strip().lower()
+            past_statuses = (
+                SupportRequest.Status.REJECTED,
+                SupportRequest.Status.SOLVED,
+                SupportRequest.Status.DONE,
+            )
+            if scope == "past":
+                queryset = queryset.filter(status__in=past_statuses)
+            elif scope == "active":
+                queryset = queryset.exclude(status__in=past_statuses)
 
         mine_param = (self.request.query_params.get("mine") or "").lower()
         if mine_param == "true":
@@ -119,6 +130,36 @@ class SupportRequestViewSet(viewsets.ModelViewSet):
             return Response({"status": "Yanlış status."}, status=status.HTTP_400_BAD_REQUEST)
         if new_status == SupportRequest.Status.REJECTED and not reject_note:
             return Response({"reject_note": "Rədd səbəbi mütləqdir."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if new_status == SupportRequest.Status.DONE:
+            return Response(
+                {"status": "Done statusu artıq istifadə olunmur. Birbaşa «Həll edildi» seçin."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if new_status == SupportRequest.Status.ACCEPTED and support.status != SupportRequest.Status.NEW:
+            return Response(
+                {"status": "Yalnız «Yeni» müraciəti qəbul etmək olar."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if new_status == SupportRequest.Status.SOLVED and support.status != SupportRequest.Status.ACCEPTED:
+            return Response(
+                {"status": "Əvvəlcə müraciəti qəbul edin; qəbul edilmədən həll edilə bilməz."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if new_status == SupportRequest.Status.CLOSED and support.status != SupportRequest.Status.SOLVED:
+            return Response(
+                {"status": "Yalnız «Həll edildi» statusundan sonra bağlamaq olar."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if new_status == SupportRequest.Status.REJECTED and support.status == SupportRequest.Status.REJECTED:
+            return Response(
+                {"status": "Bu müraciət artıq rədd edilib."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         support.status = new_status
         support.reject_note = reject_note if new_status == SupportRequest.Status.REJECTED else ""

@@ -10,7 +10,34 @@ from .models import (
     TaskServiceValue,
     Equipment,
     OpticBox,
+    SupportRequest,
+    SupportComment,
 )
+
+
+class SupportCommentInline(admin.TabularInline):
+    model = SupportComment
+    extra = 0
+    readonly_fields = ('created_at',)
+
+
+@admin.register(SupportRequest)
+class SupportRequestAdmin(admin.ModelAdmin):
+    list_display = ('id', 'title', 'status', 'created_by', 'created_at', 'updated_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('title', 'summary', 'current_state', 'expected_state')
+    raw_id_fields = ('created_by', 'accepted_by')
+    readonly_fields = ('created_at', 'updated_at')
+    inlines = [SupportCommentInline]
+
+
+@admin.register(SupportComment)
+class SupportCommentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'support_request', 'user', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('body', 'support_request__title')
+    raw_id_fields = ('support_request', 'user')
+    readonly_fields = ('created_at',)
 
 class TaskServiceValueInline(admin.TabularInline):
     model = TaskServiceValue

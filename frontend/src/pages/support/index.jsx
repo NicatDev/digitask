@@ -21,6 +21,7 @@ import { InboxOutlined } from '@ant-design/icons';
 import {
     addSupportComment,
     createSupportRequest,
+    getSupportRequest,
     getSupportRequests,
     setSupportStatus,
 } from '../../axios/api/tasks';
@@ -35,9 +36,6 @@ const { useBreakpoint } = Grid;
 const STATUS_OPTIONS = [
     { value: 'new', label: 'Yeni' },
     { value: 'accepted', label: 'Qəbul edildi' },
-    { value: 'rejected', label: 'Rədd edildi' },
-    { value: 'done', label: 'Done' },
-    { value: 'solved', label: 'Həll edildi' },
     { value: 'closed', label: 'Bağlandı' },
 ];
 
@@ -108,19 +106,41 @@ const SupportPage = () => {
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
+    const [pastModalOpen, setPastModalOpen] = useState(false);
+    const [pastItems, setPastItems] = useState([]);
+    const [pastLoading, setPastLoading] = useState(false);
 
     const isAdmin = Boolean(user?.is_admin || user?.is_super_admin || user?.is_superuser);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const { data } = await getSupportRequests({ status: statusFilter || undefined });
+            const params = {};
+            if (statusFilter) {
+                params.status = statusFilter;
+            } else {
+                params.scope = 'active';
+            }
+            const { data } = await getSupportRequests(params);
             const list = Array.isArray(data?.results) ? data.results : data;
             setItems(Array.isArray(list) ? list : []);
         } catch {
             message.error('Support məlumatları yüklənmədi');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchPastTasks = async () => {
+        setPastLoading(true);
+        try {
+            const { data } = await getSupportRequests({ scope: 'past' });
+            const list = Array.isArray(data?.results) ? data.results : data;
+            setPastItems(Array.isArray(list) ? list : []);
+        } catch {
+            message.error('Keçmiş müraciətlər yüklənmədi');
+        } finally {
+            setPastLoading(false);
         }
     };
 
@@ -172,10 +192,8 @@ const SupportPage = () => {
     const refreshSelected = async () => {
         if (!selected?.id) return;
         try {
-            const { data } = await getSupportRequests();
-            const list = Array.isArray(data?.results) ? data.results : data;
-            const found = (Array.isArray(list) ? list : []).find((it) => it.id === selected.id);
-            if (found) setSelected(found);
+            const { data } = await getSupportRequest(selected.id);
+            setSelected(data);
         } catch {
             // noop
         }
@@ -217,13 +235,12 @@ const SupportPage = () => {
     const sendComment = async () => {
         if (!selected?.id || !commentText.trim()) return;
         try {
-            const { data } = await addSupportComment(selected.id, commentText.trim());
-            const nextComments = [...(selected.comments || []), data];
-            setSelected((prev) => (prev ? { ...prev, comments: nextComments } : prev));
-            setItems((prev) =>
-                prev.map((it) => (it.id === selected.id ? { ...it, comments: nextComments } : it)),
-            );
+            await addSupportComment(selected.id, commentText.trim());
             setCommentText('');
+            const { data: fresh } = await getSupportRequest(selected.id);
+            setSelected(fresh);
+            setItems((prev) => prev.map((it) => (it.id === selected.id ? { ...it, comments: fresh.comments } : it)));
+            setPastItems((prev) => prev.map((it) => (it.id === selected.id ? { ...it, comments: fresh.comments } : it)));
             message.success('Şərh əlavə olundu');
         } catch {
             message.error('Şərh göndərilə bilmədi');
@@ -319,6 +336,15 @@ const SupportPage = () => {
                                 options={STATUS_OPTIONS}
                                 size="large"
                             />
+                            <Button
+                                size="large"
+                                onClick={() => {
+                                    setPastModalOpen(true);
+                                    fetchPastTasks();
+                                }}
+                            >
+                                Keçmiş tapşırıqlara bax
+                            </Button>
                         </div>
                         {items.length === 0 && !loading ? (
                             <Empty description="Hələ müraciət yoxdur" />
@@ -415,27 +441,18 @@ const SupportPage = () => {
                                     {selected.status === 'accepted' && (
                                         <Button
                                             className={styles.actionBtn}
-                                            style={{ borderColor: '#08979c', color: '#08979c' }}
-                                            onClick={() => handleStatus('done')}
-                                        >
-                                            Done
-                                        </Button>
-                                    )}
-                                    {selected.status === 'done' && (
-                                        <Button
-                                            className={styles.actionBtn}
                                             style={{ borderColor: '#389e0d', color: '#389e0d' }}
                                             onClick={() => handleStatus('solved')}
                                         >
-                                            Solved
+                                            Həll edildi
                                         </Button>
                                     )}
-                                    {['done', 'solved'].includes(selected.status) && selected.status !== 'closed' && (
+                                    {selected.status === 'solved' && (
                                         <Button className={styles.actionBtn} onClick={() => handleStatus('closed')}>
                                             Bağla
                                         </Button>
                                     )}
-                                    {['new', 'accepted'].includes(selected.status) && (
+                                    {selected.status !== 'rejected' && (
                                         <Button
                                             danger
                                             type="primary"
@@ -505,6 +522,52 @@ const SupportPage = () => {
                             />
                         )}
                     </Space>
+                )}
+            </Modal>
+
+            <Modal
+                title="Keçmiş müraciətlər"
+                open={pastModalOpen}
+                onCancel={() => setPastModalOpen(false)}
+                footer={null}
+                width={isMobile ? '100%' : 640}
+                wrapClassName={styles.supportModalWrap}
+                centered={!isMobile}
+                destroyOnClose
+            >
+                {pastLoading ? (
+                    <div style={{ padding: 24, textAlign: 'center' }}>Yüklənir…</div>
+                ) : pastItems.length === 0 ? (
+                    <Empty description="Keçmiş müraciət yoxdur" />
+                ) : (
+                    <div className={styles.taskList}>
+                        {pastItems.map((it) => (
+                            <Card
+                                key={it.id}
+                                className={styles.taskItem}
+                                size="small"
+                                hoverable
+                                onClick={() => {
+                                    setPastModalOpen(false);
+                                    openDetail(it);
+                                }}
+                                title={(
+                                    <Text strong className={styles.taskItemTitle}>
+                                        #{it.id} — {it.title}
+                                    </Text>
+                                )}
+                                extra={(
+                                    <Tag color={statusColor[it.status] || 'default'}>
+                                        {it.status_display || it.status}
+                                    </Tag>
+                                )}
+                            >
+                                <Paragraph className={styles.taskItemSummary} ellipsis={{ rows: 2 }}>
+                                    {it.summary}
+                                </Paragraph>
+                            </Card>
+                        ))}
+                    </div>
                 )}
             </Modal>
 

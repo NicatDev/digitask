@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -26,7 +28,6 @@ class _SupportScreenState extends State<SupportScreen> {
   bool _saving = false;
   XFile? _pickedImage;
   String _statusFilter = '';
-
   @override
   void initState() {
     super.initState();
@@ -51,10 +52,13 @@ class _SupportScreenState extends State<SupportScreen> {
   Future<void> _loadSupports() async {
     setState(() => _loading = true);
     try {
-      final res = await ApiClient().dio.get(
-        '/tasks/support-requests/',
-        queryParameters: _statusFilter.isEmpty ? null : {'status': _statusFilter},
-      );
+      final qp = <String, dynamic>{};
+      if (_statusFilter.isNotEmpty) {
+        qp['status'] = _statusFilter;
+      } else {
+        qp['scope'] = 'active';
+      }
+      final res = await ApiClient().dio.get('/tasks/support-requests/', queryParameters: qp);
       final data = res.data;
       final list = (data is Map && data['results'] is List) ? data['results'] : data;
       setState(() => _items = list is List ? list : []);
@@ -117,6 +121,72 @@ class _SupportScreenState extends State<SupportScreen> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Future<void> _showPastTasksDialog() async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Expanded(child: Text('Yüklənir…')),
+          ],
+        ),
+      ),
+    );
+    List<dynamic> past = [];
+    try {
+      final res = await ApiClient().dio.get(
+        '/tasks/support-requests/',
+        queryParameters: {'scope': 'past'},
+      );
+      final data = res.data;
+      final list = (data is Map && data['results'] is List) ? data['results'] : data;
+      past = list is List ? list : [];
+    } catch (_) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Keçmiş müraciətlər yüklənmədi')),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Keçmiş müraciətlər'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: past.isEmpty
+              ? const Text('Keçmiş müraciət yoxdur')
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: past.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final it = past[index] as Map<String, dynamic>;
+                    return ListTile(
+                      title: Text('#${it['id']} — ${it['title'] ?? ''}'),
+                      subtitle: Text(it['status_display']?.toString() ?? it['status']?.toString() ?? ''),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _openDetail(it);
+                      },
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Bağla')),
+        ],
+      ),
+    );
   }
 
   void _openDetail(Map<String, dynamic> support) {
@@ -198,10 +268,7 @@ class _SupportScreenState extends State<SupportScreen> {
                   items: const [
                     DropdownMenuItem(value: 'new', child: Text('Yeni')),
                     DropdownMenuItem(value: 'accepted', child: Text('Qəbul edildi')),
-                    DropdownMenuItem(value: 'rejected', child: Text('Rədd edildi')),
-                    DropdownMenuItem(value: 'done', child: Text('Done')),
-                    DropdownMenuItem(value: 'solved', child: Text('Solved')),
-                    DropdownMenuItem(value: 'closed', child: Text('Closed')),
+                    DropdownMenuItem(value: 'closed', child: Text('Bağlandı')),
                   ],
                   onChanged: (v) {
                     setState(() => _statusFilter = v ?? '');
@@ -209,6 +276,11 @@ class _SupportScreenState extends State<SupportScreen> {
                   },
                 ),
               ],
+            ),
+            TextButton.icon(
+              onPressed: _showPastTasksDialog,
+              icon: const Icon(Icons.history),
+              label: const Text('Keçmiş tapşırıqlara bax'),
             ),
             const SizedBox(height: 8),
             if (_loading)
@@ -263,10 +335,17 @@ class _SupportRequestDetailDialogState extends State<_SupportRequestDetailDialog
     super.dispose();
   }
 
-  int get _id => _row['id'] as int;
+  int get _id => (_row['id'] as num).toInt();
 
-  bool get _canComment =>
-      widget.isAdmin || _row['created_by'] == widget.currentUserId;
+  bool get _canComment {
+    if (widget.isAdmin) return true;
+    final uid = widget.currentUserId;
+    if (uid == null) return false;
+    final cb = _row['created_by'];
+    if (cb == null) return false;
+    if (cb is num) return cb.toInt() == uid;
+    return cb == uid;
+  }
 
   String _resolveAttachmentUrl(dynamic raw) {
     if (raw == null) return '';
@@ -285,12 +364,11 @@ class _SupportRequestDetailDialogState extends State<_SupportRequestDetailDialog
         'reject_note': rejectNote,
       });
       if (!mounted) return;
-      final data = res.data;
-      if (data is Map<String, dynamic>) {
+      final data = _mapFromResponse(res.data);
+      if (data != null) {
         setState(() {
-          _row['status'] = data['status'];
-          _row['status_display'] = data['status_display'];
-          _row['reject_note'] = data['reject_note'];
+          _row = Map<String, dynamic>.from(data);
+          _comments = List<dynamic>.from(data['comments'] as List? ?? []);
         });
       }
       widget.onListRefresh();
@@ -338,19 +416,12 @@ class _SupportRequestDetailDialogState extends State<_SupportRequestDetailDialog
     if (text.isEmpty) return;
     setState(() => _sending = true);
     try {
-      final res = await ApiClient().dio.post('/tasks/support-requests/$_id/comment/', data: {'body': text});
+      await ApiClient().dio.post('/tasks/support-requests/$_id/comment/', data: {'body': text});
       _commentCtrl.clear();
-      final added = _mapFromResponse(res.data);
-      if (mounted && added != null) {
-        setState(() {
-          _comments = [..._comments, added];
-          _row['comments'] = _comments;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şərh əlavə olundu')));
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şərh əlavə olundu')));
-        await _reloadDetailFromServer();
-      }
+      if (!mounted) return;
+      await _reloadDetailFromServer();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şərh əlavə olundu')));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şərh göndərilə bilmədi')));
@@ -360,9 +431,17 @@ class _SupportRequestDetailDialogState extends State<_SupportRequestDetailDialog
   }
 
   Map<String, dynamic>? _mapFromResponse(dynamic data) {
-    if (data is Map<String, dynamic>) return data;
-    if (data is Map) {
-      return data.map((k, v) => MapEntry(k.toString(), v));
+    dynamic d = data;
+    if (d is String) {
+      try {
+        d = jsonDecode(d) as Object?;
+      } catch (_) {
+        return null;
+      }
+    }
+    if (d is Map<String, dynamic>) return Map<String, dynamic>.from(d);
+    if (d is Map) {
+      return d.map((k, v) => MapEntry(k.toString(), v));
     }
     return null;
   }
@@ -373,11 +452,15 @@ class _SupportRequestDetailDialogState extends State<_SupportRequestDetailDialog
       final map = _mapFromResponse(res.data);
       if (!mounted || map == null) return;
       setState(() {
-        _row = map;
+        _row = Map<String, dynamic>.from(map);
         _comments = List<dynamic>.from(map['comments'] as List? ?? []);
       });
     } catch (_) {
-      // noop
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Müraciət yenilənmədi — siyahını yeniləyin')),
+        );
+      }
     }
   }
 
@@ -476,24 +559,14 @@ class _SupportRequestDetailDialogState extends State<_SupportRequestDetailDialog
                     if (_status == 'accepted')
                       OutlinedButton(
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF08979C),
-                          side: const BorderSide(color: Color(0xFF08979C)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        onPressed: () => _patchStatus('done'),
-                        child: const Text('Done'),
-                      ),
-                    if (_status == 'done')
-                      OutlinedButton(
-                        style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFF389E0D),
                           side: const BorderSide(color: Color(0xFF389E0D)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         onPressed: () => _patchStatus('solved'),
-                        child: const Text('Solved'),
+                        child: const Text('Həll edildi'),
                       ),
-                    if (['done', 'solved'].contains(_status) && _status != 'closed')
+                    if (_status == 'solved')
                       OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -501,7 +574,7 @@ class _SupportRequestDetailDialogState extends State<_SupportRequestDetailDialog
                         onPressed: () => _patchStatus('closed'),
                         child: const Text('Bağla'),
                       ),
-                    if (['new', 'accepted'].contains(_status))
+                    if (_status != 'rejected')
                       FilledButton(
                         style: FilledButton.styleFrom(
                           backgroundColor: Colors.red,
