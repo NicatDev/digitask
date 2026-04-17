@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile/core/api/api_client.dart';
+import 'package:mobile/core/constants.dart';
 import 'package:mobile/screens/tasks/widgets/task_display_helpers.dart';
 import 'package:mobile/screens/tasks/widgets/customer_tasks_history_modal.dart';
+
+final _imageUrlRe = RegExp(r'\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$', caseSensitive: false);
 
 class TaskDetailModal extends StatefulWidget {
   final Map<String, dynamic> task;
@@ -61,10 +64,12 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
     if (text.isEmpty) return;
     setState(() => _sending = true);
     try {
-      await ApiClient().dio.post('/tasks/tasks/$_taskId/activity/', data: {'body': text});
+      final res = await ApiClient().dio.post('/tasks/tasks/$_taskId/activity/', data: {'body': text});
       _commentCtrl.clear();
-      await _loadActivity();
-      if (mounted) {
+      if (mounted && res.data is Map<String, dynamic>) {
+        setState(() {
+          _activities = [res.data as Map<String, dynamic>, ..._activities];
+        });
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şərh əlavə olundu')));
       }
     } catch (_) {
@@ -74,6 +79,119 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  String _resolveMediaUrl(dynamic raw) {
+    if (raw == null) return '';
+    final s = raw.toString().trim();
+    if (s.isEmpty) return '';
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
+    final origin = AppConstants.baseUrl.replaceFirst(RegExp(r'/api\$'), '');
+    final path = s.startsWith('/') ? s : '/$s';
+    return '$origin$path';
+  }
+
+  Future<void> _launchMediaUrl(String url) async {
+    if (url.isEmpty) return;
+    final u = Uri.parse(url);
+    if (await canLaunchUrl(u)) {
+      await launchUrl(u, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  List<Widget> _buildMediaSection(Map<String, dynamic> task) {
+    final images = <Map<String, String>>[];
+    final files = <Map<String, String>>[];
+
+    final taskServicesRaw = task['task_services'];
+    if (taskServicesRaw is List) {
+      for (final ts in taskServicesRaw) {
+        if (ts is! Map) continue;
+        final serviceName = ts['service_name']?.toString() ?? 'Xidmət';
+        final values = ts['values'];
+        if (values is! List) continue;
+        for (final v in values) {
+          if (v is! Map) continue;
+          final colName = v['column_name'] ?? v['column_key'] ?? 'Sahə';
+          final colType = v['column_type']?.toString() ?? '';
+          final val = v['value'];
+          if (val == null || val.toString().isEmpty) continue;
+          final url = _resolveMediaUrl(val);
+          if (url.isEmpty) continue;
+          final label = '$serviceName — $colName';
+          if (colType == 'image' || _imageUrlRe.hasMatch(val.toString())) {
+            images.add({'url': url, 'label': label});
+          } else if (colType == 'file') {
+            files.add({'url': url, 'label': label});
+          }
+        }
+      }
+    }
+
+    final docs = task['task_documents'];
+    if (docs is List) {
+      for (final d in docs) {
+        if (d is! Map) continue;
+        final raw = d['file_url'] ?? d['file'];
+        if (raw == null || raw.toString().isEmpty) continue;
+        final url = _resolveMediaUrl(raw);
+        final title = d['title']?.toString() ?? d['name']?.toString() ?? 'Sənəd';
+        if (_imageUrlRe.hasMatch(url)) {
+          images.add({'url': url, 'label': title});
+        } else {
+          files.add({'url': url, 'label': title});
+        }
+      }
+    }
+
+    if (images.isEmpty && files.isEmpty) return [];
+
+    final out = <Widget>[_sectionTitle('Şəkillər və fayllar')];
+    for (final img in images) {
+      out.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(img['label']!, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: () => _launchMediaUrl(img['url']!),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    img['url']!,
+                    height: 160,
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const SizedBox(height: 120, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+                    },
+                    errorBuilder: (context, error, stackTrace) => const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Icon(Icons.broken_image_outlined, size: 48),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    for (final f in files) {
+      out.add(
+        ListTile(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.attach_file, size: 22),
+          title: Text(f['label']!, style: const TextStyle(fontSize: 14)),
+          onTap: () => _launchMediaUrl(f['url']!),
+        ),
+      );
+    }
+    return out;
   }
 
   void _openCustomerHistory() {
@@ -154,6 +272,7 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final wide = constraints.maxWidth >= 600;
+                    final mediaWidgets = _buildMediaSection(task);
                     return ListView(
                       controller: scrollController,
                       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -220,6 +339,10 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
                           const SizedBox(height: 16),
                           _sectionTitle('Sənədlər'),
                           ..._buildDocumentsList(task['task_documents'] as List),
+                        ],
+                        if (mediaWidgets.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          ...mediaWidgets,
                         ],
                         const SizedBox(height: 16),
                         _sectionTitle('Aktivlik və şərhlər'),

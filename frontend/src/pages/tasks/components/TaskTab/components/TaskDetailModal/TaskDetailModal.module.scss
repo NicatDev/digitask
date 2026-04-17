@@ -71,6 +71,46 @@
     margin-top: 12px;
 }
 
+.mediaGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.mediaFigure {
+    margin: 0;
+    max-width: 100%;
+}
+
+.mediaCaption {
+    font-size: 12px;
+    color: #8c8c8c;
+    margin-bottom: 6px;
+}
+
+.mediaThumb {
+    display: block;
+    max-width: min(280px, 100%);
+    max-height: 200px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+    border: 1px solid #f0f0f0;
+    background: #fafafa;
+}
+
+.fileList {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 14px;
+
+    li {
+        margin-bottom: 6px;
+    }
+}
+
 @media (max-width: 768px) {
     .modal {
         :global(.ant-modal) {

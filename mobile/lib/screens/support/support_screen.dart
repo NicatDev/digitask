@@ -1,8 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile/core/api/api_client.dart';
+import 'package:mobile/core/constants.dart';
 import 'package:mobile/core/services/chat_service.dart';
+
+final _imageUrlRe = RegExp(r'\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$', caseSensitive: false);
 
 class SupportScreen extends StatefulWidget {
   const SupportScreen({super.key});
@@ -16,9 +20,6 @@ class _SupportScreenState extends State<SupportScreen> {
   final _summaryCtrl = TextEditingController();
   final _currentCtrl = TextEditingController();
   final _expectedCtrl = TextEditingController();
-
-  final _commentCtrl = TextEditingController();
-  final _rejectCtrl = TextEditingController();
 
   List<dynamic> _items = [];
   bool _loading = true;
@@ -38,8 +39,6 @@ class _SupportScreenState extends State<SupportScreen> {
     _summaryCtrl.dispose();
     _currentCtrl.dispose();
     _expectedCtrl.dispose();
-    _commentCtrl.dispose();
-    _rejectCtrl.dispose();
     super.dispose();
   }
 
@@ -120,189 +119,15 @@ class _SupportScreenState extends State<SupportScreen> {
     }
   }
 
-  Future<void> _setStatus(int id, String status) async {
-    if (status == 'rejected' && _rejectCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reject səbəbini yazın')),
-      );
-      return;
-    }
-    try {
-      await ApiClient().dio.patch('/tasks/support-requests/$id/set_status/', data: {
-        'status': status,
-        'reject_note': status == 'rejected' ? _rejectCtrl.text.trim() : '',
-      });
-      _rejectCtrl.clear();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Status yeniləndi')),
-      );
-      _loadSupports();
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Status yenilənmədi')),
-      );
-    }
-  }
-
-  Future<void> _sendComment(int id) async {
-    final text = _commentCtrl.text.trim();
-    if (text.isEmpty) return;
-    try {
-      await ApiClient().dio.post('/tasks/support-requests/$id/comment/', data: {'body': text});
-      _commentCtrl.clear();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Şərh əlavə olundu')),
-      );
-      _loadSupports();
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Şərh göndərilə bilmədi')),
-      );
-    }
-  }
-
   void _openDetail(Map<String, dynamic> support) {
-    final currentUserId = ChatService().currentUser.value?.id;
-    final canComment = _isAdmin || support['created_by'] == currentUserId;
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (ctx) {
-        final comments = (support['comments'] as List?) ?? [];
-        return Dialog(
-          child: SizedBox(
-            width: 760,
-            height: 680,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '#${support['id']} - ${support['title'] ?? ''}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                        ),
-                      ),
-                      IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text('Status: ${support['status_display'] ?? support['status'] ?? ''}'),
-                  const SizedBox(height: 10),
-                  Text('Qısa xülasə: ${support['summary'] ?? ''}'),
-                  const SizedBox(height: 8),
-                  Text('İndiki vəziyyət: ${support['current_state'] ?? ''}'),
-                  const SizedBox(height: 8),
-                  Text('Olmalı olan: ${support['expected_state'] ?? ''}'),
-                  if ((support['reject_note'] ?? '').toString().isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Reject qeydi: ${support['reject_note']}',
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  if (_isAdmin) ...[
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton(onPressed: () => _setStatus(support['id'], 'accepted'), child: const Text('Accept')),
-                        OutlinedButton(onPressed: () => _setStatus(support['id'], 'done'), child: const Text('Done')),
-                        OutlinedButton(onPressed: () => _setStatus(support['id'], 'solved'), child: const Text('Solved')),
-                        OutlinedButton(onPressed: () => _setStatus(support['id'], 'closed'), child: const Text('Closed')),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _rejectCtrl,
-                            decoration: const InputDecoration(
-                              labelText: 'Reject səbəbi',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () => _setStatus(support['id'], 'rejected'),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                          child: const Text('Reject'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  const Text('Şərhlər', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: comments.isEmpty
-                        ? const Center(child: Text('Hələ şərh yoxdur'))
-                        : ListView.separated(
-                            itemCount: comments.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
-                            itemBuilder: (_, index) {
-                              final c = comments[index] as Map<String, dynamic>;
-                              return Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.grey.shade300),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      c['user_name']?.toString() ?? '',
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(c['body']?.toString() ?? ''),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (canComment)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _commentCtrl,
-                            decoration: const InputDecoration(
-                              labelText: 'Şərh yazın',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () => _sendComment(support['id'] as int),
-                          child: const Text('Göndər'),
-                        ),
-                      ],
-                    )
-                  else
-                    const Text(
-                      'Bu taska yalnız açan istifadəçi və adminlər şərh yaza bilər.',
-                      style: TextStyle(color: Colors.orange),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+      builder: (ctx) => _SupportRequestDetailDialog(
+        initial: support,
+        isAdmin: _isAdmin,
+        currentUserId: ChatService().currentUser.value?.id,
+        onListRefresh: _loadSupports,
+      ),
     );
   }
 
@@ -396,6 +221,338 @@ class _SupportScreenState extends State<SupportScreen> {
             else
               ..._items.map((e) => _buildSupportCard(e as Map<String, dynamic>)),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SupportRequestDetailDialog extends StatefulWidget {
+  const _SupportRequestDetailDialog({
+    required this.initial,
+    required this.isAdmin,
+    required this.currentUserId,
+    required this.onListRefresh,
+  });
+
+  final Map<String, dynamic> initial;
+  final bool isAdmin;
+  final int? currentUserId;
+  final VoidCallback onListRefresh;
+
+  @override
+  State<_SupportRequestDetailDialog> createState() => _SupportRequestDetailDialogState();
+}
+
+class _SupportRequestDetailDialogState extends State<_SupportRequestDetailDialog> {
+  late Map<String, dynamic> _row;
+  late List<dynamic> _comments;
+  final _commentCtrl = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _row = Map<String, dynamic>.from(widget.initial);
+    _comments = List<dynamic>.from(_row['comments'] as List? ?? []);
+  }
+
+  @override
+  void dispose() {
+    _commentCtrl.dispose();
+    super.dispose();
+  }
+
+  int get _id => _row['id'] as int;
+
+  bool get _canComment =>
+      widget.isAdmin || _row['created_by'] == widget.currentUserId;
+
+  String _resolveAttachmentUrl(dynamic raw) {
+    if (raw == null) return '';
+    final s = raw.toString().trim();
+    if (s.isEmpty) return '';
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
+    final origin = AppConstants.baseUrl.replaceFirst(RegExp(r'/api\$'), '');
+    final path = s.startsWith('/') ? s : '/$s';
+    return '$origin$path';
+  }
+
+  Future<void> _patchStatus(String status, {String rejectNote = ''}) async {
+    try {
+      final res = await ApiClient().dio.patch('/tasks/support-requests/$_id/set_status/', data: {
+        'status': status,
+        'reject_note': rejectNote,
+      });
+      if (!mounted) return;
+      final data = res.data;
+      if (data is Map<String, dynamic>) {
+        setState(() {
+          _row['status'] = data['status'];
+          _row['status_display'] = data['status_display'];
+          _row['reject_note'] = data['reject_note'];
+        });
+      }
+      widget.onListRefresh();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Status yeniləndi')));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Status yenilənmədi')));
+    }
+  }
+
+  Future<void> _showRejectReasonDialog() async {
+    final reasonCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rədd səbəbi'),
+        content: TextField(
+          controller: reasonCtrl,
+          maxLines: 4,
+          maxLength: 2000,
+          decoration: const InputDecoration(
+            hintText: 'Rədd etmə səbəbini yazın...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Ləğv et')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Təsdiq et')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final note = reasonCtrl.text.trim();
+    if (note.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Rədd səbəbi yazın')),
+      );
+      return;
+    }
+    await _patchStatus('rejected', rejectNote: note);
+  }
+
+  Future<void> _sendComment() async {
+    final text = _commentCtrl.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _sending = true);
+    try {
+      final res = await ApiClient().dio.post('/tasks/support-requests/$_id/comment/', data: {'body': text});
+      _commentCtrl.clear();
+      if (mounted && res.data is Map<String, dynamic>) {
+        setState(() {
+          _comments = [..._comments, res.data];
+          _row['comments'] = _comments;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şərh əlavə olundu')));
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şərh göndərilə bilmədi')));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  String get _status => _row['status']?.toString() ?? '';
+
+  @override
+  Widget build(BuildContext context) {
+    final attachmentRaw = _row['attachment'];
+    final attachmentUrl =
+        attachmentRaw != null && attachmentRaw.toString().isNotEmpty
+            ? _resolveAttachmentUrl(attachmentRaw)
+            : '';
+
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760, maxHeight: 720),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '#${_row['id']} - ${_row['title'] ?? ''}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                  ),
+                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text('Status: ${_row['status_display'] ?? _status}'),
+              const SizedBox(height: 10),
+              Text('Qısa xülasə: ${_row['summary'] ?? ''}'),
+              const SizedBox(height: 8),
+              Text('İndiki vəziyyət: ${_row['current_state'] ?? ''}'),
+              const SizedBox(height: 8),
+              Text('Olmalı olan: ${_row['expected_state'] ?? ''}'),
+              if ((_row['reject_note'] ?? '').toString().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Rədd qeydi: ${_row['reject_note']}',
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ],
+              if (attachmentUrl.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                if (_imageUrlRe.hasMatch(attachmentUrl))
+                  InkWell(
+                    onTap: () async {
+                      final u = Uri.parse(attachmentUrl);
+                      if (await canLaunchUrl(u)) {
+                        await launchUrl(u, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        attachmentUrl,
+                        height: 140,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => const Text('Şəkli aç'),
+                      ),
+                    ),
+                  )
+                else
+                  TextButton.icon(
+                    onPressed: () async {
+                      final u = Uri.parse(attachmentUrl);
+                      if (await canLaunchUrl(u)) {
+                        await launchUrl(u, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    icon: const Icon(Icons.attach_file),
+                    label: const Text('Əlavə faylı aç'),
+                  ),
+              ],
+              if (widget.isAdmin) ...[
+                const SizedBox(height: 12),
+                Text('Status idarəetməsi', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade800)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (_status == 'new')
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () => _patchStatus('accepted'),
+                        child: const Text('Qəbul et'),
+                      ),
+                    if (_status == 'accepted')
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF08979C),
+                          side: const BorderSide(color: Color(0xFF08979C)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () => _patchStatus('done'),
+                        child: const Text('Done'),
+                      ),
+                    if (_status == 'done')
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF389E0D),
+                          side: const BorderSide(color: Color(0xFF389E0D)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () => _patchStatus('solved'),
+                        child: const Text('Solved'),
+                      ),
+                    if (['done', 'solved'].contains(_status) && _status != 'closed')
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () => _patchStatus('closed'),
+                        child: const Text('Bağla'),
+                      ),
+                    if (['new', 'accepted'].contains(_status))
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: _showRejectReasonDialog,
+                        child: const Text('Rədd et'),
+                      ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 12),
+              const Text('Şərhlər', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Expanded(
+                child: _comments.isEmpty
+                    ? const Center(child: Text('Hələ şərh yoxdur', style: TextStyle(color: Colors.grey)))
+                    : ListView.separated(
+                        itemCount: _comments.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 8),
+                        itemBuilder: (context, index) {
+                          final c = _comments[index] as Map<String, dynamic>;
+                          return Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  c['user_name']?.toString() ?? '',
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(c['body']?.toString() ?? ''),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              const SizedBox(height: 8),
+              if (_canComment)
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _commentCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Şərh yazın',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: _sending ? null : _sendComment,
+                      child: _sending
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Göndər'),
+                    ),
+                  ],
+                )
+              else
+                const Text(
+                  'Bu taska yalnız açan istifadəçi və adminlər şərh yaza bilər.',
+                  style: TextStyle(color: Colors.orange, fontSize: 13),
+                ),
+            ],
+          ),
         ),
       ),
     );

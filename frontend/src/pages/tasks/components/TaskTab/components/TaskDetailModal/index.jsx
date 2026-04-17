@@ -1,11 +1,13 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Modal, Button, Input, Spin, Tag, Row, Col, Divider, message } from 'antd';
+import { FileOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { TASK_STATUSES } from '../../constants';
 import {
     getTaskActivity,
     postTaskActivityComment,
 } from '../../../../../../axios/api/tasks';
+import { getBaseUrl } from '../../../../../../axios/index';
 import { handleApiError } from '../../../../../../utils/errorHandler';
 import CustomerHistoryModal from '../CustomerHistoryModal';
 import styles from './TaskDetailModal.module.scss';
@@ -26,6 +28,18 @@ const StatusBadge = ({ status }) => {
         status === 'arrived' ? 'İcrada' : found?.label || status;
     return <Tag color={found?.color || 'default'}>{label}</Tag>;
 };
+
+/** Backend bəzən nisbi media URL qaytarır — brauzerdə açılması üçün tam ünvan. */
+const resolveMediaUrl = (raw) => {
+    if (raw == null || raw === '') return '';
+    const s = String(raw).trim();
+    if (!s) return '';
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
+    const path = s.startsWith('/') ? s : `/${s}`;
+    return `${getBaseUrl()}${path}`;
+};
+
+const IMAGE_EXT = /\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i;
 
 const TaskDetailModal = ({ open, onCancel, task, services = [], onRefresh }) => {
     const [activities, setActivities] = useState([]);
@@ -55,16 +69,63 @@ const TaskDetailModal = ({ open, onCancel, task, services = [], onRefresh }) => 
         }
     }, [open, task?.id, loadActivity]);
 
+    const mediaItems = useMemo(() => {
+        if (!task) return { images: [], files: [] };
+        const images = [];
+        const files = [];
+
+        const taskServices = task.task_services;
+        if (Array.isArray(taskServices)) {
+            taskServices.forEach((ts) => {
+                const serviceName = ts?.service_name || 'Xidmət';
+                const values = ts?.values;
+                if (!Array.isArray(values)) return;
+                values.forEach((v) => {
+                    const colName = v.column_name || v.column_key || 'Sahə';
+                    const colType = v.column_type || '';
+                    const val = v.value;
+                    if (val == null || val === '') return;
+                    const url = resolveMediaUrl(val);
+                    const label = `${serviceName} — ${colName}`;
+                    if (colType === 'image' || (typeof val === 'string' && IMAGE_EXT.test(val))) {
+                        images.push({ key: `ts-${ts.id}-${v.id}`, url, label });
+                    } else if (colType === 'file') {
+                        files.push({ key: `ts-${ts.id}-${v.id}`, url, label });
+                    }
+                });
+            });
+        }
+
+        const docs = task.task_documents;
+        if (Array.isArray(docs)) {
+            docs.forEach((d) => {
+                const raw = d.file_url || d.file;
+                if (raw == null || raw === '') return;
+                const url = resolveMediaUrl(raw);
+                const title = d.title || d.name || 'Sənəd';
+                if (IMAGE_EXT.test(url)) {
+                    images.push({ key: `doc-${d.id}`, url, label: title });
+                } else {
+                    files.push({ key: `doc-${d.id}`, url, label: title });
+                }
+            });
+        }
+
+        return { images, files };
+    }, [task]);
+
     const handleComment = async () => {
         const t = comment.trim();
         if (!t || !task?.id) return;
         setSubmitting(true);
         try {
-            await postTaskActivityComment(task.id, t);
-            message.success('Şərh əlavə olundu');
+            const res = await postTaskActivityComment(task.id, t);
+            const newAct = res.data;
+            if (newAct && typeof newAct === 'object') {
+                setActivities((prev) => [newAct, ...prev]);
+            }
             setComment('');
-            await loadActivity();
-            onRefresh?.();
+            message.success('Şərh əlavə olundu');
         } catch (e) {
             handleApiError(e, 'Şərh göndərilmədi');
         } finally {
@@ -145,6 +206,39 @@ const TaskDetailModal = ({ open, onCancel, task, services = [], onRefresh }) => 
                         >
                             Tapşırıq tarixçəsinə bax (müştəri üzrə)
                         </Button>
+
+                        {(mediaItems.images.length > 0 || mediaItems.files.length > 0) && (
+                            <>
+                                <h3 className={styles.sectionTitle}>Şəkillər və fayllar</h3>
+                                {mediaItems.images.length > 0 && (
+                                    <div className={styles.mediaGrid}>
+                                        {mediaItems.images.map((item) => (
+                                            <figure key={item.key} className={styles.mediaFigure}>
+                                                <figcaption className={styles.mediaCaption}>{item.label}</figcaption>
+                                                <a href={item.url} target="_blank" rel="noreferrer">
+                                                    <img
+                                                        className={styles.mediaThumb}
+                                                        src={item.url}
+                                                        alt={item.label}
+                                                    />
+                                                </a>
+                                            </figure>
+                                        ))}
+                                    </div>
+                                )}
+                                {mediaItems.files.length > 0 && (
+                                    <ul className={styles.fileList}>
+                                        {mediaItems.files.map((item) => (
+                                            <li key={item.key}>
+                                                <a href={item.url} target="_blank" rel="noreferrer">
+                                                    <FileOutlined /> {item.label}
+                                                </a>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </>
+                        )}
                     </Col>
 
                     <Col xs={24} lg={12}>
