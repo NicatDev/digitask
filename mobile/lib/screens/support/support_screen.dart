@@ -273,7 +273,7 @@ class _SupportRequestDetailDialogState extends State<_SupportRequestDetailDialog
     final s = raw.toString().trim();
     if (s.isEmpty) return '';
     if (s.startsWith('http://') || s.startsWith('https://')) return s;
-    final origin = AppConstants.baseUrl.replaceFirst(RegExp(r'/api\$'), '');
+    final origin = Uri.parse(AppConstants.baseUrl).origin;
     final path = s.startsWith('/') ? s : '/$s';
     return '$origin$path';
   }
@@ -340,18 +340,44 @@ class _SupportRequestDetailDialogState extends State<_SupportRequestDetailDialog
     try {
       final res = await ApiClient().dio.post('/tasks/support-requests/$_id/comment/', data: {'body': text});
       _commentCtrl.clear();
-      if (mounted && res.data is Map<String, dynamic>) {
+      final added = _mapFromResponse(res.data);
+      if (mounted && added != null) {
         setState(() {
-          _comments = [..._comments, res.data];
+          _comments = [..._comments, added];
           _row['comments'] = _comments;
         });
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şərh əlavə olundu')));
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şərh əlavə olundu')));
+        await _reloadDetailFromServer();
       }
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şərh göndərilə bilmədi')));
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Map<String, dynamic>? _mapFromResponse(dynamic data) {
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) {
+      return data.map((k, v) => MapEntry(k.toString(), v));
+    }
+    return null;
+  }
+
+  Future<void> _reloadDetailFromServer() async {
+    try {
+      final res = await ApiClient().dio.get('/tasks/support-requests/$_id/');
+      final map = _mapFromResponse(res.data);
+      if (!mounted || map == null) return;
+      setState(() {
+        _row = map;
+        _comments = List<dynamic>.from(map['comments'] as List? ?? []);
+      });
+    } catch (_) {
+      // noop
     }
   }
 
@@ -476,10 +502,10 @@ class _SupportRequestDetailDialogState extends State<_SupportRequestDetailDialog
                         child: const Text('Bağla'),
                       ),
                     if (['new', 'accepted'].contains(_status))
-                      OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Colors.red),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         onPressed: _showRejectReasonDialog,
@@ -498,7 +524,10 @@ class _SupportRequestDetailDialogState extends State<_SupportRequestDetailDialog
                         itemCount: _comments.length,
                         separatorBuilder: (context, index) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
-                          final c = _comments[index] as Map<String, dynamic>;
+                          final raw = _comments[index];
+                          final c = raw is Map<String, dynamic>
+                              ? raw
+                              : Map<String, dynamic>.from(raw as Map);
                           return Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(

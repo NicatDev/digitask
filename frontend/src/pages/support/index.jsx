@@ -24,6 +24,7 @@ import {
     getSupportRequests,
     setSupportStatus,
 } from '../../axios/api/tasks';
+import { getBaseUrl } from '../../axios/index';
 import { useAuth } from '../../context/AuthContext';
 import styles from './support.module.scss';
 
@@ -47,6 +48,49 @@ const statusColor = {
     done: 'cyan',
     solved: 'green',
     closed: 'default',
+};
+
+const IMAGE_EXT = /\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i;
+
+/** API bəzən nisbi media path qaytarır — açmaq üçün API host ilə tam URL */
+const resolveAttachmentUrl = (raw) => {
+    if (raw == null || raw === '') return '';
+    const s = String(raw).trim();
+    if (!s) return '';
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
+    const path = s.startsWith('/') ? s : `/${s}`;
+    return `${getBaseUrl()}${path}`;
+};
+
+const uploadNormFile = (e) => {
+    if (Array.isArray(e)) return e;
+    return e?.fileList;
+};
+
+const SupportAttachmentBlock = ({ raw }) => {
+    const attUrl = resolveAttachmentUrl(raw);
+    if (!attUrl) return null;
+    const isImg = IMAGE_EXT.test(attUrl);
+    return (
+        <div className={styles.attachmentBlock}>
+            <span className={styles.detailSectionLabel}>Əlavə fayl / şəkil</span>
+            {isImg ? (
+                <a href={attUrl} target="_blank" rel="noreferrer">
+                    <img src={attUrl} alt="Əlavə" className={styles.attachmentPreview} />
+                </a>
+            ) : null}
+            <Alert
+                type="info"
+                showIcon
+                style={{ marginTop: isImg ? 10 : 0 }}
+                message={(
+                    <a href={attUrl} target="_blank" rel="noreferrer">
+                        Faylı / şəkli yeni pəncərədə aç
+                    </a>
+                )}
+            />
+        </div>
+    );
 };
 
 const SupportPage = () => {
@@ -90,8 +134,13 @@ const SupportPage = () => {
         formData.append('summary', values.summary);
         formData.append('current_state', values.current_state);
         formData.append('expected_state', values.expected_state);
-        if (values.attachment?.file?.originFileObj) {
-            formData.append('attachment', values.attachment.file.originFileObj);
+        const fileList = values.attachment;
+        if (Array.isArray(fileList) && fileList.length > 0) {
+            const f = fileList[0]?.originFileObj ?? fileList[0];
+            if (f instanceof Blob) {
+                const name = fileList[0]?.name ?? 'attachment';
+                formData.append('attachment', f, name);
+            }
         }
         setSaving(true);
         try {
@@ -237,8 +286,13 @@ const SupportPage = () => {
                             >
                                 <Input.TextArea rows={isMobile ? 4 : 3} placeholder="Gözlədiyiniz nəticə" />
                             </Form.Item>
-                            <Form.Item name="attachment" label="Şəkil və ya fayl (istəyə bağlı)">
-                                <Dragger beforeUpload={() => false} maxCount={1}>
+                            <Form.Item
+                                name="attachment"
+                                label="Şəkil və ya fayl (istəyə bağlı)"
+                                valuePropName="fileList"
+                                getValueFromEvent={uploadNormFile}
+                            >
+                                <Dragger beforeUpload={() => false} maxCount={1} listType="text">
                                     <p className="ant-upload-drag-icon">
                                         <InboxOutlined />
                                     </p>
@@ -341,17 +395,7 @@ const SupportPage = () => {
                             </Paragraph>,
                         )}
 
-                        {selected.attachment && (
-                            <Alert
-                                type="info"
-                                showIcon
-                                message={(
-                                    <a href={selected.attachment} target="_blank" rel="noreferrer">
-                                        Əlavə faylı / şəkli aç
-                                    </a>
-                                )}
-                            />
-                        )}
+                        {selected.attachment ? <SupportAttachmentBlock raw={selected.attachment} /> : null}
                         {selected.reject_note && (
                             <Alert type="error" showIcon message={`Rədd qeydi: ${selected.reject_note}`} />
                         )}

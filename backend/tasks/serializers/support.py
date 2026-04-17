@@ -64,6 +64,15 @@ class SupportRequestSerializer(serializers.ModelSerializer):
         name = obj.accepted_by.get_full_name().strip()
         return name if name else obj.accepted_by.username
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Brauzer/mobil üçün tam URL (nisbi /media/... yox)
+        if instance.attachment:
+            request = self.context.get("request")
+            url = instance.attachment.url
+            data["attachment"] = request.build_absolute_uri(url) if request else url
+        return data
+
     def validate(self, attrs):
         status = attrs.get("status", self.instance.status if self.instance else SupportRequest.Status.NEW)
         reject_note = (attrs.get("reject_note") or "").strip()

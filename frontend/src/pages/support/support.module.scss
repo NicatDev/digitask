@@ -178,6 +178,22 @@
     margin-bottom: 14px;
 }
 
+.attachmentBlock {
+    margin-bottom: 14px;
+}
+
+.attachmentPreview {
+    display: block;
+    max-width: 100%;
+    max-height: 220px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 10px;
+    border: 1px solid #f0f0f0;
+    background: #fafafa;
+}
+
 .commentRow {
     display: flex;
     flex-direction: column;
