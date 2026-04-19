@@ -15,8 +15,8 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m2
     working_directory: mobile
-    integrations:
-      app_store_connect: codemagic
+    # integrations:
+    #   app_store_connect: codemagic
     environment:
       # ios_signing:
       #   distribution_type: app_store
