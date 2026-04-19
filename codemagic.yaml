@@ -18,9 +18,9 @@ workflows:
     integrations:
       app_store_connect: codemagic
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.digigroup.ios
+      # ios_signing:
+      #   distribution_type: app_store
+      #   bundle_identifier: com.digigroup.ios
       vars:
         APP_STORE_APPLE_ID: "6760935006"
       flutter: stable
