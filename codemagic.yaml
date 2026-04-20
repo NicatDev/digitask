@@ -1,13 +1,4 @@
 # Codemagic CI/CD — DigiTask (Flutter iOS)
-#
-# Before the first successful build:
-# 1. Codemagic → Team settings → Integrations → add App Store Connect API key.
-#    Use the same "reference name" in `integrations.app_store_connect` below (default: codemagic).
-# 2. Codemagic → codemagic.yaml settings → Code signing identities:
-#    iOS certificate + App Store provisioning profile for bundle id com.digigroup.ios
-# 3. Application Apple ID: App Store Connect → your app → General → App Information → Apple ID
-#
-# Docs: https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app/
 
 workflows:
   ios-flutter-release:
@@ -15,38 +6,56 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m2
     working_directory: mobile
+
     integrations:
       app_store_connect: digitask
+
     environment:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.digigroup.ios
+        provisioning_profiles:
+          - digitask_app   # 👈 SƏNİN YENİ PUSH ENABLE PROFILE
+
       vars:
         APP_STORE_APPLE_ID: "6760935006"
+
       flutter: stable
       xcode: latest
       cocoapods: default
+
     scripts:
       - name: Set up code signing settings on Xcode project
         script: xcode-project use-profiles
+
+      - name: Debug provisioning profiles
+        script: |
+          echo "Available provisioning profiles:"
+          ls ~/Library/MobileDevice/Provisioning\ Profiles/
+
       - name: Get Flutter packages
         script: flutter pub get
+
       - name: Install CocoaPods dependencies
         script: |
           find . -name "Podfile" -execdir pod install \;
+
+      - name: Set build number
+        script: |
+          BUILD_NUMBER=$(($(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID") + 1))
+          echo "Using build number: $BUILD_NUMBER"
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $CM_ENV
+
       - name: Flutter build ipa
         script: |
-          flutter build ipa --release \
-            --build-name=1.0.0 \
-            # --build-number=$(($(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID") + 3)) \
-            --build-number=4 \
-            --export-options-plist=/Users/builder/export_options.plist
+          flutter build ipa --release --build-name=1.0.0 --build-number=$BUILD_NUMBER
+
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
+
     publishing:
       app_store_connect:
         auth: integration
-        # Set to true after TestFlight beta groups exist in App Store Connect
         submit_to_testflight: true
         submit_to_app_store: true
