@@ -13,11 +13,11 @@ workflows:
       app_store_connect: digitask
 
     environment:
-    ios_signing:
-      distribution_type: app_store
-      bundle_identifier: com.digigroup.ios
-      provisioning_profiles:
-        - digitask_app
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.digigroup.ios
+        provisioning_profiles:
+          - digitask_app
        
       vars:
         APP_STORE_APPLE_ID: "6760935006"
