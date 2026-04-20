@@ -14,8 +14,6 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.digigroup.ios
-        provisioning_profiles:
-          - digitask_app   # 👈 SƏNİN YENİ PUSH ENABLE PROFILE
 
       vars:
         APP_STORE_APPLE_ID: "6760935006"
