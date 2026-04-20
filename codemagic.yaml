@@ -16,6 +16,8 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.digigroup.ios
+        provisioning_profiles:
+          - digitask_app
 
       vars:
         APP_STORE_APPLE_ID: "6760935006"
@@ -25,9 +27,12 @@ workflows:
       cocoapods: default
 
     scripts:
+      - name: Clean
+        script: flutter clean
 
-      - name: Force signing refresh
-        script: xcode-project use-profiles --verbose
+      - name: Setup signing
+        script: |
+          xcode-project use-profiles --verbose
 
       - name: Debug provisioning profiles
         script: |
