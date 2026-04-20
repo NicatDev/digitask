@@ -14,10 +14,8 @@ workflows:
 
     environment:
       ios_signing:
-        provisioning_profiles:
-          - digitask
-        # distribution_type: app_store
-        # bundle_identifier: com.digigroup.ios
+        distribution_type: app_store
+        bundle_identifier: com.digigroup.ios
        
 
       vars:
