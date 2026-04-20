@@ -25,10 +25,6 @@ workflows:
       cocoapods: default
 
     scripts:
-      - name: Clean iOS cache
-        script: |
-          rm -rf ~/Library/MobileDevice/Provisioning\ Profiles/*
-          flutter clean
 
       - name: Force signing refresh
         script: xcode-project use-profiles --verbose
@@ -37,11 +33,6 @@ workflows:
         script: |
           echo "Available provisioning profiles:"
           ls ~/Library/MobileDevice/Provisioning\ Profiles/
-
-      - name: Clean iOS build
-        script: |
-          flutter clean
-          rm -rf ios/Pods ios/Podfile.lock
 
       - name: Get Flutter packages
         script: flutter pub get
