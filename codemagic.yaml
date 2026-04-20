@@ -1,4 +1,6 @@
 # Codemagic CI/CD — DigiTask (Flutter iOS)
+#
+# Dashboard → Code signing identities: remove extra provisioning profiles; keep only digitask_app.
 
 workflows:
   ios-flutter-release:
@@ -46,6 +48,8 @@ workflows:
 
       - name: Flutter build ipa
         script: |
+          flutter clean
+          flutter pub get
           flutter build ipa --release --build-name=1.0.0 --build-number=$BUILD_NUMBER
 
     artifacts:
