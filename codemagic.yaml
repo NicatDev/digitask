@@ -33,6 +33,11 @@ workflows:
           echo "Available provisioning profiles:"
           ls ~/Library/MobileDevice/Provisioning\ Profiles/
 
+      - name: Clean iOS build
+        script: |
+          flutter clean
+          rm -rf ios/Pods ios/Podfile.lock
+
       - name: Get Flutter packages
         script: flutter pub get
 
@@ -46,9 +51,8 @@ workflows:
           echo "Using build number: $BUILD_NUMBER"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $CM_ENV
 
-      - name: Flutter build ipa
+      - name: Build IPA
         script: |
-          flutter clean
           flutter pub get
           flutter build ipa --release --build-name=1.0.0 --build-number=$BUILD_NUMBER
 
