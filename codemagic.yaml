@@ -25,8 +25,13 @@ workflows:
       cocoapods: default
 
     scripts:
-      - name: Set up code signing settings on Xcode project
-        script: xcode-project use-profiles
+      - name: Clean iOS cache
+        script: |
+          rm -rf ~/Library/MobileDevice/Provisioning\ Profiles/*
+          flutter clean
+
+      - name: Force signing refresh
+        script: xcode-project use-profiles --verbose
 
       - name: Debug provisioning profiles
         script: |
