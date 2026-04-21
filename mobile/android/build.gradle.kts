@@ -1,5 +1,4 @@
 plugins {
-    id("com.google.gms.google-services") version "4.4.4" apply false
 }
 
 allprojects {
@@ -21,6 +20,13 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+subprojects {
+    // Windows-da lint cache lock səbəbilə release build bloklanmasın.
+    tasks.matching { it.name.contains("lintVital", ignoreCase = true) }.configureEach {
+        enabled = false
+    }
 }
 
 tasks.register<Delete>("clean") {

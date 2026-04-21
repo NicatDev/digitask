@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/constants.dart';
 import 'package:mobile/core/services/chat_service.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 final _imageUrlRe = RegExp(r'\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$', caseSensitive: false);
 
@@ -212,10 +213,24 @@ class _SupportScreenState extends State<SupportScreen> {
     );
   }
 
+  void _triggerTestCrash() {
+    FirebaseCrashlytics.instance.log('Manual Crash button pressed from SupportScreen');
+    FirebaseCrashlytics.instance.crash();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Support')),
+      appBar: AppBar(
+        title: const Text('Support'),
+        actions: [
+          IconButton(
+            tooltip: 'Test Crash',
+            onPressed: _triggerTestCrash,
+            icon: const Icon(Icons.bug_report),
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: _loadSupports,
         child: ListView(
