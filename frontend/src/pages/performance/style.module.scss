@@ -1,6 +1,33 @@
 .performancePage {
-
     height: 100%;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0 12px 24px;
+
+    @media (min-width: 768px) {
+        padding: 0 0 24px;
+    }
+
+    .pageTitle {
+        margin-top: 0;
+        margin-bottom: 16px;
+        word-break: break-word;
+    }
+
+    /* Mobil: cədvəl üfüqi scroll + toxunma ilə sürüşdürmə */
+    .tableScroll {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+
+        :global(.ant-table) {
+            min-width: 720px;
+        }
+    }
 
     :global {
         .ant-card {

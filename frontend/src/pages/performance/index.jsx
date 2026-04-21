@@ -89,8 +89,8 @@ const PerformancePage = () => {
     const expandedRowRender = (record) => {
         return (
             <div style={{ padding: '20px', background: '#fafafa', borderRadius: '8px' }}>
-                <Row gutter={24}>
-                    <Col span={12}>
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} lg={12}>
                         <h4 style={{ marginBottom: 16 }}>Tapşırıq Növləri (Detallı)</h4>
                         <Space wrap>
                              {record.breakdown.types.length > 0 ? (
@@ -104,7 +104,7 @@ const PerformancePage = () => {
                             )}
                         </Space>
                     </Col>
-                    <Col span={12}>
+                    <Col xs={24} lg={12}>
                         <h4 style={{ marginBottom: 16 }}>Servislər (Detallı)</h4>
                         <Space wrap>
                             {record.breakdown.services.length > 0 ? (
@@ -125,11 +125,11 @@ const PerformancePage = () => {
 
     return (
         <div className={styles.performancePage}>
-       
-                    <Title level={2} >İşçi Performansı</Title>
-                    
-            
+            <Title level={2} className={styles.pageTitle}>
+                İşçi Performansı
+            </Title>
 
+            <div className={styles.tableScroll}>
                 <Table
                     loading={loading}
                     columns={columns}
@@ -137,8 +137,9 @@ const PerformancePage = () => {
                     rowKey={record => record.user.id}
                     expandable={{ expandedRowRender }}
                     pagination={false}
+                    scroll={{ x: 'max-content' }}
                 />
-         
+            </div>
         </div>
     );
 };
