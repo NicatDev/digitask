@@ -489,7 +489,6 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
   }
 
   String _statusLabel(String status) {
-    if (status == 'arrived') return 'İcrada';
     switch (status) {
       case 'todo':
         return 'Gözleyir';

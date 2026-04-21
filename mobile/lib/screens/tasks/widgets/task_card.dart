@@ -40,9 +40,7 @@ class TaskCard extends StatelessWidget {
     
     // Status Color & English labels
     Color statusColor = Colors.grey;
-    final String rawStatus = task['status'] ?? 'todo';
-    // Legacy DB rows may still have status "arrived" — treat as in progress for display
-    final String statusKey = rawStatus == 'arrived' ? 'in_progress' : rawStatus;
+    final String statusKey = task['status'] ?? 'todo';
     const statusLabels = {
       'todo': 'GÖZLEYİR',
       'in_progress': 'ICRADA',

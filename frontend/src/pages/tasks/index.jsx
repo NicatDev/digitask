@@ -12,7 +12,7 @@ const { Title } = Typography;
 const Tasks = () => {
     const [activeTab, setActiveTab] = useState('1');
     const { user } = useAuth();
-    const canSeeBulkImport = Boolean(user?.is_admin || user?.is_super_admin);
+    const canSeeCustomerDataTools = Boolean(user?.is_admin || user?.is_super_admin);
 
     const items = [
         {
@@ -25,11 +25,11 @@ const Tasks = () => {
             label: 'Müştərilər',
             children: <CustomerTab isActive={activeTab === '2'} />,
         },
-        ...(canSeeBulkImport
+        ...(canSeeCustomerDataTools
             ? [
                 {
                     key: '3',
-                    label: 'Bulk Import',
+                    label: 'Managing customer datas',
                     children: <CustomerImportTab />,
                 },
             ]

@@ -22,11 +22,8 @@ const Field = ({ label, children }) => (
 );
 
 const StatusBadge = ({ status }) => {
-    const normalized = status === 'arrived' ? 'in_progress' : status;
-    const found = TASK_STATUSES.find((s) => s.value === normalized);
-    const label =
-        status === 'arrived' ? 'İcrada' : found?.label || status;
-    return <Tag color={found?.color || 'default'}>{label}</Tag>;
+    const found = TASK_STATUSES.find((s) => s.value === status);
+    return <Tag color={found?.color || 'default'}>{found?.label || status}</Tag>;
 };
 
 /** Backend bəzən nisbi media URL qaytarır — brauzerdə açılması üçün tam ünvan. */

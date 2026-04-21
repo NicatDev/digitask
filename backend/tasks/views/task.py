@@ -1,9 +1,5 @@
-from datetime import date
-
 from django.db import models, transaction
-from django.utils import timezone
 from django.db.models import Case, IntegerField, Value, When
-from django.db.models.functions import Coalesce
 from django.db.models.functions import Cast
 from django.contrib.auth import get_user_model
 from django.http import Http404
@@ -108,61 +104,59 @@ class TaskViewSet(viewsets.ModelViewSet):
         if date_to:
             queryset = queryset.filter(created_at__date__lte=date_to)
         
-        # Search - title, customer name, register_number, note
-        search = self.request.query_params.get('search')
+        # Ümumi axtarış — başlıq, müştəri, qeydiyyat, qeyd, ID mətni
+        search = (self.request.query_params.get('search') or '').strip()
+        id_search = (self.request.query_params.get('id_search') or '').strip()
+        register_number_search = (self.request.query_params.get('register_number_search') or '').strip()
+
+        # ID sütunu: yalnız rəqəmsə dəqiq pk, əks halda mətn üzrə icontains
+        id_search_non_digit = bool(id_search) and not id_search.isdigit()
+        if search or id_search_non_digit:
+            queryset = queryset.annotate(str_id=Cast('id', output_field=models.TextField()))
+
         if search:
-            queryset = queryset.annotate(str_id=Cast('id', output_field=models.TextField())).filter(
+            queryset = queryset.filter(
                 models.Q(str_id__icontains=search) |
                 models.Q(title__icontains=search) |
                 models.Q(customer__full_name__icontains=search) |
                 models.Q(customer__register_number__icontains=search) |
                 models.Q(note__icontains=search)
             )
-        
+
+        if id_search:
+            if id_search.isdigit():
+                queryset = queryset.filter(id=int(id_search))
+            else:
+                queryset = queryset.filter(str_id__icontains=id_search)
+
+        if register_number_search:
+            queryset = queryset.filter(customer__register_number__icontains=register_number_search)
+
         queryset = queryset.distinct()
 
-        today = timezone.localdate()
-        queryset = queryset.annotate(
-            _reg_task_order=Case(
-                When(
-                    models.Q(assigned_to=user) & ~models.Q(status='todo'),
-                    then=Value(0),
+        # Cədvəl sırası: ordering verilərsə həmin sütun (whitelist), yoxsa status ardıcıllığı
+        ordering = (self.request.query_params.get('ordering') or '').strip()
+        ordering_whitelist = {
+            'id': ('id', '-created_at'),
+            '-id': ('-id', '-created_at'),
+            'register_number': ('customer__register_number', 'id', '-created_at'),
+            '-register_number': ('-customer__register_number', 'id', '-created_at'),
+        }
+
+        if ordering in ordering_whitelist:
+            queryset = queryset.order_by(*ordering_whitelist[ordering])
+        else:
+            queryset = queryset.annotate(
+                _status_order=Case(
+                    When(status__in=['in_progress', 'arrived'], then=Value(0)),
+                    When(status=Task.Status.TODO, then=Value(1)),
+                    When(status=Task.Status.PENDING, then=Value(2)),
+                    When(status=Task.Status.DONE, then=Value(3)),
+                    When(status=Task.Status.REJECTED, then=Value(4)),
+                    default=Value(99),
+                    output_field=IntegerField(),
                 ),
-                default=Value(1),
-                output_field=IntegerField(),
-            ),
-            _pending_today=Case(
-                When(
-                    models.Q(assigned_to=user)
-                    & models.Q(status=Task.Status.PENDING)
-                    & models.Q(rescheduled_date=today),
-                    then=Value(0),
-                ),
-                default=Value(1),
-                output_field=IntegerField(),
-            ),
-            _pending_boost=Case(
-                When(
-                    models.Q(assigned_to=user)
-                    & models.Q(status=Task.Status.PENDING)
-                    & models.Q(rescheduled_date__isnull=False),
-                    then=Value(0),
-                ),
-                default=Value(1),
-                output_field=IntegerField(),
-            ),
-            _reschedule_sort=Coalesce(
-                'rescheduled_date',
-                Value(date(9999, 12, 31)),
-                output_field=models.DateField(),
-            ),
-        ).order_by(
-            '_pending_today',
-            '_pending_boost',
-            '_reschedule_sort',
-            '_reg_task_order',
-            '-created_at',
-        )
+            ).order_by('_status_order', '-created_at')
 
         # Annotasiyada assigned_to (M2M) join-u eyni Task üçün bir neçə sətir yarada bilər;
         # əks halda .get(pk=...) → MultipleObjectsReturned (məs. /tasks/116/activity/).
@@ -272,7 +266,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         qs = (
             self.get_queryset()
             .filter(customer_id=task.customer_id)
-            .order_by('created_at')
+            .order_by('_status_order', '-created_at')
             .prefetch_related('assigned_to')
         )
         return Response(TaskCustomerHistorySerializer(qs, many=True).data)
@@ -290,7 +284,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         qs = (
             self.get_queryset()
             .filter(customer_id=customer_id)
-            .order_by('created_at')
+            .order_by('_status_order', '-created_at')
             .prefetch_related('assigned_to')
         )
         return Response(TaskCustomerHistorySerializer(qs, many=True).data)

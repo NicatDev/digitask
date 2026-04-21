@@ -172,6 +172,13 @@ class TaskSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if data.get('status') == 'arrived':
+            data['status'] = Task.Status.IN_PROGRESS
+            data['status_display'] = Task.Status.IN_PROGRESS.label
+        return data
+
     def validate(self, attrs):
         status = attrs.get('status', self.instance.status if self.instance else Task.Status.TODO)
         if status == Task.Status.PENDING:
@@ -263,3 +270,10 @@ class TaskCustomerHistorySerializer(serializers.ModelSerializer):
             full_name = user.get_full_name()
             result.append(full_name if full_name else user.username)
         return result
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if data.get('status') == 'arrived':
+            data['status'] = Task.Status.IN_PROGRESS
+            data['status_display'] = Task.Status.IN_PROGRESS.label
+        return data

@@ -1,5 +1,8 @@
 import React from 'react';
-import { Table, Button, Switch, Tooltip, Popconfirm, message, Space, Tag } from 'antd';
+
+/** Serverdə ordering; cədvəl mövcud səhifəni yenidən qarışdırmır */
+const serverSideSorter = { compare: () => 0 };
+import { Table, Button, Switch, Tooltip, Popconfirm, message, Space, Tag, Input } from 'antd';
 import { EnvironmentOutlined, FileAddOutlined, UserAddOutlined, TeamOutlined } from '@ant-design/icons';
 import { TASK_STATUSES } from '../../constants';
 import { useAuth } from '../../../../../../context/AuthContext';
@@ -7,7 +10,6 @@ import styles from '../../style.module.scss';
 
 // Helper to get status label
 const getStatusLabel = (status) => {
-    if (status === 'arrived') return 'İcrada';
     const found = TASK_STATUSES.find(s => s.value === status);
     return found ? found.label : status;
 };
@@ -16,7 +18,7 @@ const getStatusLabel = (status) => {
 const isPendingRescheduledHighlight = (record, user) => {
     const assigneeIds = record.assigned_to || [];
     const isAssignee = user && assigneeIds.includes(user.id);
-    const st = record.status === 'arrived' ? 'in_progress' : record.status;
+    const st = record.status;
     return Boolean(isAssignee && st === 'pending' && record.rescheduled_date);
 };
 
@@ -49,9 +51,27 @@ const TaskTable = ({
     onJoinTask,
     pagination,
     onChange,
+    tableOrdering = null,
+    columnIdSearch = '',
+    columnRegisterSearch = '',
+    onColumnIdInputChange,
+    onColumnIdFilterClear,
+    onColumnIdFilterFlush,
+    onColumnRegisterInputChange,
+    onColumnRegisterFilterClear,
+    onColumnRegisterFilterFlush,
     disableActions = false
 }) => {
     const { user } = useAuth();
+
+    const idSortOrder =
+        tableOrdering === 'id' ? 'ascend' : tableOrdering === '-id' ? 'descend' : null;
+    const registerSortOrder =
+        tableOrdering === 'register_number'
+            ? 'ascend'
+            : tableOrdering === '-register_number'
+              ? 'descend'
+              : null;
 
     const tableColumns = [
         {
@@ -59,6 +79,55 @@ const TaskTable = ({
             dataIndex: 'id',
             key: 'id',
             width: 72,
+            sorter: serverSideSorter,
+            sortOrder: idSortOrder,
+            sortDirections: ['ascend', 'descend'],
+            showSorterTooltip: false,
+            filteredValue: columnIdSearch ? [columnIdSearch] : null,
+            filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+                <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
+                    <Input
+                        placeholder="ID (məs. 140) — avtomatik sorğu"
+                        value={selectedKeys[0] ?? ''}
+                        allowClear
+                        onChange={(e) => {
+                            const v = e.target.value;
+                            setSelectedKeys(v ? [v] : []);
+                            onColumnIdInputChange?.(v);
+                        }}
+                        onPressEnter={(e) => {
+                            const v = e.currentTarget.value;
+                            setSelectedKeys(v ? [v] : []);
+                            confirm();
+                            onColumnIdFilterFlush?.(v);
+                        }}
+                        style={{ marginBottom: 8, display: 'block' }}
+                    />
+                    <Space>
+                        <Button
+                            type="primary"
+                            onClick={() => {
+                                confirm();
+                                onColumnIdFilterFlush?.(selectedKeys[0] ?? '');
+                            }}
+                            size="small"
+                        >
+                            İndi axtar
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                setSelectedKeys([]);
+                                clearFilters?.();
+                                confirm();
+                                onColumnIdFilterClear?.('');
+                            }}
+                            size="small"
+                        >
+                            Sıfırla
+                        </Button>
+                    </Space>
+                </div>
+            ),
             render: (id, record) => {
                 const mark = isPendingRescheduledHighlight(record, user);
                 return (
@@ -109,7 +178,60 @@ const TaskTable = ({
         },
         { title: 'Müştəri', dataIndex: 'customer_name', key: 'customer_name' },
         { title: 'Əlaqə No', dataIndex: 'customer_phone', key: 'customer_phone' },
-        { title: 'Qeydiyyat No', dataIndex: 'customer_register_number', key: 'customer_register_number' },
+        {
+            title: 'Qeydiyyat No',
+            dataIndex: 'customer_register_number',
+            key: 'customer_register_number',
+            sorter: serverSideSorter,
+            sortOrder: registerSortOrder,
+            sortDirections: ['ascend', 'descend'],
+            showSorterTooltip: false,
+            filteredValue: columnRegisterSearch ? [columnRegisterSearch] : null,
+            filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+                <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
+                    <Input
+                        placeholder="Qeydiyyat № — avtomatik sorğu"
+                        value={selectedKeys[0] ?? ''}
+                        allowClear
+                        onChange={(e) => {
+                            const v = e.target.value;
+                            setSelectedKeys(v ? [v] : []);
+                            onColumnRegisterInputChange?.(v);
+                        }}
+                        onPressEnter={(e) => {
+                            const v = e.currentTarget.value;
+                            setSelectedKeys(v ? [v] : []);
+                            confirm();
+                            onColumnRegisterFilterFlush?.(v);
+                        }}
+                        style={{ marginBottom: 8, display: 'block' }}
+                    />
+                    <Space>
+                        <Button
+                            type="primary"
+                            onClick={() => {
+                                confirm();
+                                onColumnRegisterFilterFlush?.(selectedKeys[0] ?? '');
+                            }}
+                            size="small"
+                        >
+                            İndi axtar
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                setSelectedKeys([]);
+                                clearFilters?.();
+                                confirm();
+                                onColumnRegisterFilterClear?.('');
+                            }}
+                            size="small"
+                        >
+                            Sıfırla
+                        </Button>
+                    </Space>
+                </div>
+            ),
+        },
         { title: 'Qrup', dataIndex: 'group_name', key: 'group_name' },
         {
             title: 'Servislər',
@@ -230,14 +352,11 @@ const TaskTable = ({
             dataIndex: 'status',
             width: 125,
             key: 'status',
-            render: (status) => {
-                const badgeKey = status === 'arrived' ? 'in_progress' : status;
-                return (
-                    <span className={`${styles.statusBadge} ${styles[badgeKey] || ''}`}>
-                        {getStatusLabel(status)}
-                    </span>
-                );
-            }
+            render: (status) => (
+                <span className={`${styles.statusBadge} ${styles[status] || ''}`}>
+                    {getStatusLabel(status)}
+                </span>
+            )
         },
         {
             title: 'Aktiv',
@@ -283,7 +402,7 @@ const TaskTable = ({
             loading={loading}
             scroll={{ x: 1600 }}
             pagination={pagination}
-            onChange={onChange}
+            onChange={(pag, filters, sorter, extra) => onChange?.(pag, filters, sorter, extra)}
         />
     );
 };

@@ -78,9 +78,6 @@ class _TaskFormModalState extends State<TaskFormModal> {
     }
 
     _status = t?['status'] ?? 'todo';
-    if (_status == 'arrived') {
-      _status = 'in_progress';
-    }
     _isActive = t?['is_active'] ?? true;
 
     if (t?['services'] != null) {

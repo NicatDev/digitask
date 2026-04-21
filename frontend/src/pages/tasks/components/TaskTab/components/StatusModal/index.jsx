@@ -19,12 +19,10 @@ const StatusModal = ({
 
     useEffect(() => {
         if (open) {
-            const normalized =
-                initialStatus === 'arrived' ? 'in_progress' : initialStatus;
             form.setFieldsValue({
-                status: normalized,
+                status: initialStatus,
                 rescheduled_date:
-                    initialRescheduledDate && normalized === 'pending'
+                    initialRescheduledDate && initialStatus === 'pending'
                         ? dayjs(initialRescheduledDate)
                         : undefined
             });

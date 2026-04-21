@@ -39,7 +39,7 @@ class _StatusModalState extends State<StatusModal> {
   void initState() {
     super.initState();
     final raw = widget.task['status'] ?? 'todo';
-    _status = raw == 'arrived' ? 'in_progress' : raw.toString();
+    _status = raw.toString();
     _rescheduledDate = _parseDate(widget.task['rescheduled_date']);
   }
 

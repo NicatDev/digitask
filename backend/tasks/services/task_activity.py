@@ -3,6 +3,8 @@ from ..models import Task, TaskActivity
 
 def task_status_label(value):
     """Human-readable label for a Task.Status value string."""
+    if value == 'arrived':
+        value = Task.Status.IN_PROGRESS
     for c in Task.Status:
         if c.value == value:
             return c.label

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Form, message, Grid } from 'antd';
 import dayjs from 'dayjs';
 import L from 'leaflet';
@@ -60,6 +60,27 @@ const TaskTab = ({ isActive }) => {
     const [isActiveFilter, setIsActiveFilter] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
 
+    /** Cədvəl: backend sıralama (null = standart status ardıcıllığı) */
+    const [tableOrdering, setTableOrdering] = useState(null);
+    const [columnIdSearch, setColumnIdSearch] = useState('');
+    const [columnRegisterSearch, setColumnRegisterSearch] = useState('');
+
+    const tableOrderingRef = useRef(null);
+    const columnRegisterSearchRef = useRef('');
+    const columnIdSearchRef = useRef('');
+    const idSearchDebounceRef = useRef(null);
+    const regSearchDebounceRef = useRef(null);
+
+    useEffect(() => {
+        tableOrderingRef.current = tableOrdering;
+    }, [tableOrdering]);
+    useEffect(() => {
+        columnRegisterSearchRef.current = columnRegisterSearch;
+    }, [columnRegisterSearch]);
+    useEffect(() => {
+        columnIdSearchRef.current = columnIdSearch;
+    }, [columnIdSearch]);
+
     // Modal States
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
@@ -112,6 +133,24 @@ const TaskTab = ({ isActive }) => {
                 queryParams.date_to = dateRange[1].format('YYYY-MM-DD');
             }
 
+            const orderingVal = params.ordering !== undefined ? params.ordering : tableOrdering;
+            if (orderingVal) {
+                queryParams.ordering = orderingVal;
+            }
+
+            const idCol = params.id_search !== undefined ? params.id_search : columnIdSearch;
+            if (idCol && String(idCol).trim()) {
+                queryParams.id_search = String(idCol).trim();
+            }
+
+            const regCol =
+                params.register_number_search !== undefined
+                    ? params.register_number_search
+                    : columnRegisterSearch;
+            if (regCol && String(regCol).trim()) {
+                queryParams.register_number_search = String(regCol).trim();
+            }
+
             const [tasksRes, groupsRes, usersRes, servicesRes, columnsRes, taskTypesRes] = await Promise.all([
                 getTasks(queryParams),
                 getGroups(),
@@ -162,10 +201,124 @@ const TaskTab = ({ isActive }) => {
         }
     }, [debouncedSearchText, statusFilter, customerFilter, groupFilter, assigneeFilter, isActiveFilter, dateRange]);
 
-    const handleTableChange = (newPagination) => {
+    const clearColumnSearchDebounces = () => {
+        if (idSearchDebounceRef.current) {
+            clearTimeout(idSearchDebounceRef.current);
+            idSearchDebounceRef.current = null;
+        }
+        if (regSearchDebounceRef.current) {
+            clearTimeout(regSearchDebounceRef.current);
+            regSearchDebounceRef.current = null;
+        }
+    };
+
+    const scheduleColumnIdSearch = (raw) => {
+        const v = raw != null ? String(raw).trim() : '';
+        if (idSearchDebounceRef.current) clearTimeout(idSearchDebounceRef.current);
+        idSearchDebounceRef.current = setTimeout(() => {
+            idSearchDebounceRef.current = null;
+            setColumnIdSearch(v);
+            fetchData({
+                page: 1,
+                id_search: v,
+                register_number_search: columnRegisterSearchRef.current,
+                ordering: tableOrderingRef.current,
+            });
+        }, 400);
+    };
+
+    const flushColumnIdSearch = (raw) => {
+        if (idSearchDebounceRef.current) {
+            clearTimeout(idSearchDebounceRef.current);
+            idSearchDebounceRef.current = null;
+        }
+        const v = raw != null ? String(raw).trim() : '';
+        setColumnIdSearch(v);
         fetchData({
-            page: newPagination.current,
-            pageSize: newPagination.pageSize,
+            page: 1,
+            id_search: v,
+            register_number_search: columnRegisterSearchRef.current,
+            ordering: tableOrderingRef.current,
+        });
+    };
+
+    const scheduleColumnRegisterSearch = (raw) => {
+        const v = raw != null ? String(raw).trim() : '';
+        if (regSearchDebounceRef.current) clearTimeout(regSearchDebounceRef.current);
+        regSearchDebounceRef.current = setTimeout(() => {
+            regSearchDebounceRef.current = null;
+            setColumnRegisterSearch(v);
+            fetchData({
+                page: 1,
+                register_number_search: v,
+                id_search: columnIdSearchRef.current,
+                ordering: tableOrderingRef.current,
+            });
+        }, 400);
+    };
+
+    const flushColumnRegisterSearch = (raw) => {
+        if (regSearchDebounceRef.current) {
+            clearTimeout(regSearchDebounceRef.current);
+            regSearchDebounceRef.current = null;
+        }
+        const v = raw != null ? String(raw).trim() : '';
+        setColumnRegisterSearch(v);
+        fetchData({
+            page: 1,
+            register_number_search: v,
+            id_search: columnIdSearchRef.current,
+            ordering: tableOrderingRef.current,
+        });
+    };
+
+    const handleTableChange = (newPagination, _filters, sorter, extra) => {
+        const s = Array.isArray(sorter) ? sorter[0] : sorter;
+        const colKey = s?.columnKey ?? s?.field;
+        const ord = s?.order;
+
+        const nextPage = newPagination?.current ?? pagination.current;
+        const nextPageSize = newPagination?.pageSize ?? pagination.pageSize;
+
+        if (extra?.action === 'sort') {
+            clearColumnSearchDebounces();
+            let nextOrdering = null;
+            if (colKey && (ord === 'ascend' || ord === 'descend')) {
+                if (colKey === 'id') {
+                    nextOrdering = ord === 'ascend' ? 'id' : '-id';
+                } else if (colKey === 'customer_register_number') {
+                    nextOrdering = ord === 'ascend' ? 'register_number' : '-register_number';
+                }
+            }
+            setTableOrdering(nextOrdering);
+            fetchData({ page: 1, pageSize: nextPageSize, ordering: nextOrdering });
+            return;
+        }
+
+        if (extra?.action === 'paginate') {
+            fetchData({ page: nextPage, pageSize: nextPageSize });
+            return;
+        }
+
+        let nextOrdering = tableOrdering;
+        if (colKey && (ord === 'ascend' || ord === 'descend')) {
+            if (colKey === 'id') {
+                nextOrdering = ord === 'ascend' ? 'id' : '-id';
+            } else if (colKey === 'customer_register_number') {
+                nextOrdering = ord === 'ascend' ? 'register_number' : '-register_number';
+            }
+        } else if (colKey && !ord) {
+            nextOrdering = null;
+        } else {
+            nextOrdering = tableOrdering;
+        }
+
+        const sortChanged = nextOrdering !== tableOrdering;
+        setTableOrdering(nextOrdering);
+        fetchData({
+            page: sortChanged ? 1 : nextPage,
+            pageSize: nextPageSize,
+            ordering: nextOrdering,
         });
     };
 
@@ -252,10 +405,9 @@ const TaskTab = ({ isActive }) => {
 
     const openEditModal = (record) => {
         setEditingItem(record);
-        const st = record.status === 'arrived' ? 'in_progress' : record.status;
         form.setFieldsValue({
             ...record,
-            status: st,
+            status: record.status,
             services: record.services,
             rescheduled_date: record.rescheduled_date ? dayjs(record.rescheduled_date) : undefined
         });
@@ -352,6 +504,15 @@ const TaskTab = ({ isActive }) => {
                 loading={loading}
                 pagination={pagination}
                 onChange={handleTableChange}
+                tableOrdering={tableOrdering}
+                columnIdSearch={columnIdSearch}
+                columnRegisterSearch={columnRegisterSearch}
+                onColumnIdInputChange={scheduleColumnIdSearch}
+                onColumnIdFilterClear={flushColumnIdSearch}
+                onColumnIdFilterFlush={flushColumnIdSearch}
+                onColumnRegisterInputChange={scheduleColumnRegisterSearch}
+                onColumnRegisterFilterClear={flushColumnRegisterSearch}
+                onColumnRegisterFilterFlush={flushColumnRegisterSearch}
                 services={services}
                 onEdit={openEditModal}
                 disableActions={!hasPermission(user, PERMISSIONS.TASK_WRITER)}
