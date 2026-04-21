@@ -39,7 +39,7 @@ class _TaskFilterModalState extends State<TaskFilterModal> {
     {'value': 'todo', 'label': 'Gözləyir'},
     {'value': 'in_progress', 'label': 'İcrada'},
     {'value': 'done', 'label': 'Tamamlandı'},
-    {'value': 'pending', 'label': 'Təxirə salındı'},
+    {'value': 'pending', 'label': 'Təxirə salınmış'},
     {'value': 'rejected', 'label': 'Rədd edildi'},
   ];
 

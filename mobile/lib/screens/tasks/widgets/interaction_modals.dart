@@ -23,7 +23,7 @@ class _StatusModalState extends State<StatusModal> {
     {'value': 'todo', 'label': 'Gözləyir', 'color': 'grey'},
     {'value': 'in_progress', 'label': 'İcrada', 'color': 'blue'},
     {'value': 'done', 'label': 'Bitib', 'color': 'green'},
-    {'value': 'pending', 'label': 'Gözləmədə', 'color': 'red'},
+    {'value': 'pending', 'label': 'Təxirə salınmış', 'color': 'red'},
     {'value': 'rejected', 'label': 'Rədd edilib', 'color': 'black'},
   ];
 

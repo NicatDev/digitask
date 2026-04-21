@@ -47,7 +47,7 @@ class _TaskFormModalState extends State<TaskFormModal> {
     {'value': 'todo', 'label': 'Gözləyir'},
     {'value': 'in_progress', 'label': 'İcrada'},
     {'value': 'done', 'label': 'Bitib'},
-    {'value': 'pending', 'label': 'Gözləmədə'},
+    {'value': 'pending', 'label': 'Təxirə salınmış'},
     {'value': 'rejected', 'label': 'Rədd edilib'},
   ];
 

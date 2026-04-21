@@ -503,7 +503,7 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
       case 'done':
         return 'Tamamlandı';
       case 'pending':
-        return 'Gözləmədə';
+        return 'Təxirə salınmış';
       case 'rejected':
         return 'Rədd edildi';
       default:

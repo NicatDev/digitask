@@ -46,7 +46,7 @@ class TaskCard extends StatelessWidget {
       'in_progress': 'ICRADA',
       'review': 'YOXLAMA',
       'done': 'BİTİB',
-      'pending': 'GÖZLEMEDE',
+      'pending': 'TƏXİRƏ SALINMIŞ',
       'rejected': 'REDD EDİLİB',
     };
     final String statusLabel = statusLabels[statusKey] ?? statusKey.toUpperCase();
@@ -68,6 +68,23 @@ class TaskCard extends StatelessWidget {
     final bool highlightReschedule = isCurrentUserAssignee &&
         statusKey == 'pending' &&
         task['rescheduled_date'] != null;
+
+    String? rescheduleFootnote;
+    if (statusKey == 'pending' && task['rescheduled_date'] != null) {
+      final rd = task['rescheduled_date'];
+      final s = rd.toString().trim();
+      if (s.isNotEmpty) {
+        DateTime? dt;
+        if (s.length >= 10) {
+          dt = DateTime.tryParse(s.substring(0, 10));
+        }
+        dt ??= DateTime.tryParse(s);
+        final formatted = dt != null
+            ? DateFormat('dd MMM yyyy').format(dt)
+            : s;
+        rescheduleFootnote = '$formatted tarixinə qədər təxirə salınmışdı';
+      }
+    }
 
     final Widget cardInner = Padding(
         padding: const EdgeInsets.all(16),
@@ -298,7 +315,18 @@ class TaskCard extends StatelessWidget {
                   ),
               ],
             ),
-            
+            if (rescheduleFootnote != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                rescheduleFootnote,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.red.shade800,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+
             const Divider(),
             
             // Actions
