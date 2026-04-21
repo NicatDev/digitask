@@ -46,7 +46,7 @@ workflows:
 
       - name: Set build number
         script: |
-          BUILD_NUMBER=5
+          BUILD_NUMBER=6
           echo "Using build number: $BUILD_NUMBER"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $CM_ENV
 
