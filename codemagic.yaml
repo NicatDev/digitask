@@ -44,6 +44,8 @@ workflows:
         script: |
           cd ios
           pod repo update
+          # Köhnə Podfile.lock Firebase 12.9 saxlayır; flutter firebase_core 12.12 tələb edəndə uyğunsuzluq yaranır.
+          rm -f Podfile.lock
           pod install --repo-update
 
       - name: Set build number
