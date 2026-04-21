@@ -9,6 +9,10 @@ class Notification(models.Model):
         TASK_CREATED = 'task_created', 'Yeni Task'
         TASK_ASSIGNED = 'task_assigned', 'Task Təyin Edildi'
         TASK_COMPLETED = 'task_completed', 'Task Tamamlandı'
+        TASK_STATUS_CHANGED = 'task_status_changed', 'Task Status Dəyişdi'
+        SURVEY_SAVED = 'survey_saved', 'Anket Dolduruldu'
+        EVENT_CREATED = 'event_created', 'Yeni Tədbir'
+        CHAT_MESSAGE = 'chat_message', 'Chat mesajı'
         GENERAL = 'general', 'Ümumi'
     
     title = models.CharField(max_length=255)

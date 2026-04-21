@@ -78,7 +78,7 @@ const TaskTable = ({
             title: 'ID',
             dataIndex: 'id',
             key: 'id',
-            width: 72,
+            width: 87,
             sorter: serverSideSorter,
             sortOrder: idSortOrder,
             sortDirections: ['ascend', 'descend'],
@@ -149,6 +149,7 @@ const TaskTable = ({
             title: 'Başlıq',
             dataIndex: 'title',
             key: 'title',
+            width: 220,
             render: (text, record) => (
                 <a onClick={() => onViewDetail(record)}>{text}</a>
             )
@@ -176,12 +177,13 @@ const TaskTable = ({
                 </span>
             ) : '-'
         },
-        { title: 'Müştəri', dataIndex: 'customer_name', key: 'customer_name' },
-        { title: 'Əlaqə No', dataIndex: 'customer_phone', key: 'customer_phone' },
+        { title: 'Müştəri', dataIndex: 'customer_name', key: 'customer_name', width: 200 },
+        { title: 'Əlaqə No', dataIndex: 'customer_phone', key: 'customer_phone', width: 150 },
         {
             title: 'Qeydiyyat No',
             dataIndex: 'customer_register_number',
             key: 'customer_register_number',
+            width: 170,
             sorter: serverSideSorter,
             sortOrder: registerSortOrder,
             sortDirections: ['ascend', 'descend'],
@@ -232,11 +234,12 @@ const TaskTable = ({
                 </div>
             ),
         },
-        { title: 'Qrup', dataIndex: 'group_name', key: 'group_name' },
+        { title: 'Qrup', dataIndex: 'group_name', key: 'group_name', width: 150 },
         {
             title: 'Servislər',
             dataIndex: 'services',
             key: 'services',
+            width: 190,
             render: (serviceIds, record) => {
                 const colors = [
                     { bg: '#e6f7ff', text: '#0958d9' },
@@ -362,6 +365,7 @@ const TaskTable = ({
             title: 'Aktiv',
             dataIndex: 'is_active',
             key: 'is_active',
+            width: 90,
             render: (active, record) => (
                 <Switch
                     checked={active}
@@ -400,7 +404,7 @@ const TaskTable = ({
             dataSource={data}
             rowKey="id"
             loading={loading}
-            scroll={{ x: 1600 }}
+            scroll={{ x: 2115 }}
             pagination={pagination}
             onChange={(pag, filters, sorter, extra) => onChange?.(pag, filters, sorter, extra)}
         />

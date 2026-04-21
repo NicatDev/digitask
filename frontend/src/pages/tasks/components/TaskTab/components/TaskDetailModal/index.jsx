@@ -181,6 +181,7 @@ const TaskDetailModal = ({ open, onCancel, task, services = [], onRefresh }) => 
                                   ))
                                 : 'Təyin edilməyib'}
                         </Field>
+                        <Field label="Reporter">{task.reporter_name || '—'}</Field>
                         <Field label="Qeyd">
                             <span style={{ whiteSpace: 'pre-wrap' }}>{task.note || '—'}</span>
                         </Field>

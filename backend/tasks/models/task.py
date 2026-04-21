@@ -32,6 +32,15 @@ class Task(models.Model):
         blank=True
     )
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, related_name="tasks", null=True, blank=True)
+
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reported_tasks",
+        help_text="Tapşırığı yaradan istifadəçi",
+    )
     
     services = models.ManyToManyField(Service, blank=True, related_name="tasks")
     

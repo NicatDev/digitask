@@ -39,7 +39,8 @@ class _TaskFormModalState extends State<TaskFormModal> {
   DateTime? _rescheduledDate;
   bool _isActive = true;
   List<int> _selectedServices = [];
-  
+  String _reporterName = '';
+
   bool _isSaving = false;
 
   final List<Map<String, String>> _statuses = [
@@ -83,6 +84,8 @@ class _TaskFormModalState extends State<TaskFormModal> {
     if (t?['services'] != null) {
        _selectedServices = List<int>.from(t!['services']);
     }
+
+    _reporterName = (t?['reporter_name']?.toString() ?? '').trim();
 
     final rd = t?['rescheduled_date'];
     if (rd is String && rd.length >= 10) {
@@ -357,6 +360,17 @@ class _TaskFormModalState extends State<TaskFormModal> {
                       );
                     }).toList(),
                   ),
+
+                  if (widget.task != null && _reporterName.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Reporter',
+                        border: OutlineInputBorder(),
+                      ),
+                      child: Text(_reporterName, style: const TextStyle(fontSize: 16)),
+                    ),
+                  ],
 
                    const SizedBox(height: 16),
                    // Services

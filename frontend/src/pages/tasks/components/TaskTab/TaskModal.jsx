@@ -315,6 +315,15 @@ const TaskModal = ({
                     </Col>
                 </Row>
 
+                {editingItem?.reporter_name ? (
+                    <Row gutter={[16, 0]} style={{ marginBottom: 8 }}>
+                        <Col span={24}>
+                            <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)', marginBottom: 4 }}>Reporter</div>
+                            <div>{editingItem.reporter_name}</div>
+                        </Col>
+                    </Row>
+                ) : null}
+
                 <Row gutter={[16, 0]}>
                     <Col span={24}>
                         <Form.Item name="services" label="Servislər">

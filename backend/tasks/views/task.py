@@ -1,6 +1,7 @@
 from django.db import models, transaction
-from django.db.models import Case, IntegerField, Value, When
+from django.db.models import Case, IntegerField, Q, Value, When
 from django.db.models.functions import Cast
+from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -23,7 +24,14 @@ from ..serializers import (
 from ..services.task_activity import log_task_activity, task_status_label
 from warehouse.models import WarehouseInventory, StockMovement
 from ..pagination import TaskPagination
+from notifications.models import Notification
 from notifications.services import send_notification  # type: ignore
+from notifications.task_helpers import (
+    format_task_line,
+    task_with_customer,
+    user_ids_in_task_group,
+    user_ids_privileged_in_task_group,
+)
 
 User = get_user_model()
 
@@ -37,7 +45,12 @@ class TaskViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = Task.objects.select_related(
-            'customer', 'customer__equipment', 'customer__optic_box', 'group', 'group__region'
+            'customer',
+            'customer__equipment',
+            'customer__optic_box',
+            'group',
+            'group__region',
+            'reporter',
         ).prefetch_related(
             'assigned_to',
             'task_services', 'task_services__service', 'task_services__values',
@@ -146,7 +159,18 @@ class TaskViewSet(viewsets.ModelViewSet):
         if ordering in ordering_whitelist:
             queryset = queryset.order_by(*ordering_whitelist[ordering])
         else:
+            today = timezone.now().date()
             queryset = queryset.annotate(
+                _overdue_pending=Case(
+                    When(
+                        Q(status=Task.Status.PENDING)
+                        & Q(rescheduled_date__isnull=False)
+                        & Q(rescheduled_date__lte=today),
+                        then=Value(0),
+                    ),
+                    default=Value(1),
+                    output_field=IntegerField(),
+                ),
                 _status_order=Case(
                     When(status__in=['in_progress', 'arrived'], then=Value(0)),
                     When(status=Task.Status.TODO, then=Value(1)),
@@ -156,7 +180,7 @@ class TaskViewSet(viewsets.ModelViewSet):
                     default=Value(99),
                     output_field=IntegerField(),
                 ),
-            ).order_by('_status_order', '-created_at')
+            ).order_by('_overdue_pending', '_status_order', 'rescheduled_date', '-created_at')
 
         # Annotasiyada assigned_to (M2M) join-u eyni Task üçün bir neçə sətir yarada bilər;
         # əks halda .get(pk=...) → MultipleObjectsReturned (məs. /tasks/116/activity/).
@@ -178,7 +202,7 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Create task and notify users in the task's group only (not all users)."""
-        task = serializer.save()
+        task = serializer.save(reporter=self.request.user)
         log_task_activity(
             task,
             self.request.user,
@@ -186,23 +210,22 @@ class TaskViewSet(viewsets.ModelViewSet):
             message=task.title,
         )
 
+        task = task_with_customer(task)
         if not task.group_id:
             return
 
-        recipient_ids = list(
-            User.objects.filter(group_id=task.group_id, is_active=True).values_list(
-                'pk', flat=True
-            )
-        )
+        recipient_ids = user_ids_in_task_group(task)
         if not recipient_ids:
             return
 
+        line = format_task_line(task)
         send_notification(
-            title=f"Yeni Task: {task.title}",
-            message=f"Müştəri: {task.customer.full_name if task.customer else 'N/A'}",
-            notification_type='task_created',
+            title=f"Yeni tapşırıq: {task.title}",
+            message=f"{line}\nMüştəri: {task.customer.full_name if task.customer else '—'}",
+            notification_type=Notification.NotificationType.TASK_CREATED,
             related_task=task,
             target_user_ids=recipient_ids,
+            dedupe_seconds=30,
         )
 
     def perform_update(self, serializer):
@@ -266,7 +289,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         qs = (
             self.get_queryset()
             .filter(customer_id=task.customer_id)
-            .order_by('_status_order', '-created_at')
+            .order_by('_overdue_pending', '_status_order', 'rescheduled_date', '-created_at')
             .prefetch_related('assigned_to')
         )
         return Response(TaskCustomerHistorySerializer(qs, many=True).data)
@@ -284,7 +307,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         qs = (
             self.get_queryset()
             .filter(customer_id=customer_id)
-            .order_by('_status_order', '-created_at')
+            .order_by('_overdue_pending', '_status_order', 'rescheduled_date', '-created_at')
             .prefetch_related('assigned_to')
         )
         return Response(TaskCustomerHistorySerializer(qs, many=True).data)
@@ -331,23 +354,35 @@ class TaskViewSet(viewsets.ModelViewSet):
                 message=status_msg,
                 meta=log_meta,
             )
-            
-            # DONE olduqda task_products-ları anbardan çıxar
-            if new_status == Task.Status.DONE:
-                self._deduct_task_products(task, request.user)
-                
-                # Send task completion notification
-                notification = send_notification(
-                    title="Tapşırıq tamamlandı",
-                    message=f"{task.title} tapşırığı tamamlandı.",
-                    notification_type='task_completed',
-                    related_task=task
-                )
-                # Target all assignees
-                assignees = task.assigned_to.all()
-                if assignees.exists():
-                    notification.target_users.set(assignees)
-                
+
+            task = task_with_customer(task)
+            line = format_task_line(task)
+
+            if old_status != new_status:
+                if new_status == Task.Status.DONE:
+                    self._deduct_task_products(task, request.user)
+                    done_ids = user_ids_in_task_group(task)
+                    if done_ids:
+                        send_notification(
+                            title="Tapşırıq tamamlandı",
+                            message=f"{line}\n{task.title}",
+                            notification_type=Notification.NotificationType.TASK_COMPLETED,
+                            related_task=task,
+                            target_user_ids=done_ids,
+                            dedupe_seconds=60,
+                        )
+                else:
+                    priv = user_ids_privileged_in_task_group(task)
+                    if priv:
+                        send_notification(
+                            title="Tapşırıq statusu dəyişdi",
+                            message=f"{line}\n{task_status_label(old_status)} → {task_status_label(new_status)}",
+                            notification_type=Notification.NotificationType.TASK_STATUS_CHANGED,
+                            related_task=task,
+                            target_user_ids=priv,
+                            dedupe_seconds=45,
+                        )
+
             return Response(TaskSerializer(task).data)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -476,6 +511,18 @@ class TaskServiceViewSet(viewsets.ModelViewSet):
             message=f"Anket: {ts.service.name}",
             meta={'task_service_id': ts.id, 'service_id': ts.service_id},
         )
+        task = task_with_customer(ts.task)
+        ids = user_ids_privileged_in_task_group(task)
+        if ids:
+            line = format_task_line(task)
+            send_notification(
+                title=f"Anket dolduruldu: {ts.service.name}",
+                message=f"{line}\n{task.title}",
+                notification_type=Notification.NotificationType.SURVEY_SAVED,
+                related_task=task,
+                target_user_ids=ids,
+                dedupe_seconds=90,
+            )
 
     def perform_update(self, serializer):
         ts = serializer.save()
@@ -486,3 +533,15 @@ class TaskServiceViewSet(viewsets.ModelViewSet):
             message=f"Anket yeniləndi: {ts.service.name}",
             meta={'task_service_id': ts.id},
         )
+        task = task_with_customer(ts.task)
+        ids = user_ids_privileged_in_task_group(task)
+        if ids:
+            line = format_task_line(task)
+            send_notification(
+                title=f"Anket yeniləndi: {ts.service.name}",
+                message=f"{line}\n{task.title}",
+                notification_type=Notification.NotificationType.SURVEY_SAVED,
+                related_task=task,
+                target_user_ids=ids,
+                dedupe_seconds=90,
+            )

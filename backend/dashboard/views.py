@@ -4,6 +4,7 @@ from .models import Event
 from .serializers import EventSerializer
 from tasks.models import Task, TaskType
 from notifications.models import Notification
+from notifications.services import send_notification
 from warehouse.models import StockMovement
 from django.db.models import Count, Q
 from datetime import timedelta
@@ -25,10 +26,13 @@ class EventViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         event = serializer.save()
-        Notification.objects.create(
-            title=f"Yeni Tədbir: {event.title}",
+        send_notification(
+            title=f"Yeni tədbir: {event.title}",
             message=event.description or "",
-            notification_type=Notification.NotificationType.GENERAL
+            notification_type=Notification.NotificationType.EVENT_CREATED,
+            related_task=None,
+            target_user_ids=None,
+            dedupe_seconds=30,
         )
 
 class DashboardStatsView(views.APIView):

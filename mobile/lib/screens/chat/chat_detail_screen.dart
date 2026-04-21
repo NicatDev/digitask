@@ -217,6 +217,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   Widget _buildMessageBubble(ChatMessage message, bool isMe) {
       final decoded = decodeReply(message.content);
+      final maxBubbleWidth = MediaQuery.sizeOf(context).width * 0.82;
       return Align(
           alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
           child: Dismissible(
@@ -232,103 +233,115 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               color: Colors.transparent,
               child: const Icon(Icons.reply, color: Colors.blue),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.reply, size: 18),
-                  color: Colors.blueGrey,
-                  onPressed: () => setState(() => _replyTo = message),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isMe ? Colors.blue : Colors.white,
-                    boxShadow: [
-                      if (!isMe)
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 2,
-                          offset: const Offset(0, 1),
-                        )
-                    ],
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(12),
-                      topRight: const Radius.circular(12),
-                      bottomLeft: isMe ? const Radius.circular(12) : Radius.zero,
-                      bottomRight: isMe ? Radius.zero : const Radius.circular(12),
-                    ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.reply, size: 18),
+                    color: Colors.blueGrey,
+                    onPressed: () => setState(() => _replyTo = message),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (!isMe)
-                        Text(
-                          message.senderName,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade600,
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Align(
+                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isMe ? Colors.blue : Colors.white,
+                          boxShadow: [
+                            if (!isMe)
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.1),
+                                spreadRadius: 1,
+                                blurRadius: 2,
+                                offset: const Offset(0, 1),
+                              )
+                          ],
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(12),
+                            topRight: const Radius.circular(12),
+                            bottomLeft: isMe ? const Radius.circular(12) : Radius.zero,
+                            bottomRight: isMe ? Radius.zero : const Radius.circular(12),
                           ),
                         ),
-                      if (decoded.reply != null) ...[
-                        Container(
-                          margin: const EdgeInsets.only(top: 6, bottom: 8),
-                          padding: const EdgeInsets.only(left: 10),
-                          decoration: BoxDecoration(
-                            border: Border(
-                              left: BorderSide(
-                                color: isMe ? Colors.white70 : Colors.black26,
-                                width: 3,
-                              ),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (!isMe)
                               Text(
-                                'Cavab: ${decoded.reply?['sender'] ?? ''} #${decoded.reply?['id'] ?? ''}',
+                                message.senderName,
+                                softWrap: true,
                                 style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: isMe ? Colors.white : Colors.black87,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade600,
                                 ),
                               ),
-                              Text(
-                                (decoded.reply?['snippet'] ?? '').toString(),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isMe ? Colors.white70 : Colors.black54,
+                            if (decoded.reply != null) ...[
+                              Container(
+                                margin: const EdgeInsets.only(top: 6, bottom: 8),
+                                padding: const EdgeInsets.only(left: 10),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    left: BorderSide(
+                                      color: isMe ? Colors.white70 : Colors.black26,
+                                      width: 3,
+                                    ),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Cavab: ${decoded.reply?['sender'] ?? ''} #${decoded.reply?['id'] ?? ''}',
+                                      softWrap: true,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: isMe ? Colors.white : Colors.black87,
+                                      ),
+                                    ),
+                                    Text(
+                                      (decoded.reply?['snippet'] ?? '').toString(),
+                                      softWrap: true,
+                                      maxLines: 4,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isMe ? Colors.white70 : Colors.black54,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
-                          ),
+                            Text(
+                              decoded.body,
+                              softWrap: true,
+                              style: TextStyle(color: isMe ? Colors.white : Colors.black87),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              DateFormat('HH:mm').format(message.createdAt),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isMe ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                      Text(
-                        decoded.body,
-                        style: TextStyle(color: isMe ? Colors.white : Colors.black87),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        DateFormat('HH:mm').format(message.createdAt),
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isMe ? Colors.white70 : Colors.black54,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
       );

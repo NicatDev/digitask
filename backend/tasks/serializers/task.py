@@ -156,6 +156,8 @@ class TaskSerializer(serializers.ModelSerializer):
     task_type_details = TaskTypeSerializer(source='task_type', read_only=True)
     task_type = serializers.PrimaryKeyRelatedField(queryset=TaskType.objects.filter(is_active=True), allow_null=True, required=False)
     services = serializers.PrimaryKeyRelatedField(many=True, queryset=Service.objects.all(), required=False)
+    reporter = serializers.PrimaryKeyRelatedField(read_only=True)
+    reporter_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Task
@@ -168,9 +170,17 @@ class TaskSerializer(serializers.ModelSerializer):
             'assigned_to', 'assigned_to_names',
             'group', 'group_name', 'region_name', 'is_active',
             'task_type', 'task_type_details',
+            'reporter', 'reporter_name',
             'services', 'task_services', 'task_products', 'task_documents', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'reporter', 'created_at', 'updated_at']
+
+    def get_reporter_name(self, obj):
+        u = getattr(obj, 'reporter', None)
+        if not u:
+            return None
+        name = u.get_full_name()
+        return (name or '').strip() or u.username
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

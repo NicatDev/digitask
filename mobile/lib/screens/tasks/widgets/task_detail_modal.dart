@@ -428,6 +428,7 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
         _infoRow(context, 'Status', _statusLabel(task['status'] ?? '')),
         _infoRow(context, 'Qeyd', task['note'] ?? '-'),
         _infoRow(context, 'İcraçılar', _formatAssigneeNames(task)),
+        _infoRow(context, 'Reporter', _reporterDisplay(task)),
         _infoRow(context, 'Qrup', task['group_name'] ?? '-'),
         _infoRow(context, 'Region', task['region_name'] ?? '-'),
         _infoRow(context, 'Yaradılma tarixi', createdAt),
@@ -478,6 +479,11 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue),
       ),
     );
+  }
+
+  String _reporterDisplay(Map<String, dynamic> task) {
+    final r = task['reporter_name']?.toString().trim() ?? '';
+    return r.isEmpty ? '-' : r;
   }
 
   String _formatAssigneeNames(Map<String, dynamic> task) {
