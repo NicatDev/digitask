@@ -42,7 +42,9 @@ workflows:
 
       - name: Install CocoaPods dependencies
         script: |
-          find . -name "Podfile" -execdir pod install \;
+          cd ios
+          pod repo update
+          pod install --repo-update
 
       - name: Set build number
         script: |
