@@ -1,4 +1,6 @@
-from rest_framework import serializers, viewsets, filters, permissions
+from rest_framework import serializers, viewsets, filters, permissions, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import AuditLog
 
@@ -37,7 +39,31 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         'method': ['exact'],
         'action': ['exact'],
         'user': ['exact'],
+        'resource_type': ['exact'],
     }
     search_fields = ['path', 'payload', 'user__first_name', 'user__last_name', 'user__email']
     ordering_fields = ['created_at']
     ordering = ['-created_at']
+
+    @action(detail=False, methods=['post'], url_path='notification-errors')
+    def notification_errors(self, request):
+        """Store mobile/web notification error diagnostics in audit logs."""
+        payload = request.data if isinstance(request.data, dict) else {'raw': request.data}
+        error_message = (payload.get('message') or payload.get('error') or 'Notification error')[:255]
+
+        log = AuditLog.objects.create(
+            user=request.user if request.user.is_authenticated else None,
+            action='ERROR',
+            method='POST',
+            path='/mobile/notifications',
+            ip_address=request.META.get('REMOTE_ADDR'),
+            resource_type='notification_error',
+            resource_id=(payload.get('platform') or 'unknown'),
+            payload=payload,
+            changes={
+                'source': payload.get('source'),
+                'message': error_message,
+                'code': payload.get('code'),
+            },
+        )
+        return Response({'status': 'ok', 'id': log.id}, status=status.HTTP_201_CREATED)

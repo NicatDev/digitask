@@ -1,20 +1,36 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:mobile/core/api/api_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:mobile/screens/auth/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:dio/dio.dart';
 import 'screens/main_layout.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:mobile/core/services/notification_diagnostics_service.dart';
 
 // Top-level background message handler (must be top-level function)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // Firebase/APNs notification payload is the single source of display.
-  // Do not show a second local notification here.
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  } catch (e, st) {
+    await NotificationDiagnosticsService.instance.report(
+      source: 'fcm_background_init',
+      message: 'Failed to initialize Firebase in background handler',
+      code: 'BG_INIT_ERROR',
+      error: e,
+      stackTrace: st,
+      extra: {
+        'message_id': message.messageId,
+      },
+    );
+  }
 }
 
 void main() async {
@@ -24,9 +40,38 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Route Flutter framework errors to Crashlytics.
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  FlutterError.onError = (FlutterErrorDetails details) {
+    unawaited(
+      NotificationDiagnosticsService.instance.report(
+        source: 'flutter_error',
+        message: details.exceptionAsString(),
+        code: 'FLUTTER_UNHANDLED',
+        error: details.exception,
+        stackTrace: details.stack,
+      ),
+    );
+    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+  };
   PlatformDispatcher.instance.onError = (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    final isNetworkError =
+        error is DioException ||
+        error is SocketException ||
+        error is TimeoutException;
+
+    unawaited(
+      NotificationDiagnosticsService.instance.report(
+        source: 'platform_dispatcher',
+        message: 'Unhandled platform error',
+        code: 'PLATFORM_UNHANDLED',
+        error: error,
+        stackTrace: stack,
+      ),
+    );
+    FirebaseCrashlytics.instance.recordError(
+      error,
+      stack,
+      fatal: !isNetworkError,
+    );
     return true;
   };
   

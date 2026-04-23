@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:mobile/core/services/location_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
+import 'package:mobile/core/services/notification_diagnostics_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -37,6 +38,12 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       debugPrint('iOS notification permission error: $e');
+      await NotificationDiagnosticsService.instance.report(
+        source: 'ios_permission_request',
+        message: 'Failed to request iOS notification permission',
+        code: 'IOS_NOTIF_PERMISSION_FAIL',
+        error: e,
+      );
     }
 
     try {
@@ -53,6 +60,12 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       debugPrint('iOS location permission error: $e');
+      await NotificationDiagnosticsService.instance.report(
+        source: 'ios_permission_request',
+        message: 'Failed to request iOS location permissions',
+        code: 'IOS_LOCATION_PERMISSION_FAIL',
+        error: e,
+      );
     }
   }
 

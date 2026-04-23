@@ -17,6 +17,10 @@ class LocationService {
   static StreamSubscription<Position>? _webPositionStream;
   static WebSocketChannel? _webChannel;
   static bool _webIsConnected = false;
+  static StreamSubscription<Position>? _mobilePositionStream;
+  static Timer? _mobileReconnectTimer;
+  static bool _mobileTrackingStopped = false;
+  static int _mobileReconnectAttempt = 0;
 
   static Future<void> initialize() async {
     if (kIsWeb) {
@@ -49,10 +53,16 @@ class LocationService {
       );
     }
 
+    _mobileTrackingStopped = false;
+    _mobileReconnectTimer?.cancel();
+    await _mobilePositionStream?.cancel();
+    _mobilePositionStream = null;
+
     WebSocketChannel? channel;
     bool isConnected = false;
     
     Future<void> connectWebSocket() async {
+      if (_mobileTrackingStopped) return;
       final wsUrl = await getTrackingWebSocketUrl();
       print('[LocationService] WebSocket URL: $wsUrl');
       if (wsUrl == null) {
@@ -61,6 +71,9 @@ class LocationService {
       }
       
       try {
+        try {
+          await channel?.sink.close();
+        } catch (_) {}
         channel = IOWebSocketChannel.connect(wsUrl);
         channel!.stream.listen(
           (message) {
@@ -76,6 +89,7 @@ class LocationService {
           },
         );
         isConnected = true;
+        _mobileReconnectAttempt = 0;
         print('[LocationService] WebSocket connected successfully');
       } catch (e) {
         print('[LocationService] WebSocket connection failed: $e');
@@ -111,7 +125,9 @@ class LocationService {
       );
     }
 
-    Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position position) async {
+    _mobilePositionStream =
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+            (Position position) async {
       if (!kIsWeb && service is AndroidServiceInstance) {
         bool isForeground = false;
         try {
@@ -121,19 +137,23 @@ class LocationService {
         }
 
         if (isForeground) {
-          flutterLocalNotificationsPlugin.show(
-            id: 888,
-            title: 'DigiTask Tracking',
-            body: 'Tracking is active',
-            notificationDetails: const NotificationDetails(
-              android: AndroidNotificationDetails(
-                'digitask_location_channel',
-                'Location Service',
-                icon: 'ic_notification',
-                ongoing: true,
+          try {
+            await flutterLocalNotificationsPlugin.show(
+              id: 888,
+              title: 'DigiTask Tracking',
+              body: 'Tracking is active',
+              notificationDetails: const NotificationDetails(
+                android: AndroidNotificationDetails(
+                  'digitask_location_channel',
+                  'Location Service',
+                  icon: 'ic_notification',
+                  ongoing: true,
+                ),
               ),
-            ),
-          );
+            );
+          } catch (e) {
+            print('[LocationService] Foreground notification show failed: $e');
+          }
         }
       }
 
@@ -151,18 +171,44 @@ class LocationService {
         }
       }
       
-      service.invoke(
-        'update',
-        {"lat": position.latitude, "lng": position.longitude},
-      );
-    });
+      try {
+        service.invoke(
+          'update',
+          {"lat": position.latitude, "lng": position.longitude},
+        );
+      } catch (e) {
+        print('[LocationService] Service invoke failed: $e');
+      }
+    }, onError: (error, stack) {
+      print('[LocationService] Position stream error: $error');
+      isConnected = false;
+    }, cancelOnError: false);
     
-    Timer.periodic(const Duration(seconds: 30), (timer) async {
-        if (!isConnected) {
-          await TokenService.refreshAccessToken();
-          await connectWebSocket();
+    _mobileReconnectTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
+      if (_mobileTrackingStopped) {
+        timer.cancel();
+        return;
+      }
+      if (!isConnected) {
+        final waitSeconds = _nextReconnectDelaySeconds();
+        if (waitSeconds > 0) {
+          await Future<void>.delayed(Duration(seconds: waitSeconds));
         }
+        if (_mobileTrackingStopped) return;
+        await TokenService.refreshAccessToken();
+        await connectWebSocket();
+      }
     });
+  }
+
+  static int _nextReconnectDelaySeconds() {
+    if (_mobileReconnectAttempt == 0) {
+      _mobileReconnectAttempt = 1;
+      return 0;
+    }
+    final backoff = (1 << (_mobileReconnectAttempt - 1)).clamp(1, 8);
+    _mobileReconnectAttempt = (_mobileReconnectAttempt + 1).clamp(1, 8);
+    return backoff * 5; // 5s .. 40s
   }
 
   static Future<void> _startWebTracking() async {
@@ -257,6 +303,12 @@ class LocationService {
         _webIsConnected = false;
         return;
     }
+
+    _mobileTrackingStopped = true;
+    _mobileReconnectTimer?.cancel();
+    _mobileReconnectTimer = null;
+    await _mobilePositionStream?.cancel();
+    _mobilePositionStream = null;
 
     final service = FlutterBackgroundService();
     if (await service.isRunning()) {

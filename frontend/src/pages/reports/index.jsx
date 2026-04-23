@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Card, DatePicker, Typography, Tag, Space, message } from 'antd';
+import { Table, Card, DatePicker, Typography, Tag, Tabs, message } from 'antd';
 import { getAuditLogs } from '../../axios/api/audit';
 import styles from './style.module.scss';
 import dayjs from 'dayjs';
@@ -8,23 +8,36 @@ const { Title } = Typography;
 
 const ReportsPage = () => {
     const [loading, setLoading] = useState(false);
-    const [data, setData] = useState([]);
-    const [total, setTotal] = useState(0);
-    const [currentPage, setCurrentPage] = useState(1);
+    const [activeTab, setActiveTab] = useState('operations');
+    const [operationsData, setOperationsData] = useState([]);
+    const [operationsTotal, setOperationsTotal] = useState(0);
+    const [operationsPage, setOperationsPage] = useState(1);
+    const [errorData, setErrorData] = useState([]);
+    const [errorTotal, setErrorTotal] = useState(0);
+    const [errorPage, setErrorPage] = useState(1);
     const [selectedDate, setSelectedDate] = useState(dayjs());
 
-    const fetchData = async (page = 1, date = dayjs()) => {
+    const fetchData = async (page = 1, date = dayjs(), tab = 'operations') => {
         setLoading(true);
         try {
             const params = {
                 page: page,
                 created_at__date: date ? date.format('YYYY-MM-DD') : undefined,
-                ordering: '-created_at'
+                ordering: '-created_at',
+                ...(tab === 'errors'
+                    ? { resource_type: 'notification_error' }
+                    : {}),
             };
             const response = await getAuditLogs(params);
-            setData(response.data.results);
-            setTotal(response.data.count);
-            setCurrentPage(page);
+            if (tab === 'errors') {
+                setErrorData(response.data.results);
+                setErrorTotal(response.data.count);
+                setErrorPage(page);
+            } else {
+                setOperationsData(response.data.results);
+                setOperationsTotal(response.data.count);
+                setOperationsPage(page);
+            }
         } catch (error) {
             console.error(error);
             message.error('Logları yükləmək mümkün olmadı');
@@ -34,15 +47,26 @@ const ReportsPage = () => {
     };
 
     useEffect(() => {
-        fetchData(1, selectedDate);
+        fetchData(1, selectedDate, activeTab);
     }, [selectedDate]);
 
     const handleTableChange = (pagination) => {
-        fetchData(pagination.current, selectedDate);
+        fetchData(pagination.current, selectedDate, activeTab);
     };
 
     const handleDateChange = (date) => {
         setSelectedDate(date);
+    };
+
+    const handleTabChange = (key) => {
+        setActiveTab(key);
+        if (key === 'errors' && errorData.length === 0) {
+            fetchData(1, selectedDate, 'errors');
+            return;
+        }
+        if (key === 'operations' && operationsData.length === 0) {
+            fetchData(1, selectedDate, 'operations');
+        }
     };
 
     const formatAction = (action) => {
@@ -110,6 +134,53 @@ const ReportsPage = () => {
         },
     ];
 
+    const errorColumns = [
+        {
+            title: 'Tarix/Saat',
+            dataIndex: 'created_at',
+            key: 'created_at',
+            render: (text) => dayjs(text).format('DD.MM.YYYY HH:mm:ss'),
+            width: 180,
+        },
+        {
+            title: 'Platforma',
+            key: 'platform',
+            width: 120,
+            render: (_, record) => (
+                <Tag color={record.resource_id === 'ios' ? 'purple' : 'blue'}>
+                    {(record.resource_id || 'unknown').toUpperCase()}
+                </Tag>
+            ),
+        },
+        {
+            title: 'Mənbə',
+            key: 'source',
+            render: (_, record) => record?.payload?.source || '-',
+            width: 240,
+        },
+        {
+            title: 'Cihaz',
+            key: 'device',
+            width: 220,
+            render: (_, record) => {
+                const d = record?.payload?.device || {};
+                const bits = [d.brand, d.model, d.system_version || d.android_version].filter(Boolean);
+                return bits.length ? bits.join(' / ') : '-';
+            },
+        },
+        {
+            title: 'Xəta',
+            key: 'message',
+            render: (_, record) => record?.payload?.message || record?.changes?.message || '-',
+        },
+        {
+            title: 'Kod',
+            key: 'code',
+            render: (_, record) => record?.payload?.code || '-',
+            width: 120,
+        },
+    ];
+
     const renderChanges = (changes, action) => {
         if (!changes) return <span style={{ color: '#999' }}>Heç bir məlumat yoxdur</span>;
 
@@ -165,23 +236,66 @@ const ReportsPage = () => {
                     className={styles.datePicker}
                 />
             }>
-                <Table
-                    columns={columns}
-                    dataSource={data}
-                    rowKey="id"
-                    pagination={{
-                        current: currentPage,
-                        total: total,
-                        pageSize: 20,
-                        showSizeChanger: false
-                    }}
-                    loading={loading}
-                    onChange={handleTableChange}
-                    expandable={{
-                        expandedRowRender,
-                        rowExpandable: (record) => true,
-                    }}
-                    scroll={{ x: 800 }}
+                <Tabs
+                    activeKey={activeTab}
+                    onChange={handleTabChange}
+                    items={[
+                        {
+                            key: 'operations',
+                            label: 'Əməliyyat hesabatları',
+                            children: (
+                                <Table
+                                    columns={columns}
+                                    dataSource={operationsData}
+                                    rowKey="id"
+                                    pagination={{
+                                        current: operationsPage,
+                                        total: operationsTotal,
+                                        pageSize: 20,
+                                        showSizeChanger: false
+                                    }}
+                                    loading={loading && activeTab === 'operations'}
+                                    onChange={handleTableChange}
+                                    expandable={{
+                                        expandedRowRender,
+                                        rowExpandable: () => true,
+                                    }}
+                                    scroll={{ x: 800 }}
+                                />
+                            )
+                        },
+                        {
+                            key: 'errors',
+                            label: 'Error logları',
+                            children: (
+                                <Table
+                                    columns={errorColumns}
+                                    dataSource={errorData}
+                                    rowKey="id"
+                                    pagination={{
+                                        current: errorPage,
+                                        total: errorTotal,
+                                        pageSize: 20,
+                                        showSizeChanger: false
+                                    }}
+                                    loading={loading && activeTab === 'errors'}
+                                    onChange={handleTableChange}
+                                    expandable={{
+                                        expandedRowRender: (record) => (
+                                            <div className={styles.expandedRow}>
+                                                <h4 style={{ marginBottom: 8, color: '#cf1322' }}>Error payload</h4>
+                                                <pre className={styles.jsonPayload}>
+                                                    {JSON.stringify(record.payload || {}, null, 2)}
+                                                </pre>
+                                            </div>
+                                        ),
+                                        rowExpandable: () => true,
+                                    }}
+                                    scroll={{ x: 800 }}
+                                />
+                            )
+                        }
+                    ]}
                 />
             </Card>
         </div>

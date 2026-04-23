@@ -10,6 +10,7 @@ import 'package:mobile/core/constants.dart';
 import 'package:mobile/models/notification_model.dart';
 import 'package:mobile/core/services/chat_service.dart';
 import 'package:mobile/core/services/token_service.dart';
+import 'package:mobile/core/services/notification_diagnostics_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -81,6 +82,12 @@ class NotificationService {
           'fcm_token': fcmToken,
         });
         print('FCM token registered with backend');
+      } else {
+        await NotificationDiagnosticsService.instance.report(
+          source: 'fcm_token_register',
+          message: 'Firebase returned null FCM token',
+          code: 'TOKEN_NULL',
+        );
       }
       
       // Listen for token refresh
@@ -92,25 +99,52 @@ class NotificationService {
           print('FCM token refreshed and registered');
         } catch (e) {
           print('Error registering refreshed FCM token: $e');
+          await NotificationDiagnosticsService.instance.report(
+            source: 'fcm_token_refresh',
+            message: 'Failed to register refreshed FCM token',
+            code: 'TOKEN_REFRESH_REGISTER_FAIL',
+            error: e,
+          );
         }
       });
     } catch (e) {
       print('Error registering FCM token: $e');
+      await NotificationDiagnosticsService.instance.report(
+        source: 'fcm_token_register',
+        message: 'Failed to get/register FCM token',
+        code: 'TOKEN_REGISTER_FAIL',
+        error: e,
+      );
     }
   }
 
   /// Listen for FCM messages while app is in foreground
   void _setupFcmForegroundListener() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       final notification = message.notification;
       final isAndroid = defaultTargetPlatform == TargetPlatform.android;
       if (isAndroid && notification != null) {
-        _showLocalNotification(
-          id: notification.hashCode,
-          title: notification.title ?? 'DigiTask',
-          body: notification.body ?? '',
-          tag: message.data['tag'],
-        );
+        try {
+          await _showLocalNotification(
+            id: notification.hashCode,
+            title: notification.title ?? 'DigiTask',
+            body: notification.body ?? '',
+            tag: message.data['tag'],
+          );
+        } catch (e, st) {
+          NotificationDiagnosticsService.instance.report(
+            source: 'fcm_foreground_display',
+            message: 'Failed to show local notification in foreground',
+            code: 'FG_DISPLAY_FAIL',
+            error: e,
+            stackTrace: st,
+            extra: {
+              'message_id': message.messageId,
+              'has_notification': true,
+              'data': message.data,
+            },
+          );
+        }
       }
 
       // Update unread count for non-chat notifications
@@ -229,6 +263,12 @@ class NotificationService {
       }
     } catch (e) {
       print('Error parsing message: $e');
+      NotificationDiagnosticsService.instance.report(
+        source: 'ws_notification_parse',
+        message: 'Failed to parse incoming notification websocket payload',
+        code: 'WS_PARSE_FAIL',
+        error: e,
+      );
     }
   }
 
@@ -272,6 +312,12 @@ class NotificationService {
       }
     } catch (e) {
       print('Error fetching notifications: $e');
+      NotificationDiagnosticsService.instance.report(
+        source: 'notifications_fetch',
+        message: 'Failed to fetch notifications list',
+        code: 'FETCH_LIST_FAIL',
+        error: e,
+      );
     }
   }
 
@@ -283,6 +329,12 @@ class NotificationService {
       }
     } catch (e) {
       print('Error fetching unread count: $e');
+      NotificationDiagnosticsService.instance.report(
+        source: 'notifications_unread_count',
+        message: 'Failed to fetch unread notification count',
+        code: 'FETCH_UNREAD_FAIL',
+        error: e,
+      );
     }
   }
 
@@ -293,6 +345,12 @@ class NotificationService {
        fetchNotifications();
     } catch (e) {
       print('Error marking all as read: $e');
+      NotificationDiagnosticsService.instance.report(
+        source: 'notifications_mark_read',
+        message: 'Failed to mark notifications as read',
+        code: 'MARK_READ_FAIL',
+        error: e,
+      );
     }
   }
 
