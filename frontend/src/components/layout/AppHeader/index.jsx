@@ -8,7 +8,8 @@ import {
     BellOutlined,
     MessageOutlined,
     DownOutlined,
-    AndroidOutlined
+    AndroidOutlined,
+    LoadingOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
@@ -24,6 +25,19 @@ const AppHeader = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
     const { user, logout } = useAuth();
     const { unreadCount, chatUnreadCount } = useNotifications();
     const navigate = useNavigate();
+    const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+
+    useEffect(() => {
+        const goOnline = () => setIsOnline(true);
+        const goOffline = () => setIsOnline(false);
+        window.addEventListener('online', goOnline);
+        window.addEventListener('offline', goOffline);
+
+        return () => {
+            window.removeEventListener('online', goOnline);
+            window.removeEventListener('offline', goOffline);
+        };
+    }, []);
 
 
     const items = [
@@ -103,7 +117,11 @@ const AppHeader = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
 
                     <Dropdown menu={{ items }} trigger={['click']}>
                         <Space className={styles.userDropdownTrigger} style={{ cursor: 'pointer' }}>
-                            <Avatar src={user?.avatar} icon={<UserOutlined />} />
+                            <Avatar
+                                src={isOnline ? user?.avatar : undefined}
+                                icon={isOnline ? <UserOutlined /> : <LoadingOutlined spin />}
+                                className={!isOnline ? styles.offlineAvatar : undefined}
+                            />
                             <span className={styles.username}>{user?.first_name || user?.username}</span>
                             <DownOutlined />
                         </Space>

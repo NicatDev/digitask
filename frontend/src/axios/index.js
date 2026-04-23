@@ -63,11 +63,8 @@ axiosInstance.interceptors.response.use(
         const originalRequest = error.config;
 
         if (typeof error.response === 'undefined') {
-            alert(
-                'A server/network error occurred. ' +
-                'Looks like CORS might be the problem. ' +
-                'Sorry about this - we will get it fixed shortly.'
-            );
+            // Browser alert disabled: network disconnect should fail silently
+            // and let UI-level handlers decide what to show.
             return Promise.reject(error);
         }
 

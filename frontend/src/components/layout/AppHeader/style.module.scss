@@ -49,3 +49,18 @@
         display: none;
     }
 }
+
+.offlineAvatar {
+    border: 2px solid #d9d9d9;
+    border-top-color: #1677ff;
+    animation: avatarSpin 0.9s linear infinite;
+}
+
+@keyframes avatarSpin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
