@@ -47,6 +47,10 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>DigiTask needs access to your photo library so you can choose images to attach to tasks.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>DigiTask needs access to save selected images.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>DigiTask needs camera access so you can capture images for task surveys.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs access to location when open.</string>
 	<key>NSLocationAlwaysUsageDescription</key>

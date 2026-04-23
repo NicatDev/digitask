@@ -168,6 +168,21 @@ $header-height: 64px;
     opacity: 1;
 }
 
+.dateSeparator {
+    display: flex;
+    justify-content: center;
+    margin: 8px 0 4px;
+
+    span {
+        background: #e6e6e6;
+        color: #595959;
+        border-radius: 999px;
+        padding: 3px 10px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+}
+
 .replyPreviewInBubble {
     border-left: 3px solid rgba(0, 0, 0, 0.12);
     padding-left: 10px;

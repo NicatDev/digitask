@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import axiosInstance from '../axios';
+import { notification } from 'antd';
 
 const NotificationContext = createContext();
 
@@ -56,9 +57,26 @@ export const NotificationProvider = ({ children }) => {
             const data = JSON.parse(event.data);
 
             if (data.notification) {
-                // New notification received
-                setUnreadCount(prev => prev + 1);
-                setNotifications(prev => [data.notification, ...prev]);
+                const incoming = data.notification;
+                const isChatNotification = incoming?.notification_type === 'chat_message';
+
+                if (!isChatNotification) {
+                    // Keep badge synced with server source of truth.
+                    fetchUnreadCount();
+                    setNotifications(prev => {
+                        const exists = prev.some(item => item.id === incoming.id);
+                        return exists ? prev : [incoming, ...prev];
+                    });
+
+                    // Persistent toast until user manually closes it.
+                    notification.open({
+                        key: `notif-${incoming.id}`,
+                        message: incoming.title || 'Yeni bildiriş',
+                        description: incoming.message || '',
+                        placement: 'topRight',
+                        duration: 0,
+                    });
+                }
             }
 
             if (data.chat_notification) {
@@ -102,6 +120,7 @@ export const NotificationProvider = ({ children }) => {
             await axiosInstance.post('/notifications/mark_read/');
             setUnreadCount(0);
             setNotifications([]);
+            notification.destroy();
         } catch (e) {
             console.error('Failed to mark as read', e);
         }

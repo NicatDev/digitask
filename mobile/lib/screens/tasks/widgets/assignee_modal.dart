@@ -27,8 +27,10 @@ class AssigneeModal extends StatefulWidget {
 class _AssigneeModalState extends State<AssigneeModal> {
   String _searchQuery = '';
   bool _isLoading = false;
+  bool get _isDoneTask => (widget.task['status'] ?? '').toString() == 'done';
 
   Future<void> _joinTask() async {
+    if (_isDoneTask) return;
     setState(() => _isLoading = true);
     try {
       final client = ApiClient().dio;
@@ -52,6 +54,7 @@ class _AssigneeModalState extends State<AssigneeModal> {
   }
 
   Future<void> _addAssignee(int userId) async {
+    if (_isDoneTask) return;
     setState(() => _isLoading = true);
     try {
       final client = ApiClient().dio;
@@ -176,7 +179,7 @@ class _AssigneeModalState extends State<AssigneeModal> {
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _joinTask,
+                      onPressed: (_isLoading || _isDoneTask) ? null : _joinTask,
                       icon: const Icon(Icons.group_add),
                       label: _isLoading 
                           ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
@@ -193,6 +196,17 @@ class _AssigneeModalState extends State<AssigneeModal> {
               
               // Add assignee section (if already assigned)
               if (widget.isCurrentUserAssignee) ...[
+                if (_isDoneTask)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Tamamlanmış tapşırıqda bu bölmədə icraçı dəyişikliyi deaktivdir.',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Column(
@@ -201,6 +215,7 @@ class _AssigneeModalState extends State<AssigneeModal> {
                       const Text('İcraçı əlavə et', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 8),
                       TextField(
+                        enabled: !_isDoneTask,
                         decoration: InputDecoration(
                           hintText: 'İstifadəçi axtar...',
                           prefixIcon: const Icon(Icons.search),
@@ -231,7 +246,7 @@ class _AssigneeModalState extends State<AssigneeModal> {
                         title: Text(name.isNotEmpty ? name : (u['email'] ?? 'User')),
                         trailing: _isLoading ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)) : IconButton(
                           icon: const Icon(Icons.person_add, color: Colors.blue),
-                          onPressed: () => _addAssignee(u['id']),
+                          onPressed: _isDoneTask ? null : () => _addAssignee(u['id']),
                         ),
                       );
                     },

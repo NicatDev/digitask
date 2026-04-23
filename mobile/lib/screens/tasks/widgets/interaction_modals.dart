@@ -17,6 +17,7 @@ class _StatusModalState extends State<StatusModal> {
   late String _status;
   DateTime? _rescheduledDate;
   bool _loading = false;
+  final TextEditingController _pendingNoteCtrl = TextEditingController();
   final TextEditingController _rejectNoteCtrl = TextEditingController();
 
   final List<Map<String, String>> _statuses = [
@@ -41,10 +42,12 @@ class _StatusModalState extends State<StatusModal> {
     final raw = widget.task['status'] ?? 'todo';
     _status = raw.toString();
     _rescheduledDate = _parseDate(widget.task['rescheduled_date']);
+    _pendingNoteCtrl.text = (widget.task['pending_note'] ?? '').toString();
   }
 
   @override
   void dispose() {
+    _pendingNoteCtrl.dispose();
     _rejectNoteCtrl.dispose();
     super.dispose();
   }
@@ -70,6 +73,12 @@ class _StatusModalState extends State<StatusModal> {
       );
       return;
     }
+    if (_status == 'pending' && _pendingNoteCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Təxirə salınma səbəbi mütləqdir')),
+      );
+      return;
+    }
     if (_status == 'rejected' && _rejectNoteCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Reject note mütləqdir')),
@@ -82,6 +91,7 @@ class _StatusModalState extends State<StatusModal> {
       final data = <String, dynamic>{'status': _status};
       if (_status == 'pending' && _rescheduledDate != null) {
         data['rescheduled_date'] = DateFormat('yyyy-MM-dd').format(_rescheduledDate!);
+        data['pending_note'] = _pendingNoteCtrl.text.trim();
       }
       if (_status == 'rejected') {
         data['reject_note'] = _rejectNoteCtrl.text.trim();
@@ -147,6 +157,7 @@ class _StatusModalState extends State<StatusModal> {
                   _status = v!;
                   if (_status != 'pending') {
                     _rescheduledDate = null;
+                    _pendingNoteCtrl.clear();
                   }
                   if (_status != 'rejected') {
                     _rejectNoteCtrl.clear();
@@ -169,6 +180,15 @@ class _StatusModalState extends State<StatusModal> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _pendingNoteCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Təxirə salınma səbəbi',
+                  border: OutlineInputBorder(),
                 ),
               ),
             ],

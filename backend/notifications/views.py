@@ -18,7 +18,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         user = self.request.user
         qs = Notification.objects.exclude(read_by=user).filter(
             Q(target_users=user) | Q(target_users__isnull=True)
-        )
+        ).exclude(notification_type=Notification.NotificationType.CHAT_MESSAGE)
         return qs.order_by('-created_at')
     
     @action(detail=False, methods=['post'])
@@ -30,12 +30,14 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         notification_ids = request.data.get('ids', None)
         
         if notification_ids:
-            notifications = Notification.objects.filter(id__in=notification_ids)
+            notifications = Notification.objects.filter(id__in=notification_ids).exclude(
+                notification_type=Notification.NotificationType.CHAT_MESSAGE
+            )
         else:
             # Mark all unread targeted notifications as read
             notifications = Notification.objects.exclude(read_by=user).filter(
                 Q(target_users=user) | Q(target_users__isnull=True)
-            )
+            ).exclude(notification_type=Notification.NotificationType.CHAT_MESSAGE)
         
         for notification in notifications:
             notification.read_by.add(user)
@@ -46,5 +48,5 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     def unread_count(self, request):
         count = Notification.objects.exclude(read_by=request.user).filter(
             Q(target_users=request.user) | Q(target_users__isnull=True)
-        ).count()
+        ).exclude(notification_type=Notification.NotificationType.CHAT_MESSAGE).count()
         return Response({'unread_count': count})

@@ -286,6 +286,7 @@ const TaskTable = ({
                 const assigneeIds = record.assigned_to || [];
                 const assigneeNames = names || [];
                 const isCurrentUserAssignee = user && assigneeIds.includes(user.id);
+                const isDone = record.status === 'done';
 
                 return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -304,6 +305,7 @@ const TaskTable = ({
                                     icon={<UserAddOutlined />}
                                     onClick={() => onAddAssignee(record)}
                                     ghost
+                                    disabled={isDone}
                                 >
                                     İcraçı əlavə et
                                 </Button>
@@ -313,6 +315,7 @@ const TaskTable = ({
                                     size="small"
                                     icon={<TeamOutlined />}
                                     onClick={() => onJoinTask(record)}
+                                    disabled={isDone}
                                 >
                                     İcraya qoşul
                                 </Button>
@@ -355,10 +358,18 @@ const TaskTable = ({
             dataIndex: 'status',
             width: 125,
             key: 'status',
-            render: (status) => (
-                <span className={`${styles.statusBadge} ${styles[status] || ''}`}>
-                    {getStatusLabel(status)}
-                </span>
+            render: (status, record) => (
+                <div>
+                    <span className={`${styles.statusBadge} ${styles[status] || ''}`}>
+                        {getStatusLabel(status)}
+                    </span>
+                    {status === 'pending' && record.rescheduled_date && (
+                        <div style={{ marginTop: 4, fontSize: 11, color: '#cf1322', lineHeight: 1.35 }}>
+                            {record.rescheduled_date} tarixinə qədər təxirə salınıb
+                            {record.pending_note ? <div>Qeyd: {record.pending_note}</div> : null}
+                        </div>
+                    )}
+                </div>
             )
         },
         {

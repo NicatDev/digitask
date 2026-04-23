@@ -8,6 +8,7 @@ const AssigneeModal = ({ open, onCancel, task, users, onAddAssignee }) => {
     const [loading, setLoading] = useState(false);
 
     if (!task) return null;
+    const isDone = task.status === 'done';
 
     const currentAssigneeIds = task.assigned_to || [];
     const availableUsers = users.filter(u => u.is_active && !currentAssigneeIds.includes(u.id));
@@ -17,6 +18,7 @@ const AssigneeModal = ({ open, onCancel, task, users, onAddAssignee }) => {
             message.warning('İcraçı seçin');
             return;
         }
+        if (isDone) return;
         setLoading(true);
         try {
             await onAddAssignee(task.id, selectedUserId);
@@ -38,7 +40,7 @@ const AssigneeModal = ({ open, onCancel, task, users, onAddAssignee }) => {
                 <Button key="cancel" onClick={() => { setSelectedUserId(null); onCancel(); }}>
                     Ləğv et
                 </Button>,
-                <Button key="add" type="primary" loading={loading} onClick={handleAdd}>
+                <Button key="add" type="primary" loading={loading} onClick={handleAdd} disabled={isDone}>
                     Əlavə et
                 </Button>
             ]}
@@ -51,6 +53,11 @@ const AssigneeModal = ({ open, onCancel, task, users, onAddAssignee }) => {
                     ? task.assigned_to_names.join(', ')
                     : 'Yoxdur'}
             </div>
+            {isDone && (
+                <div style={{ marginBottom: 8, color: '#8c8c8c' }}>
+                    Tamamlanmış tapşırıqda bu bölmədə icraçı dəyişikliyi deaktivdir.
+                </div>
+            )}
             <Select
                 showSearch
                 optionFilterProp="children"
@@ -58,6 +65,7 @@ const AssigneeModal = ({ open, onCancel, task, users, onAddAssignee }) => {
                 style={{ width: '100%' }}
                 value={selectedUserId}
                 onChange={setSelectedUserId}
+                disabled={isDone}
                 filterOption={(input, option) =>
                     option.children.toLowerCase().includes(input.toLowerCase())
                 }

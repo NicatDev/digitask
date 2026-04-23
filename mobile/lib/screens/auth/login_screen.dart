@@ -4,8 +4,11 @@ import 'package:mobile/screens/main_layout.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:mobile/core/services/location_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,6 +23,38 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   String? _errorMessage;
+
+  Future<void> _requestIosPermissionsAfterLogin() async {
+    if (!Platform.isIOS) return;
+
+    try {
+      // Notification permission via FirebaseMessaging is preferred on iOS.
+      await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+    } catch (e) {
+      debugPrint('iOS notification permission error: $e');
+    }
+
+    try {
+      // Ask location permissions in proper order for iOS.
+      var locationStatus = await Permission.location.status;
+      if (!locationStatus.isGranted) {
+        locationStatus = await Permission.location.request();
+      }
+      if (locationStatus.isGranted) {
+        final alwaysStatus = await Permission.locationAlways.status;
+        if (!alwaysStatus.isGranted) {
+          await Permission.locationAlways.request();
+        }
+      }
+    } catch (e) {
+      debugPrint('iOS location permission error: $e');
+    }
+  }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -44,6 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await storage.write(key: 'refresh_token', value: refresh);
 
         if (mounted) {
+           await _requestIosPermissionsAfterLogin();
            try {
              await LocationService.initialize();
            } catch (e) {

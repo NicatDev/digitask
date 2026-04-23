@@ -55,7 +55,14 @@ class TaskViewSet(viewsets.ModelViewSet):
             'assigned_to',
             'task_services', 'task_services__service', 'task_services__values',
             'task_products', 'task_products__product', 'task_products__warehouse',
-            'task_documents'
+            'task_documents',
+            models.Prefetch(
+                'activities',
+                queryset=TaskActivity.objects.filter(
+                    action=TaskActivity.Action.STATUS_CHANGE
+                ).order_by('-created_at'),
+                to_attr='status_change_activities',
+            ),
         )
         
         user = self.request.user
@@ -161,26 +168,38 @@ class TaskViewSet(viewsets.ModelViewSet):
         else:
             today = timezone.now().date()
             queryset = queryset.annotate(
-                _overdue_pending=Case(
+                _pending_bucket=Case(
                     When(
                         Q(status=Task.Status.PENDING)
                         & Q(rescheduled_date__isnull=False)
                         & Q(rescheduled_date__lte=today),
                         then=Value(0),
                     ),
+                    When(
+                        Q(status=Task.Status.PENDING),
+                        then=Value(1),
+                    ),
                     default=Value(1),
                     output_field=IntegerField(),
                 ),
                 _status_order=Case(
                     When(status__in=['in_progress', 'arrived'], then=Value(0)),
-                    When(status=Task.Status.TODO, then=Value(1)),
-                    When(status=Task.Status.PENDING, then=Value(2)),
-                    When(status=Task.Status.DONE, then=Value(3)),
-                    When(status=Task.Status.REJECTED, then=Value(4)),
+                    # Legacy status in bəzi köhnə datalarda qala bilər.
+                    When(status='review', then=Value(1)),
+                    When(
+                        Q(status=Task.Status.PENDING)
+                        & Q(rescheduled_date__isnull=False)
+                        & Q(rescheduled_date__lte=today),
+                        then=Value(2),
+                    ),
+                    When(status=Task.Status.TODO, then=Value(3)),
+                    When(status=Task.Status.PENDING, then=Value(4)),
+                    When(status=Task.Status.DONE, then=Value(5)),
+                    When(status=Task.Status.REJECTED, then=Value(6)),
                     default=Value(99),
                     output_field=IntegerField(),
                 ),
-            ).order_by('_overdue_pending', '_status_order', 'rescheduled_date', '-created_at')
+            ).order_by('_status_order', '_pending_bucket', 'rescheduled_date', '-created_at')
 
         # Annotasiyada assigned_to (M2M) join-u eyni Task üçün bir neçə sətir yarada bilər;
         # əks halda .get(pk=...) → MultipleObjectsReturned (məs. /tasks/116/activity/).
@@ -289,7 +308,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         qs = (
             self.get_queryset()
             .filter(customer_id=task.customer_id)
-            .order_by('_overdue_pending', '_status_order', 'rescheduled_date', '-created_at')
+            .order_by('_status_order', '_pending_bucket', 'rescheduled_date', '-created_at')
             .prefetch_related('assigned_to')
         )
         return Response(TaskCustomerHistorySerializer(qs, many=True).data)
@@ -307,7 +326,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         qs = (
             self.get_queryset()
             .filter(customer_id=customer_id)
-            .order_by('_overdue_pending', '_status_order', 'rescheduled_date', '-created_at')
+            .order_by('_status_order', '_pending_bucket', 'rescheduled_date', '-created_at')
             .prefetch_related('assigned_to')
         )
         return Response(TaskCustomerHistorySerializer(qs, many=True).data)
@@ -322,6 +341,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             new_status = serializer.validated_data['status']
             rd = serializer.validated_data.get('rescheduled_date')
+            pending_note = serializer.validated_data.get('pending_note')
             reject_note = serializer.validated_data.get('reject_note')
             task.status = new_status
             if new_status == Task.Status.PENDING:
@@ -339,12 +359,16 @@ class TaskViewSet(viewsets.ModelViewSet):
             log_meta = {'from': old_status, 'to': new_status}
             if task.rescheduled_date:
                 log_meta['rescheduled_date'] = str(task.rescheduled_date)
+            if pending_note:
+                log_meta['pending_note'] = pending_note
             if reject_note:
                 log_meta['reject_note'] = reject_note
             status_msg = (
                 f"{task_status_label(old_status)} → {task_status_label(new_status)}"
                 + (f" (tarix: {task.rescheduled_date})" if task.rescheduled_date else '')
             )
+            if pending_note:
+                status_msg = f"{status_msg}\nQeyd: {pending_note}"
             if reject_note:
                 status_msg = f"{status_msg}\nQeyd: {reject_note}"
             log_task_activity(

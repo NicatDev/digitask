@@ -158,6 +158,7 @@ class TaskSerializer(serializers.ModelSerializer):
     services = serializers.PrimaryKeyRelatedField(many=True, queryset=Service.objects.all(), required=False)
     reporter = serializers.PrimaryKeyRelatedField(read_only=True)
     reporter_name = serializers.SerializerMethodField()
+    pending_note = serializers.SerializerMethodField()
 
     class Meta:
         model = Task
@@ -166,7 +167,7 @@ class TaskSerializer(serializers.ModelSerializer):
             'customer_phone', 'customer_register_number',
             'customer_equipment_name', 'customer_optic_box_name',
             'title', 'note', 'status', 'status_display',
-            'rescheduled_date',
+            'rescheduled_date', 'pending_note',
             'assigned_to', 'assigned_to_names',
             'group', 'group_name', 'region_name', 'is_active',
             'task_type', 'task_type_details',
@@ -239,10 +240,28 @@ class TaskSerializer(serializers.ModelSerializer):
             result.append(full_name if full_name else user.username)
         return result
 
+    def get_pending_note(self, obj):
+        if obj.status != Task.Status.PENDING:
+            return None
+
+        activities = getattr(obj, 'status_change_activities', None)
+        if activities is None:
+            activities = obj.activities.filter(action='status_change').order_by('-created_at')
+
+        for act in activities:
+            meta = act.meta if isinstance(act.meta, dict) else {}
+            if meta.get('to') != Task.Status.PENDING:
+                continue
+            note = (meta.get('pending_note') or '').strip()
+            if note:
+                return note
+        return None
+
 
 class TaskStatusUpdateSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Task.Status.choices)
     rescheduled_date = serializers.DateField(required=False, allow_null=True)
+    pending_note = serializers.CharField(required=False, allow_blank=False, trim_whitespace=True)
     reject_note = serializers.CharField(required=False, allow_blank=False, trim_whitespace=True)
 
     def validate(self, attrs):
@@ -253,6 +272,12 @@ class TaskStatusUpdateSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     {'rescheduled_date': 'Təxirə salındı üçün tarix seçin (Rescheduled date).'}
                 )
+            pending_note = (attrs.get('pending_note') or '').strip()
+            if not pending_note:
+                raise serializers.ValidationError(
+                    {'pending_note': 'Təxirə salınma səbəbi (pending note) mütləqdir.'}
+                )
+            attrs['pending_note'] = pending_note
         if st == Task.Status.REJECTED:
             note = (attrs.get('reject_note') or '').strip()
             if not note:

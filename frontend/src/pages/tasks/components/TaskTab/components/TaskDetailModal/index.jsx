@@ -185,6 +185,11 @@ const TaskDetailModal = ({ open, onCancel, task, services = [], onRefresh }) => 
                         <Field label="Qeyd">
                             <span style={{ whiteSpace: 'pre-wrap' }}>{task.note || '—'}</span>
                         </Field>
+                        {task.status === 'pending' && (
+                            <Field label="Təxirə salınma qeydi">
+                                <span style={{ whiteSpace: 'pre-wrap' }}>{task.pending_note || '—'}</span>
+                            </Field>
+                        )}
                         <Field label="Servislər">
                             {task.services && task.services.length > 0
                                 ? task.services.map((sid) => {

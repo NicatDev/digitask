@@ -172,6 +172,14 @@ User = get_user_model()
 @receiver(m2m_changed, sender=Task.assigned_to.through)
 def task_assignment_changed(sender, instance, action, pk_set, **kwargs):
     """İcraçı əlavəsi: qrupdakı imtiyazlılar + bütün icraçılar (təkrar bildiriş əngəlli)."""
+    if action == "post_add":
+        # Any join/add should immediately move TODO tasks to IN_PROGRESS.
+        if instance.status == Task.Status.TODO:
+            Task.objects.filter(pk=instance.pk, status=Task.Status.TODO).update(
+                status=Task.Status.IN_PROGRESS
+            )
+            instance.status = Task.Status.IN_PROGRESS
+
     if action == "post_add" and pk_set:
         task = task_with_customer(instance)
         recipient_ids = user_ids_assignee_change_recipients(task)
@@ -186,3 +194,11 @@ def task_assignment_changed(sender, instance, action, pk_set, **kwargs):
             target_user_ids=recipient_ids,
             dedupe_seconds=45,
         )
+
+    if action in {"post_remove", "post_clear"}:
+        # If all assignees are removed, task must return to TODO.
+        if not instance.assigned_to.exists() and instance.status != Task.Status.TODO:
+            Task.objects.filter(pk=instance.pk).update(
+                status=Task.Status.TODO,
+                rescheduled_date=None,
+            )

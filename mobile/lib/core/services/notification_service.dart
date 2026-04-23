@@ -115,8 +115,8 @@ class NotificationService {
       // Update unread count for non-chat notifications
       final type = message.data['type'];
       if (type == 'notification') {
-        unreadCount.value++;
-        // Refetch to update list
+        // Keep badge/list synced to backend as source of truth.
+        fetchUnreadCount();
         fetchNotifications();
       }
     });
@@ -202,17 +202,24 @@ class NotificationService {
         final notificationData = data['notification'];
         
         if (notificationData != null) {
+          final notificationType =
+              notificationData['notification_type']?.toString().toLowerCase();
+          if (notificationType == 'chat_message') {
+            return;
+          }
+
           // Don't show local notification here — FCM handles it.
           // Just update in-app state.
-          
-          // Update Unread Count
-          unreadCount.value++;
+          fetchUnreadCount();
           
           // Add to list (real-time update)
           try {
              final newNotification = NotificationModel.fromJson(notificationData);
              final currentList = List<NotificationModel>.from(notifications.value);
-             currentList.insert(0, newNotification);
+             final exists = currentList.any((n) => n.id == newNotification.id);
+             if (!exists) {
+               currentList.insert(0, newNotification);
+             }
              notifications.value = currentList;
           } catch (e) {
              print('Error parsing notification model: $e');

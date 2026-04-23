@@ -380,6 +380,7 @@ const TaskTab = ({ isActive }) => {
             const payload = { status: values.status };
             if (values.status === 'pending' && values.rescheduled_date) {
                 payload.rescheduled_date = values.rescheduled_date.format('YYYY-MM-DD');
+                payload.pending_note = values.pending_note;
             }
             if (values.status === 'rejected') {
                 payload.reject_note = values.reject_note;
@@ -569,6 +570,7 @@ const TaskTab = ({ isActive }) => {
                 onStatusUpdate={handleStatusUpdate}
                 initialStatus={editingItem?.status}
                 initialRescheduledDate={editingItem?.rescheduled_date}
+                initialPendingNote={editingItem?.pending_note}
             />
 
             <MapModal

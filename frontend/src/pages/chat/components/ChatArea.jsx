@@ -75,6 +75,27 @@ const ChatArea = ({
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
+    const isSameDay = (a, b) => {
+        if (!a || !b) return false;
+        return (
+            a.getFullYear() === b.getFullYear() &&
+            a.getMonth() === b.getMonth() &&
+            a.getDate() === b.getDate()
+        );
+    };
+
+    const getDayLabel = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const now = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(now.getDate() - 1);
+
+        if (isSameDay(date, now)) return 'Bu gün';
+        if (isSameDay(date, yesterday)) return 'Dünən';
+        return date.toLocaleDateString('az-AZ');
+    };
+
     const openSettings = () => {
         setIsSettingsOpen(true);
     };
@@ -122,37 +143,47 @@ const ChatArea = ({
                 {messages.map((msg, index) => {
                     const isMe = msg.is_me || msg.sender.id === currentUser?.id;
                     const showSender = !isMe && (index === 0 || messages[index - 1].sender.id !== msg.sender.id);
+                    const messageDate = msg.created_at ? new Date(msg.created_at) : null;
+                    const prevDate = index > 0 && messages[index - 1]?.created_at ? new Date(messages[index - 1].created_at) : null;
+                    const showDateSeparator = index === 0 || !isSameDay(messageDate, prevDate);
                     const { reply, body } = decodeReply(msg.content);
 
                     return (
-                        <div key={msg.id || index} className={`${styles.messageRow} ${isMe ? styles.myRow : styles.otherRow}`}>
-                            <Button
-                                type="text"
-                                size="small"
-                                className={styles.replyBtn}
-                                icon={<RollbackOutlined />}
-                                onClick={() =>
-                                    setReplyTo({
-                                        id: msg.id,
-                                        sender: msg.sender?.first_name || msg.sender?.email || '',
-                                        snippet: (body || '').slice(0, 80),
-                                    })
-                                }
-                            />
-                            <div className={`${styles.messageBubble} ${isMe ? styles.myMessage : styles.otherMessage}`}>
-                                {showSender && <div className={styles.sender}>{msg.sender.first_name || msg.sender.email}</div>}
-                                {reply ? (
-                                    <div className={styles.replyPreviewInBubble}>
-                                        <div className={styles.replyMeta}>
-                                            Cavab: {reply.sender || ''} #{reply.id}
+                        <React.Fragment key={msg.id || index}>
+                            {showDateSeparator && (
+                                <div className={styles.dateSeparator}>
+                                    <span>{getDayLabel(msg.created_at)}</span>
+                                </div>
+                            )}
+                            <div className={`${styles.messageRow} ${isMe ? styles.myRow : styles.otherRow}`}>
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    className={styles.replyBtn}
+                                    icon={<RollbackOutlined />}
+                                    onClick={() =>
+                                        setReplyTo({
+                                            id: msg.id,
+                                            sender: msg.sender?.first_name || msg.sender?.email || '',
+                                            snippet: (body || '').slice(0, 80),
+                                        })
+                                    }
+                                />
+                                <div className={`${styles.messageBubble} ${isMe ? styles.myMessage : styles.otherMessage}`}>
+                                    {showSender && <div className={styles.sender}>{msg.sender.first_name || msg.sender.email}</div>}
+                                    {reply ? (
+                                        <div className={styles.replyPreviewInBubble}>
+                                            <div className={styles.replyMeta}>
+                                                Cavab: {reply.sender || ''} #{reply.id}
+                                            </div>
+                                            <div className={styles.replySnippet}>{reply.snippet || ''}</div>
                                         </div>
-                                        <div className={styles.replySnippet}>{reply.snippet || ''}</div>
-                                    </div>
-                                ) : null}
-                                <div className={styles.content}>{body}</div>
-                                <div className={styles.time}>{formatDate(msg.created_at)}</div>
+                                    ) : null}
+                                    <div className={styles.content}>{body}</div>
+                                    <div className={styles.time}>{formatDate(msg.created_at)}</div>
+                                </div>
                             </div>
-                        </div>
+                        </React.Fragment>
                     );
                 })}
                 <div ref={messagesEndRef} />

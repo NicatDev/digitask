@@ -10,7 +10,8 @@ const StatusModal = ({
     onCancel,
     onStatusUpdate,
     initialStatus,
-    initialRescheduledDate
+    initialRescheduledDate,
+    initialPendingNote
 }) => {
     const [form] = Form.useForm();
     const status = Form.useWatch('status', form);
@@ -24,12 +25,13 @@ const StatusModal = ({
                 rescheduled_date:
                     initialRescheduledDate && initialStatus === 'pending'
                         ? dayjs(initialRescheduledDate)
-                        : undefined
+                        : undefined,
+                pending_note: initialStatus === 'pending' ? initialPendingNote : undefined,
             });
         } else {
             form.resetFields();
         }
-    }, [open, initialStatus, initialRescheduledDate, form]);
+    }, [open, initialStatus, initialRescheduledDate, initialPendingNote, form]);
 
     return (
         <Modal
@@ -51,6 +53,9 @@ const StatusModal = ({
                             if (v !== 'rejected') {
                                 form.setFieldValue('reject_note', undefined);
                             }
+                            if (v !== 'pending') {
+                                form.setFieldValue('pending_note', undefined);
+                            }
                         }}
                     >
                         {TASK_STATUSES.map(s => (
@@ -62,22 +67,34 @@ const StatusModal = ({
                     </Select>
                 </Form.Item>
                 {status === 'pending' && (
-                    <Form.Item
-                        name="rescheduled_date"
-                        label="Rescheduled date"
-                        rules={[
-                            {
-                                required: true,
-                                message: 'Təxirə salındı üçün tarix seçin'
-                            }
-                        ]}
-                    >
-                        <DatePicker
-                            style={{ width: '100%' }}
-                            format="YYYY-MM-DD"
-                            placeholder="Tarix seçin"
-                        />
-                    </Form.Item>
+                    <>
+                        <Form.Item
+                            name="rescheduled_date"
+                            label="Rescheduled date"
+                            rules={[
+                                {
+                                    required: true,
+                                    message: 'Təxirə salındı üçün tarix seçin'
+                                }
+                            ]}
+                        >
+                            <DatePicker
+                                style={{ width: '100%' }}
+                                format="YYYY-MM-DD"
+                                placeholder="Tarix seçin"
+                            />
+                        </Form.Item>
+                        <Form.Item
+                            name="pending_note"
+                            label="Təxirə salınma səbəbi"
+                            rules={[
+                                { required: true, message: 'Səbəb mütləqdir' },
+                                { whitespace: true, message: 'Səbəb mütləqdir' },
+                            ]}
+                        >
+                            <Input.TextArea rows={3} placeholder="Təxirə salınma səbəbini yazın..." />
+                        </Form.Item>
+                    </>
                 )}
                 {status === 'rejected' && (
                     <Form.Item

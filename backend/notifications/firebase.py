@@ -14,6 +14,23 @@ def _dedupe_tokens(tokens):
     # Preserve order while dropping duplicate device tokens.
     return list(dict.fromkeys(tokens))
 
+
+def _build_apns_config(data=None):
+    # iOS/APNs delivery tuning. Helps foreground/background reliability on iOS.
+    return messaging.APNSConfig(
+        headers={
+            'apns-priority': '10',
+            'apns-push-type': 'alert',
+        },
+        payload=messaging.APNSPayload(
+            aps=messaging.Aps(
+                content_available=True,
+                sound='default',
+            ),
+        ),
+        custom_data=data or {},
+    )
+
 def _get_firebase_app():
     global _firebase_app
     if _firebase_app is not None:
@@ -102,6 +119,7 @@ def _send_fcm_multicast(tokens, title, body, data=None):
                 channel_id='digitask_notifications',
             ),
         )
+        apns_config = _build_apns_config(data=data)
         
         message = messaging.MulticastMessage(
             notification=messaging.Notification(
@@ -109,6 +127,7 @@ def _send_fcm_multicast(tokens, title, body, data=None):
                 body=body,
             ),
             android=android_config,
+            apns=apns_config,
             data=data or {},
             tokens=batch_tokens,
         )
@@ -147,6 +166,7 @@ def _send_fcm_message(token, title, body, data=None):
             channel_id='digitask_notifications',
         ),
     )
+    apns_config = _build_apns_config(data=data)
     
     message = messaging.Message(
         notification=messaging.Notification(
@@ -154,6 +174,7 @@ def _send_fcm_message(token, title, body, data=None):
             body=body,
         ),
         android=android_config,
+        apns=apns_config,
         data=data or {},
         token=token,
     )

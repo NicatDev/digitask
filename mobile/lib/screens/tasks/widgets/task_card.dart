@@ -64,12 +64,14 @@ class TaskCard extends StatelessWidget {
     final List<dynamic> assigneeNames = task['assigned_to_names'] is List ? task['assigned_to_names'] : [];
     final currentUser = ChatService().currentUser.value;
     final bool isCurrentUserAssignee = currentUser != null && assigneeIds.contains(currentUser.id);
+    final bool isDoneTask = statusKey == 'done';
     final svcLabels = taskServiceLabels(task, allServices);
     final bool highlightReschedule = isCurrentUserAssignee &&
         statusKey == 'pending' &&
         task['rescheduled_date'] != null;
 
     String? rescheduleFootnote;
+    String? pendingNoteFootnote;
     if (statusKey == 'pending' && task['rescheduled_date'] != null) {
       final rd = task['rescheduled_date'];
       final s = rd.toString().trim();
@@ -83,6 +85,10 @@ class TaskCard extends StatelessWidget {
             ? DateFormat('dd MMM yyyy').format(dt)
             : s;
         rescheduleFootnote = '$formatted tarixinə qədər təxirə salınmışdı';
+      }
+      final pendingNote = (task['pending_note'] ?? '').toString().trim();
+      if (pendingNote.isNotEmpty) {
+        pendingNoteFootnote = 'Qeyd: $pendingNote';
       }
     }
 
@@ -325,6 +331,17 @@ class TaskCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              if (pendingNoteFootnote != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  pendingNoteFootnote,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.red.shade800,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ],
 
             const Divider(),
@@ -336,8 +353,8 @@ class TaskCard extends StatelessWidget {
                 // Assignee button: "İcraya qoşul" or "İcraçı əlavə et" 
                 _buildActionBtn(context, 
                   isCurrentUserAssignee ? Icons.person_add : Icons.group_add, 
-                  isCurrentUserAssignee ? Colors.teal : Colors.blue, 
-                  () => _openAssigneeModal(context, assigneeIds, assigneeNames, isCurrentUserAssignee),
+                  isDoneTask ? Colors.grey.shade300 : (isCurrentUserAssignee ? Colors.teal : Colors.blue), 
+                  isDoneTask ? null : () => _openAssigneeModal(context, assigneeIds, assigneeNames, isCurrentUserAssignee),
                 ),
                 
                 // Edit Button - Disabled if not writer

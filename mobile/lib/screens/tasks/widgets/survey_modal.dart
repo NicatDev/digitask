@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // Added
+import 'package:flutter/services.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:intl/intl.dart';
 import 'package:dio/dio.dart' as dio;
 import 'package:mobile/core/constants.dart';
 import 'dart:io'; 
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SurveyModal extends StatefulWidget {
   final Map<String, dynamic> task;
@@ -166,6 +168,34 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
   bool _isSaving = false;
   final ImagePicker _picker = ImagePicker();
 
+  String _normalizeFieldType(dynamic rawType) {
+    final t = (rawType ?? '').toString().trim().toLowerCase();
+    switch (t) {
+      case 'int':
+      case 'integer':
+        return 'integer';
+      case 'float':
+      case 'double':
+      case 'number':
+      case 'decimal':
+        return 'decimal';
+      case 'bool':
+      case 'boolean':
+        return 'boolean';
+      case 'datetime':
+      case 'date_time':
+        return 'datetime';
+      case 'image':
+      case 'file':
+      case 'string':
+      case 'text':
+      case 'date':
+        return t;
+      default:
+        return t;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -194,7 +224,7 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
       // Prepare values
       for (var col in widget.service['columns']) {
         final colId = col['id'].toString();
-        final type = col['field_type'];
+        final type = _normalizeFieldType(col['field_type']);
         final val = _formValues[colId];
 
         if (val != null) {
@@ -252,7 +282,7 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
   }
 
   Map<String, dynamic> _mapValueToField(dynamic column, dynamic value) {
-    final type = column['field_type'];
+    final type = _normalizeFieldType(column['field_type']);
     if (value == null) return {};
 
     switch (type) {
@@ -270,7 +300,7 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
   Widget _buildField(dynamic col) {
     final colId = col['id'].toString();
     final label = col['name'];
-    final type = col['field_type'];
+    final type = _normalizeFieldType(col['field_type']);
     final required = col['required'] ?? false;
 
     return Padding(
@@ -280,6 +310,93 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
   }
 
   Widget _buildInputByType(String key, String label, String type, bool required) {
+    Future<void> pickImage() async {
+      final source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        builder: (ctx) => SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Kamera'),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Qalereya'),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (source == null) return;
+      final XFile? image = await _picker.pickImage(source: source);
+      if (image != null) {
+        setState(() => _formValues[key] = image);
+      }
+    }
+
+    Future<void> openImagePreview(dynamic val) async {
+      if (val == null) return;
+
+      Widget imageWidget;
+      if (val is XFile) {
+        imageWidget = kIsWeb
+            ? Image.network(val.path, fit: BoxFit.contain)
+            : Image.file(File(val.path), fit: BoxFit.contain);
+      } else {
+        imageWidget = Image.network(
+          _resolveImageUrl(val.toString()),
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48),
+        );
+      }
+
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => Dialog(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: InteractiveViewer(
+                  child: Container(
+                    color: Colors.black,
+                    width: double.infinity,
+                    child: imageWidget,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (val is! XFile)
+                      TextButton(
+                        onPressed: () async {
+                          final uri = Uri.tryParse(_resolveImageUrl(val.toString()));
+                          if (uri != null) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        child: const Text('Aç/Yüklə'),
+                      ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Bağla'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (type == 'image') {
       final val = _formValues[key];
       return Column(
@@ -290,13 +407,10 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
           const SizedBox(height: 8),
           InkWell(
             onTap: () async {
-              try {
-                final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-                if (image != null) {
-                  setState(() => _formValues[key] = image);
-                }
-              } catch (e) {
-                // Handle permission?
+              if (val == null) {
+                await pickImage();
+              } else {
+                await openImagePreview(val);
               }
             },
             child: Container(
@@ -317,10 +431,28 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.add_a_photo, color: Colors.grey, size: 40),
-                        Text('Yükləmək üçün toxunun', style: TextStyle(color: Colors.grey)),
+                        Text('Seçmək üçün toxunun', style: TextStyle(color: Colors.grey)),
                       ],
                     ),
             ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: pickImage,
+                icon: const Icon(Icons.add_a_photo),
+                label: const Text('Şəkil seç'),
+              ),
+              if (val != null) ...[
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: () => setState(() => _formValues.remove(key)),
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Sil'),
+                ),
+              ],
+            ],
           ),
         ],
       );
@@ -352,8 +484,26 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
              helperText: required ? 'Required (Optional warning)' : null,
              helperStyle: const TextStyle(color: Colors.orange),
           ),
-          keyboardType: TextInputType.number,
-          // validator: required ? (v) => v!.isEmpty ? 'Required' : null : null, // Removed
+          keyboardType: TextInputType.numberWithOptions(decimal: type == 'decimal'),
+          inputFormatters: type == 'integer'
+              ? <TextInputFormatter>[
+                  FilteringTextInputFormatter.digitsOnly,
+                ]
+              : <TextInputFormatter>[
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*([.,]\d{0,6})?$')),
+                ],
+          validator: (v) {
+            final value = (v ?? '').trim();
+            if (value.isEmpty) return null;
+            if (type == 'integer' && int.tryParse(value) == null) {
+              return 'Yalnız tam ədəd daxil edin';
+            }
+            if (type == 'decimal' &&
+                double.tryParse(value.replaceAll(',', '.')) == null) {
+              return 'Yalnız rəqəm daxil edin';
+            }
+            return null;
+          },
           onChanged: (v) => _formValues[key] = v,
         );
       case 'boolean':
