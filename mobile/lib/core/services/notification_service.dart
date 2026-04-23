@@ -102,8 +102,16 @@ class NotificationService {
   /// Listen for FCM messages while app is in foreground
   void _setupFcmForegroundListener() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      // Local re-display disabled to avoid duplicate notifications.
-      // Keep state sync updates below.
+      final notification = message.notification;
+      final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+      if (isAndroid && notification != null) {
+        _showLocalNotification(
+          id: notification.hashCode,
+          title: notification.title ?? 'DigiTask',
+          body: notification.body ?? '',
+          tag: message.data['tag'],
+        );
+      }
 
       // Update unread count for non-chat notifications
       final type = message.data['type'];
