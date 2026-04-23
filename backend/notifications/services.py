@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.db import transaction
 from django.utils import timezone
 
 from .models import Notification
@@ -42,15 +43,20 @@ def send_notification(
         if existing:
             return existing
 
-    notification = Notification.objects.create(
-        title=title,
-        message=message,
-        notification_type=notification_type,
-        related_task=related_task,
-    )
-    if push_metadata:
-        notification._push_metadata = push_metadata
-    if target_user_ids is not None:
-        notification.target_users.set(target_user_ids)
+    # Wrap in atomic so that post_save on_commit fires AFTER target_users.set().
+    # Without this, Django autocommit commits create() immediately, on_commit
+    # runs before target_users.set(), sees empty targets and broadcasts to ALL
+    # users (including the sender) — causing duplicates + self-notifications.
+    with transaction.atomic():
+        notification = Notification.objects.create(
+            title=title,
+            message=message,
+            notification_type=notification_type,
+            related_task=related_task,
+        )
+        if push_metadata:
+            notification._push_metadata = push_metadata
+        if target_user_ids is not None:
+            notification.target_users.set(target_user_ids)
 
     return notification

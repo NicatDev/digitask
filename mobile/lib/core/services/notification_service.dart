@@ -140,12 +140,11 @@ class NotificationService {
   void _setupFcmForegroundListener() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       final notification = message.notification;
-      // Show local notification in foreground for both Android and iOS.
-      // iOS: setForegroundNotificationPresentationOptions handles system-level
-      //   display for notification+data payloads, but local notification
-      //   gives us consistent control and handles data-only messages too.
-      // Android: System never auto-shows FCM in foreground, so local is required.
-      if (notification != null) {
+      // Android: system never auto-shows FCM in foreground → show local notification.
+      // iOS: setForegroundNotificationPresentationOptions(alert:true) already
+      //   displays the FCM at system level; showing local notification too = duplicate.
+      final showLocal = !kIsWeb && Platform.isAndroid;
+      if (showLocal && notification != null) {
         try {
           await _showLocalNotification(
             id: notification.hashCode,
