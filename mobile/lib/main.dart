@@ -8,51 +8,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 // Top-level background message handler (must be top-level function)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  
-  // Show local notification for background FCM message
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
-  
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@drawable/ic_notification');
-  const DarwinInitializationSettings initializationSettingsDarwin =
-      DarwinInitializationSettings();
-  const InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-    iOS: initializationSettingsDarwin,
-  );
-  await flutterLocalNotificationsPlugin.initialize(
-    settings: initializationSettings,
-  );
-  
-  final notification = message.notification;
-  if (notification != null) {
-    final androidDetails = AndroidNotificationDetails(
-      'digitask_notifications',
-      'DigiTask Notifications',
-      channelDescription: 'Notifications from DigiTask App',
-      importance: Importance.max,
-      priority: Priority.high,
-      icon: '@drawable/ic_notification',
-      tag: message.data['tag'],
-    );
-    
-    const darwinDetails = DarwinNotificationDetails();
-    
-    await flutterLocalNotificationsPlugin.show(
-      id: notification.hashCode,
-      title: notification.title,
-      body: notification.body,
-      notificationDetails:
-          NotificationDetails(android: androidDetails, iOS: darwinDetails),
-    );
-  }
+  // Firebase/APNs notification payload is the single source of display.
+  // Do not show a second local notification here.
 }
 
 void main() async {
