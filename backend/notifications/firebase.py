@@ -15,8 +15,17 @@ def _dedupe_tokens(tokens):
     return list(dict.fromkeys(tokens))
 
 
-def _build_apns_config(data=None):
+def _sanitize_data(data):
+    """FCM data payload values MUST all be strings. Sanitize to prevent SDK errors."""
+    if not data:
+        return {}
+    return {str(k): ('' if v is None else str(v)) for k, v in data.items()}
+
+
+def _build_apns_config():
     # iOS/APNs delivery tuning. Helps foreground/background reliability on iOS.
+    # NOTE: Do NOT pass custom_data here — data is already sent via Message.data.
+    # Duplicating it in APNSConfig.custom_data can exceed Apple's 4KB payload limit.
     return messaging.APNSConfig(
         headers={
             'apns-priority': '10',
@@ -25,10 +34,10 @@ def _build_apns_config(data=None):
         payload=messaging.APNSPayload(
             aps=messaging.Aps(
                 content_available=True,
+                mutable_content=True,
                 sound='default',
             ),
         ),
-        custom_data=data or {},
     )
 
 def _get_firebase_app():
@@ -106,6 +115,8 @@ def _send_fcm_multicast(tokens, title, body, data=None):
     if app is None:
         return
 
+    safe_data = _sanitize_data(data)
+
     # FCM limits multicast to 500 tokens per message
     for i in range(0, len(tokens), 500):
         batch_tokens = tokens[i:i + 500]
@@ -115,11 +126,11 @@ def _send_fcm_multicast(tokens, title, body, data=None):
             notification=messaging.AndroidNotification(
                 title=title,
                 body=body,
-                tag=data.get('tag') if data else None,
+                tag=safe_data.get('tag') or None,
                 channel_id='digitask_notifications',
             ),
         )
-        apns_config = _build_apns_config(data=data)
+        apns_config = _build_apns_config()
         
         message = messaging.MulticastMessage(
             notification=messaging.Notification(
@@ -128,7 +139,7 @@ def _send_fcm_multicast(tokens, title, body, data=None):
             ),
             android=android_config,
             apns=apns_config,
-            data=data or {},
+            data=safe_data,
             tokens=batch_tokens,
         )
         
@@ -138,8 +149,11 @@ def _send_fcm_multicast(tokens, title, body, data=None):
                 responses = response.responses
                 failed_tokens = []
                 for idx, resp in enumerate(responses):
-                    if not resp.success and isinstance(resp.exception, messaging.UnregisteredError):
-                        failed_tokens.append(batch_tokens[idx])
+                    if not resp.success:
+                        if isinstance(resp.exception, messaging.UnregisteredError):
+                            failed_tokens.append(batch_tokens[idx])
+                        else:
+                            logger.warning('FCM send failed for token %d: %s', idx, resp.exception)
                 
                 # Token is invalid, remove it
                 if failed_tokens:
@@ -157,16 +171,18 @@ def _send_fcm_message(token, title, body, data=None):
     if app is None:
         return
     
+    safe_data = _sanitize_data(data)
+    
     android_config = messaging.AndroidConfig(
         priority='high',
         notification=messaging.AndroidNotification(
             title=title,
             body=body,
-            tag=data.get('tag') if data else None,
+            tag=safe_data.get('tag') or None,
             channel_id='digitask_notifications',
         ),
     )
-    apns_config = _build_apns_config(data=data)
+    apns_config = _build_apns_config()
     
     message = messaging.Message(
         notification=messaging.Notification(
@@ -175,7 +191,7 @@ def _send_fcm_message(token, title, body, data=None):
         ),
         android=android_config,
         apns=apns_config,
-        data=data or {},
+        data=safe_data,
         token=token,
     )
     

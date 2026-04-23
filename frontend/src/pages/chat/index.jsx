@@ -71,7 +71,16 @@ const ChatPage = () => {
         }
         return () => {
             if (ws.current) {
+                intentionalClose.current = true;
                 ws.current.close();
+            }
+            if (reconnectTimeout.current) {
+                clearTimeout(reconnectTimeout.current);
+                reconnectTimeout.current = null;
+            }
+            if (markReadTimer.current) {
+                clearTimeout(markReadTimer.current);
+                markReadTimer.current = null;
             }
         };
     }, [selectedGroupId]);
@@ -106,52 +115,92 @@ const ChatPage = () => {
         }
     };
 
+    const reconnectTimeout = useRef(null);
+    const markReadTimer = useRef(null);
+    const intentionalClose = useRef(false);
+
     const connectWebSocket = (groupId) => {
-        if (ws.current) {
-            ws.current.close();
+        // Clear any pending reconnect
+        if (reconnectTimeout.current) {
+            clearTimeout(reconnectTimeout.current);
+            reconnectTimeout.current = null;
         }
 
-        const isProduction = true || window.location.hostname === 'new.digitask.store' ||
+        if (ws.current) {
+            intentionalClose.current = true;
+            ws.current.close();
+        }
+        intentionalClose.current = false;
+
+        const isProduction = window.location.hostname === 'new.digitask.store' ||
             window.location.hostname === 'digitask.store' ||
             window.location.hostname === 'app.digitask.store';
         const wsBase = isProduction ? 'wss://app.digitask.store' : 'ws://127.0.0.1:8000';
         const token = localStorage.getItem('access_token');
+        if (!token) return;
         const url = `${wsBase}/ws/chat/groups/${groupId}/?token=${token}`;
 
-        ws.current = new WebSocket(url);
+        let retryCount = 0;
+        const maxRetries = 10;
 
-        ws.current.onopen = () => {
-            console.log("Connected to Chat WS");
-        };
+        const attemptConnect = () => {
+            const socket = new WebSocket(url);
+            ws.current = socket;
 
-        ws.current.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-
-            const normalizedMsg = {
-                id: data.id,
-                content: data.message,
-                created_at: data.created_at,
-                sender: {
-                    id: data.sender_id,
-                    first_name: data.sender,
-                    email: ''
-                },
-                is_me: data.sender_id === currentUser?.id
+            socket.onopen = () => {
+                console.log("Connected to Chat WS");
+                retryCount = 0; // Reset retry count on successful connection
             };
 
-            setMessages(prev => [...prev, normalizedMsg]);
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
 
-            if (data.id) {
-                // Mark read immediately if focused
-                markMessagesRead(groupId).then(() => {
-                    fetchGroups(); // Refresh unread counts
-                });
-            }
+                const normalizedMsg = {
+                    id: data.id,
+                    content: data.message,
+                    created_at: data.created_at,
+                    sender: {
+                        id: data.sender_id,
+                        first_name: data.sender,
+                        email: ''
+                    },
+                    is_me: data.sender_id === currentUser?.id
+                };
+
+                setMessages(prev => [...prev, normalizedMsg]);
+
+                // Debounce markAsRead + fetchGroups to avoid request flood
+                if (data.id) {
+                    if (markReadTimer.current) clearTimeout(markReadTimer.current);
+                    markReadTimer.current = setTimeout(() => {
+                        markMessagesRead(groupId).then(() => {
+                            fetchGroups();
+                        });
+                    }, 1000);
+                }
+            };
+
+            socket.onerror = (error) => {
+                console.error("Chat WebSocket Error:", error);
+            };
+
+            socket.onclose = (event) => {
+                console.log("Disconnected Chat WS, code:", event.code);
+                // Only reconnect if this wasn't an intentional close
+                if (!intentionalClose.current && retryCount < maxRetries) {
+                    retryCount++;
+                    const delay = Math.min(1000 * Math.pow(2, retryCount - 1), 30000); // Exponential backoff: 1s, 2s, 4s, 8s... max 30s
+                    console.log(`Reconnecting in ${delay / 1000}s (attempt ${retryCount}/${maxRetries})...`);
+                    reconnectTimeout.current = setTimeout(() => {
+                        if (!intentionalClose.current) {
+                            attemptConnect();
+                        }
+                    }, delay);
+                }
+            };
         };
 
-        ws.current.onclose = () => {
-            console.log("Disconnected Chat WS");
-        };
+        attemptConnect();
     };
 
     const loadGroupHistory = async (groupId, pageNum) => {

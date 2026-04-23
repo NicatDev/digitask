@@ -45,8 +45,16 @@ class AuditLoggingMiddleware:
         
         # Log modification requests (HTTP level)
         if request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
-             # Exclude specific paths
-            if any(path in request.path for path in ['/admin/', '/static/', '/media/', '/auth/', '/token/']):
+             # Exclude specific paths that generate too much noise
+            excluded_paths = [
+                '/admin/', '/static/', '/media/', '/auth/', '/token/',
+                # High-frequency endpoints — location, tracking, chat, notifications
+                '/location/', '/tracking/',
+                '/chat/messages/mark-read/',
+                '/fcm-token/',
+                '/notifications/read/', '/notifications/read-all/',
+            ]
+            if any(path in request.path for path in excluded_paths):
                 return response
             # IP is already extracted at the start of request
 

@@ -69,8 +69,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_message(self, group_id, content):
-        from .models import Message, ChatGroup, GroupMembership, MessageReadStatus
-        from notifications.firebase import send_fcm_to_user
+        from .models import Message, ChatGroup
         
         group = ChatGroup.objects.get(id=group_id)
         
@@ -79,43 +78,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
              raise Exception("Only owner can send messages in this group.")
 
         message = Message.objects.create(group=group, sender=self.user, content=content)
-        
-        sender_name = self.user.get_full_name() or self.user.username
-        
-        # Send FCM push to all members EXCEPT the sender
-        memberships = GroupMembership.objects.filter(group=group).select_related('user')
-        for membership in memberships:
-            if membership.user != self.user:
-                # Count unread messages for this user in this group
-                unread_count = Message.objects.filter(
-                    group=group
-                ).exclude(
-                    read_statuses__user=membership.user
-                ).count()
-                
-                fcm_data = {
-                    'type': 'chat_message',
-                    'group_id': str(group.id),
-                    'group_name': group.name,
-                    'tag': f'chat_{group.id}',  # Same tag = Android updates existing notification
-                }
-                
-                if unread_count <= 5:
-                    # Individual notification for each message (1-5)
-                    send_fcm_to_user(
-                        membership.user.id,
-                        group.name,
-                        f"{sender_name}: {content[:100]}",
-                        data=fcm_data
-                    )
-                elif unread_count % 5 == 0:
-                    # Grouped notification every 5 messages
-                    send_fcm_to_user(
-                        membership.user.id,
-                        group.name,
-                        f"Bu qrupdan {unread_count} oxunmamış mesajınız var",
-                        data=fcm_data
-                    )
+        # FCM push + WS notification is handled by chat/signals.py (post_save on Message)
 
         return message
 

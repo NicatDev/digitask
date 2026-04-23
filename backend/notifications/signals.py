@@ -129,8 +129,9 @@ def _broadcast_general_if_still_untargeted(notification_id):
         return
     if n.target_users.exists():
         return
-    send_notification_ws(n, target_users=None)
-    threading.Thread(target=send_notification_fcm, args=(n, None)).start()
+    meta = getattr(n, '_push_metadata', None)
+    send_notification_ws(n, target_users=None, push_metadata=meta)
+    threading.Thread(target=send_notification_fcm, args=(n, None), kwargs={'push_metadata': meta}).start()
 
 
 @receiver(post_save, sender=Notification)

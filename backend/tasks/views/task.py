@@ -1,5 +1,5 @@
 from django.db import models, transaction
-from django.db.models import Case, IntegerField, Q, Value, When
+from django.db.models import Case, Exists, IntegerField, OuterRef, Q, Value, When
 from django.db.models.functions import Cast
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -199,7 +199,13 @@ class TaskViewSet(viewsets.ModelViewSet):
                     default=Value(99),
                     output_field=IntegerField(),
                 ),
-            ).order_by('_status_order', '_pending_bucket', 'rescheduled_date', '-created_at')
+                # Mənə assign olunmuş tapşırıqlar eyni status daxilində yuxarıda görsənir
+                _is_mine=Case(
+                    When(assigned_to=user, then=Value(0)),
+                    default=Value(1),
+                    output_field=IntegerField(),
+                ),
+            ).order_by('_status_order', '_is_mine', '_pending_bucket', 'rescheduled_date', '-created_at')
 
         # Annotasiyada assigned_to (M2M) join-u eyni Task üçün bir neçə sətir yarada bilər;
         # əks halda .get(pk=...) → MultipleObjectsReturned (məs. /tasks/116/activity/).
@@ -308,7 +314,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         qs = (
             self.get_queryset()
             .filter(customer_id=task.customer_id)
-            .order_by('_status_order', '_pending_bucket', 'rescheduled_date', '-created_at')
+            .order_by('_status_order', '_is_mine', '_pending_bucket', 'rescheduled_date', '-created_at')
             .prefetch_related('assigned_to')
         )
         return Response(TaskCustomerHistorySerializer(qs, many=True).data)
@@ -326,7 +332,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         qs = (
             self.get_queryset()
             .filter(customer_id=customer_id)
-            .order_by('_status_order', '_pending_bucket', 'rescheduled_date', '-created_at')
+            .order_by('_status_order', '_is_mine', '_pending_bucket', 'rescheduled_date', '-created_at')
             .prefetch_related('assigned_to')
         )
         return Response(TaskCustomerHistorySerializer(qs, many=True).data)

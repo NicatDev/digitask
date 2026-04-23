@@ -8,7 +8,16 @@ from django.conf import settings
 import json
 from django.core.serializers.json import DjangoJSONEncoder
 
-EXCLUDED_MODELS = ['AuditLog', 'Session', 'LogEntry', 'Permission', 'Group', 'ContentType'] # Add more if needed
+EXCLUDED_MODELS = [
+    # Django internals
+    'AuditLog', 'Session', 'LogEntry', 'Permission', 'ContentType',
+    # Location / tracking — changes every few seconds per user, floods the log
+    'UserLocation', 'LocationHistory',
+    # Chat — messages, read statuses, memberships generate massive volume
+    'Message', 'MessageReadStatus', 'GroupMembership',
+    # Notifications — auto-generated, not user actions
+    'Notification',
+]
 
 def get_model_name(instance):
     return instance._meta.model_name

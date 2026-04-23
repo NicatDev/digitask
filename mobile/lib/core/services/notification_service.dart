@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -55,6 +56,23 @@ class NotificationService {
         // Handle notification tap
       },
     );
+
+    // Create Android notification channel at startup.
+    // Android 8+ (API 26+) requires the channel to exist BEFORE any FCM
+    // notification with that channel_id arrives, otherwise the system
+    // silently drops the notification.
+    if (!kIsWeb && Platform.isAndroid) {
+      const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        'digitask_notifications',
+        'DigiTask Notifications',
+        description: 'Notifications from DigiTask App',
+        importance: Importance.max,
+      );
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(channel);
+    }
 
     _isInitialized = true;
     
@@ -122,8 +140,12 @@ class NotificationService {
   void _setupFcmForegroundListener() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       final notification = message.notification;
-      final isAndroid = defaultTargetPlatform == TargetPlatform.android;
-      if (isAndroid && notification != null) {
+      // Show local notification in foreground for both Android and iOS.
+      // iOS: setForegroundNotificationPresentationOptions handles system-level
+      //   display for notification+data payloads, but local notification
+      //   gives us consistent control and handles data-only messages too.
+      // Android: System never auto-shows FCM in foreground, so local is required.
+      if (notification != null) {
         try {
           await _showLocalNotification(
             id: notification.hashCode,

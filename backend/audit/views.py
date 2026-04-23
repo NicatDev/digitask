@@ -29,7 +29,6 @@ class AuditLogPagination(PageNumberPagination):
     max_page_size = 100
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = AuditLog.objects.all()
     serializer_class = AuditLogSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = AuditLogPagination
@@ -44,6 +43,45 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['path', 'payload', 'user__first_name', 'user__last_name', 'user__email']
     ordering_fields = ['created_at']
     ordering = ['-created_at']
+
+    # Resource types excluded from operations view (high-frequency, low-value)
+    NOISY_RESOURCE_TYPES = [
+        'UserLocation', 'LocationHistory',
+        'Message', 'MessageReadStatus', 'GroupMembership',
+        'Notification',
+    ]
+
+    # HTTP paths excluded from operations view
+    NOISY_PATHS = [
+        '/location/', '/tracking/',
+        '/chat/messages/mark-read/',
+        '/fcm-token/',
+        '/notifications/read',
+    ]
+
+    def get_queryset(self):
+        qs = AuditLog.objects.all()
+        resource_type = self.request.query_params.get('resource_type')
+
+        if resource_type == 'notification_error':
+            # Error log tab — only show critical crashes, exclude trivial errors
+            # like "permission_denied", "messaging/registration-token-not-registered"
+            trivial_patterns = [
+                'permission', 'not-registered', 'token-not-registered',
+                'PERMISSION_DENIED', 'messaging/invalid-argument',
+            ]
+            qs = qs.filter(resource_type='notification_error')
+            for pattern in trivial_patterns:
+                qs = qs.exclude(changes__message__icontains=pattern)
+                qs = qs.exclude(payload__message__icontains=pattern)
+            return qs
+        else:
+            # Operations tab — exclude noisy resource types and paths
+            qs = qs.exclude(resource_type__in=self.NOISY_RESOURCE_TYPES)
+            qs = qs.exclude(resource_type='notification_error')
+            for path_part in self.NOISY_PATHS:
+                qs = qs.exclude(path__icontains=path_part)
+            return qs
 
     @action(detail=False, methods=['post'], url_path='notification-errors')
     def notification_errors(self, request):
