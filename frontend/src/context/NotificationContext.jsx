@@ -1,10 +1,13 @@
 import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import axiosInstance from '../axios';
 import { notification } from 'antd';
+import { useAuth } from './AuthContext';
+import { initWebFcm } from '../services/webFcm';
 
 const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
+    const { user, loading: authLoading } = useAuth();
     const [unreadCount, setUnreadCount] = useState(0);
     const [chatUnreadCount, setChatUnreadCount] = useState(0);
     const [notifications, setNotifications] = useState([]);
@@ -13,23 +16,38 @@ export const NotificationProvider = ({ children }) => {
     const reconnectTimeout = useRef(null);
 
     useEffect(() => {
-        const token = localStorage.getItem('access_token');
-        if (token) {
-            connectWebSocket();
-            fetchUnreadCount();
-        }
+        if (authLoading) return;
 
-        return () => {
+        const token = localStorage.getItem('access_token');
+        if (!token || !user) {
             if (ws.current) {
-                // Prevent reconnect on unmount
                 ws.current.onclose = null;
                 ws.current.close();
+                ws.current = null;
             }
             if (reconnectTimeout.current) {
                 clearTimeout(reconnectTimeout.current);
+                reconnectTimeout.current = null;
+            }
+            return;
+        }
+
+        connectWebSocket();
+        fetchUnreadCount();
+        initWebFcm().catch((e) => console.warn('[FCM Web] init', e));
+
+        return () => {
+            if (ws.current) {
+                ws.current.onclose = null;
+                ws.current.close();
+                ws.current = null;
+            }
+            if (reconnectTimeout.current) {
+                clearTimeout(reconnectTimeout.current);
+                reconnectTimeout.current = null;
             }
         };
-    }, []);
+    }, [authLoading, user?.id]);
 
     const connectWebSocket = () => {
         const token = localStorage.getItem('access_token');

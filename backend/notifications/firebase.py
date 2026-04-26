@@ -59,31 +59,39 @@ def _get_firebase_app():
         return None
 
 
+def _tokens_for_user_ids(user_ids):
+    from users.models import UserFcmDevice
+    if not user_ids:
+        return []
+    return list(
+        UserFcmDevice.objects.filter(user_id__in=user_ids).values_list('token', flat=True)
+    )
+
+
+def _all_fcm_tokens():
+    from users.models import UserFcmDevice
+    return list(UserFcmDevice.objects.values_list('token', flat=True))
+
+
+def _delete_invalid_tokens(failed_tokens):
+    if not failed_tokens:
+        return
+    from users.models import UserFcmDevice
+    deleted, _ = UserFcmDevice.objects.filter(token__in=failed_tokens).delete()
+    logger.info('Removed %d invalid FCM device row(s)', deleted)
+
+
 def send_fcm_to_user(user_id, title, body, data=None):
-    """Send FCM push notification to a single user by user_id."""
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-    
-    try:
-        user = User.objects.get(id=user_id)
-        if not user.fcm_token:
-            return
-        _send_fcm_message(user.fcm_token, title, body, data)
-    except User.DoesNotExist:
-        pass
+    """Send FCM push notification to a single user by user_id (bütün qeydiyyatlı cihazlara)."""
+    tokens = _dedupe_tokens(_tokens_for_user_ids([user_id]))
+    if not tokens:
+        return
+    _send_fcm_multicast(tokens, title, body, data)
 
 
 def send_fcm_to_users(user_ids, title, body, data=None):
     """Send FCM push notification to multiple users."""
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-    
-    tokens = list(
-        User.objects.filter(id__in=user_ids, fcm_token__isnull=False)
-        .exclude(fcm_token='')
-        .values_list('fcm_token', flat=True)
-    )
-    tokens = _dedupe_tokens(tokens)
+    tokens = _dedupe_tokens(_tokens_for_user_ids(user_ids))
     
     if not tokens:
         return
@@ -92,16 +100,8 @@ def send_fcm_to_users(user_ids, title, body, data=None):
 
 
 def send_fcm_to_all(title, body, data=None):
-    """Send FCM push notification to all users with FCM tokens."""
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-    
-    tokens = list(
-        User.objects.filter(fcm_token__isnull=False)
-        .exclude(fcm_token='')
-        .values_list('fcm_token', flat=True)
-    )
-    tokens = _dedupe_tokens(tokens)
+    """Send FCM push notification to all registered device tokens."""
+    tokens = _dedupe_tokens(_all_fcm_tokens())
     
     if not tokens:
         return
@@ -155,12 +155,8 @@ def _send_fcm_multicast(tokens, title, body, data=None):
                         else:
                             logger.warning('FCM send failed for token %d: %s', idx, resp.exception)
                 
-                # Token is invalid, remove it
                 if failed_tokens:
-                    from django.contrib.auth import get_user_model
-                    User = get_user_model()
-                    User.objects.filter(fcm_token__in=failed_tokens).update(fcm_token=None)
-                    logger.info('Removed %d invalid FCM tokens', len(failed_tokens))
+                    _delete_invalid_tokens(failed_tokens)
         except Exception as e:
             logger.error('FCM multicast send error: %s', e)
 
@@ -198,10 +194,6 @@ def _send_fcm_message(token, title, body, data=None):
     try:
         messaging.send(message)
     except messaging.UnregisteredError:
-        # Token is invalid, remove it
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        User.objects.filter(fcm_token=token).update(fcm_token=None)
-        logger.info('Removed invalid FCM token: %s...', token[:20])
+        _delete_invalid_tokens([token])
     except Exception as e:
         logger.error('FCM send error: %s', e)

@@ -1,6 +1,20 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, Role, Region, Group, UserLocation, LocationHistory
+from .models import User, Role, Region, Group, UserLocation, LocationHistory, UserFcmDevice
+
+@admin.register(UserFcmDevice)
+class UserFcmDeviceAdmin(admin.ModelAdmin):
+    list_display = ('user', 'platform', 'token_short', 'updated_at')
+    list_filter = ('platform',)
+    search_fields = ('user__username', 'user__email', 'token')
+    raw_id_fields = ('user',)
+    ordering = ('-updated_at',)
+
+    @admin.display(description='Token')
+    def token_short(self, obj):
+        t = obj.token or ''
+        return f'{t[:24]}…' if len(t) > 24 else t
+
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):

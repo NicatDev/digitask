@@ -35,6 +35,14 @@ class NotificationService {
 
   bool _isInitialized = false;
 
+  /// Backend `UserFcmDevice.platform` — hər platform üçün bir token sətri.
+  String _fcmPlatformLabel() {
+    if (kIsWeb) return 'web';
+    if (Platform.isAndroid) return 'android';
+    if (Platform.isIOS) return 'ios';
+    return 'unknown';
+  }
+
   Future<void> initialize() async {
     if (_isInitialized) return;
 
@@ -98,6 +106,7 @@ class NotificationService {
         print('FCM Token: $fcmToken');
         await ApiClient().dio.post('/users/register-fcm-token/', data: {
           'fcm_token': fcmToken,
+          'platform': _fcmPlatformLabel(),
         });
         print('FCM token registered with backend');
       } else {
@@ -113,6 +122,7 @@ class NotificationService {
         try {
           await ApiClient().dio.post('/users/register-fcm-token/', data: {
             'fcm_token': newToken,
+            'platform': _fcmPlatformLabel(),
           });
           print('FCM token refreshed and registered');
         } catch (e) {

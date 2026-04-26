@@ -30,5 +30,31 @@ class User(AbstractUser):
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     address = models.CharField(max_length=255, blank=True, null=True)
     address_coordinates = models.JSONField(blank=True, null=True)
-    fcm_token = models.CharField(max_length=512, blank=True, null=True)
     # Soft delete for User is usually handled by is_active=False
+
+
+class UserFcmDevice(models.Model):
+    """İstifadəçi başına platform üzrə bir FCM token (web, android, ios)."""
+
+    class Platform(models.TextChoices):
+        WEB = 'web', 'Web'
+        ANDROID = 'android', 'Android'
+        IOS = 'ios', 'iOS'
+        UNKNOWN = 'unknown', 'Naməlum'
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='fcm_devices')
+    platform = models.CharField(max_length=16, choices=Platform.choices, default=Platform.UNKNOWN)
+    token = models.CharField(max_length=512)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'platform'], name='unique_user_fcm_platform'),
+        ]
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['token']),
+        ]
+
+    def __str__(self):
+        return f'{self.user_id} {self.platform}'

@@ -23,6 +23,10 @@ export const updateMyAvatar = (formData) => axiosInstance.patch('users/me/', for
 });
 export const changeMyPassword = (data) => axiosInstance.post('users/me/change_password/', data);
 
+/** FCM token — platform: web | android | ios | unknown (backend `UserFcmDevice`). */
+export const registerFcmToken = (fcmToken, platform = 'web') =>
+    axiosInstance.post('users/register-fcm-token/', { fcm_token: fcmToken, platform });
+
 // Roles
 export const getRoles = () => axiosInstance.get('roles/');
 export const getRole = (id) => axiosInstance.get(`roles/${id}/`);
