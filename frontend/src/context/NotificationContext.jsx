@@ -91,7 +91,7 @@ export const NotificationProvider = ({ children }) => {
                         key: `notif-${incoming.id}`,
                         message: incoming.title || 'Yeni bildiriş',
                         description: incoming.message || '',
-                        placement: 'bottomRight',
+                        placement: 'bottomLeft',
                         duration: 15,
                     });
                 }
