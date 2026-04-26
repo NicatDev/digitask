@@ -96,7 +96,7 @@ export const NotificationProvider = ({ children }) => {
                     });
                 }
             }
-
+ 
             if (data.chat_notification) {
                 setLastChatNotification(data.chat_notification);
             }
