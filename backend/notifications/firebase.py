@@ -26,6 +26,10 @@ def _build_apns_config():
     # iOS/APNs delivery tuning. Helps foreground/background reliability on iOS.
     # NOTE: Do NOT pass custom_data here — data is already sent via Message.data.
     # Duplicating it in APNSConfig.custom_data can exceed Apple's 4KB payload limit.
+    #
+    # IMPORTANT: content_available=True silindi. Alert notification ilə birlikdə
+    # content_available göndərmək Apple-ın notification-u silently drop etməsinə
+    # səbəb ola bilər (xüsusilə Low Power Mode-da). Alert push üçün lazım deyil.
     return messaging.APNSConfig(
         headers={
             'apns-priority': '10',
@@ -33,7 +37,6 @@ def _build_apns_config():
         },
         payload=messaging.APNSPayload(
             aps=messaging.Aps(
-                content_available=True,
                 mutable_content=True,
                 sound='default',
             ),

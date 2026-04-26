@@ -86,13 +86,13 @@ export const NotificationProvider = ({ children }) => {
                         return exists ? prev : [incoming, ...prev];
                     });
 
-                    // Persistent toast until user manually closes it.
+                    // Auto-dismiss toast after 15 seconds.
                     notification.open({
                         key: `notif-${incoming.id}`,
                         message: incoming.title || 'Yeni bildiriş',
                         description: incoming.message || '',
-                        placement: 'topRight',
-                        duration: 0,
+                        placement: 'bottomRight',
+                        duration: 15,
                     });
                 }
             }

@@ -101,18 +101,48 @@ class NotificationService {
   /// Register FCM token with the backend
   Future<void> _registerFcmToken() async {
     try {
+      // ── iOS: APNs token hazır olmadan getToken() null qaytarır ──
+      if (!kIsWeb && Platform.isIOS) {
+        String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        print('📱 iOS APNs token (initial): ${apnsToken != null ? '${apnsToken.substring(0, 12)}...' : 'NULL'}');
+
+        if (apnsToken == null) {
+          // APNs token hələ hazır deyil — bir az gözləyib yenidən cəhd edirik
+          print('⏳ APNs token null — 5 saniyə gözlənir...');
+          await Future.delayed(const Duration(seconds: 5));
+          apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+          print('📱 iOS APNs token (retry): ${apnsToken != null ? '${apnsToken.substring(0, 12)}...' : 'STILL NULL'}');
+        }
+
+        if (apnsToken == null) {
+          print('❌ APNs token null — iOS push notifications işləməyəcək!');
+          print('   Yoxla: Xcode → Signing & Capabilities → Push Notifications aktiv?');
+          print('   Yoxla: Real cihazda test edilir? (Simulator APNs dəstəkləmir)');
+          await NotificationDiagnosticsService.instance.report(
+            source: 'fcm_token_register',
+            message: 'APNs token is null on iOS — push will not work. '
+                'Check: 1) Push Notifications capability in Xcode, '
+                '2) Real device (not simulator), '
+                '3) Valid provisioning profile with push entitlement.',
+            code: 'APNS_TOKEN_NULL',
+          );
+          // APNs olmadan FCM token almağa davam edirik — bəzən sonra gəlir
+        }
+      }
+
       final fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
-        print('FCM Token: $fcmToken');
+        print('✅ FCM Token: ${fcmToken.substring(0, 20)}...');
         await ApiClient().dio.post('/users/register-fcm-token/', data: {
           'fcm_token': fcmToken,
           'platform': _fcmPlatformLabel(),
         });
-        print('FCM token registered with backend');
+        print('✅ FCM token registered with backend (platform: ${_fcmPlatformLabel()})');
       } else {
+        print('❌ FCM Token is NULL — notification-lar gəlməyəcək');
         await NotificationDiagnosticsService.instance.report(
           source: 'fcm_token_register',
-          message: 'Firebase returned null FCM token',
+          message: 'Firebase returned null FCM token on ${_fcmPlatformLabel()}',
           code: 'TOKEN_NULL',
         );
       }
@@ -124,7 +154,7 @@ class NotificationService {
             'fcm_token': newToken,
             'platform': _fcmPlatformLabel(),
           });
-          print('FCM token refreshed and registered');
+          print('✅ FCM token refreshed and registered');
         } catch (e) {
           print('Error registering refreshed FCM token: $e');
           await NotificationDiagnosticsService.instance.report(
@@ -136,7 +166,7 @@ class NotificationService {
         }
       });
     } catch (e) {
-      print('Error registering FCM token: $e');
+      print('❌ Error registering FCM token: $e');
       await NotificationDiagnosticsService.instance.report(
         source: 'fcm_token_register',
         message: 'Failed to get/register FCM token',
