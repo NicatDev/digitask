@@ -10,13 +10,24 @@ const POLL_MS = 1500;
 /** 55, 50, 51, 70, 77, 99 ilə başlayan tam 9 rəqəmli nömrəyə başda 0 əlavə edir */
 const AZ_MOBILE_PREFIXES = ['55', '50', '51', '70', '77', '99'];
 
-function normalizedPhoneWithLeadingZero(raw) {
+/** Telefon və ya qeydiyyat nömrəsi üçün eyni qayda */
+function normalizedAzMobileWithLeadingZero(raw) {
     if (raw == null || raw === '') return null;
     const digits = String(raw).replace(/\D/g, '');
     if (digits.length !== 9) return null;
     const p2 = digits.slice(0, 2);
     if (!AZ_MOBILE_PREFIXES.includes(p2)) return null;
     return `0${digits}`;
+}
+
+function digitsOnly(value) {
+    return String(value ?? '').replace(/\D/g, '');
+}
+
+/** Artıq düzgün rəqəmlərdirsə (0 + 9 rəqəm) dəyişiklik lazım deyil */
+function needsLeadingZeroFix(currentValue, normalized) {
+    if (!normalized) return false;
+    return digitsOnly(currentValue) !== digitsOnly(normalized);
 }
 
 async function fetchAllCustomers() {
@@ -103,11 +114,29 @@ const CustomerImportTab = () => {
 
             const toPatch = [];
             for (const c of customers) {
-                const next = normalizedPhoneWithLeadingZero(c.phone_number);
-                if (!next) continue;
-                const currentDigits = String(c.phone_number ?? '').replace(/\D/g, '');
-                if (currentDigits === next.replace(/\D/g, '')) continue;
-                toPatch.push({ id: c.id, full_name: c.full_name, old: c.phone_number, next });
+                const patch = {};
+                const logBits = [];
+
+                const nextPhone = normalizedAzMobileWithLeadingZero(c.phone_number);
+                if (needsLeadingZeroFix(c.phone_number, nextPhone)) {
+                    patch.phone_number = nextPhone;
+                    logBits.push(`tel: "${c.phone_number}" → "${nextPhone}"`);
+                }
+
+                const nextReg = normalizedAzMobileWithLeadingZero(c.register_number);
+                if (needsLeadingZeroFix(c.register_number, nextReg)) {
+                    patch.register_number = nextReg;
+                    logBits.push(`qeyd: "${c.register_number}" → "${nextReg}"`);
+                }
+
+                if (Object.keys(patch).length > 0) {
+                    toPatch.push({
+                        id: c.id,
+                        full_name: c.full_name,
+                        patch,
+                        logLine: logBits.join('; '),
+                    });
+                }
             }
 
             const notApplicable = customers.length - toPatch.length;
@@ -119,9 +148,9 @@ const CustomerImportTab = () => {
                 await Promise.all(
                     chunk.map(async (row) => {
                         try {
-                            await updateCustomer(row.id, { phone_number: row.next });
+                            await updateCustomer(row.id, row.patch);
                             updated += 1;
-                            appendPhoneLog(`OK id=${row.id} ${row.full_name || ''}: "${row.old}" → "${row.next}"`);
+                            appendPhoneLog(`OK id=${row.id} ${row.full_name || ''}: ${row.logLine}`);
                         } catch (e) {
                             errors += 1;
                             appendPhoneLog(`XƏTA id=${row.id}: ${e?.response?.data ? JSON.stringify(e.response.data) : e.message}`);
@@ -208,15 +237,16 @@ const CustomerImportTab = () => {
                 </Space>
             </Card>
 
-            <Card title="Telefon nömrələri (0 prefiksi)" bordered>
+            <Card title="Telefon və qeydiyyat nömrəsi (0 prefiksi)" bordered>
                 <Space direction="vertical" size={16} style={{ width: '100%' }}>
                     <Text type="secondary">
-                        Yalnız rəqəmlərdən ibarət <Text strong>9 simvol</Text> və prefiks{' '}
-                        <Text code>{AZ_MOBILE_PREFIXES.join(', ')}</Text> olan nömrələrin əvvəlinə <Text code>0</Text>{' '}
+                        Həm <Text strong>əlaqə nömrəsi</Text>, həm <Text strong>qeydiyyat nömrəsi</Text> üçün: yalnız
+                        rəqəmlərdən ibarət <Text strong>9 simvol</Text> və prefiks{' '}
+                        <Text code>{AZ_MOBILE_PREFIXES.join(', ')}</Text> olan dəyərlərin əvvəlinə <Text code>0</Text>{' '}
                         əlavə olunur (məs. 554264644 → 0554264644). Digər formatlar toxunulmur.
                     </Text>
                     <Button type="primary" loading={phoneFixLoading} onClick={handleNormalizePhones}>
-                        Bütün müştəri nömrələrini yoxla və düzəlt
+                        Bütün müştəriləri yoxla və düzəlt
                     </Button>
 
                     {phoneFixSummary ? (
