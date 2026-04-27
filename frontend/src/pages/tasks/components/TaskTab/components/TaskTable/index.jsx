@@ -26,10 +26,10 @@ const getIconUrl = (iconPath) => {
     if (!iconPath) return null;
     if (iconPath.startsWith('http')) return iconPath;
     const cleanPath = iconPath.startsWith('/') ? iconPath.substring(1) : iconPath;
-    const isProduction = window.location.hostname === 'new.digitask.store' ||
-        window.location.hostname === 'digitask.store' ||
-        window.location.hostname === 'app.digitask.store';
-    const baseUrl = isProduction ? 'https://app.digitask.store' : 'http://127.0.0.1:8000';
+    const isProduction = window.location.hostname === 'new.digitask.digigroup.az' ||
+        window.location.hostname === 'digitask.digigroup.az' ||
+        window.location.hostname === 'app.digitask.digigroup.az';
+    const baseUrl = isProduction ? 'https://app.digitask.digigroup.az' : 'http://127.0.0.1:8000';
     return `${baseUrl}/${cleanPath}`;
 };
 

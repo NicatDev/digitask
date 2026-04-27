@@ -59,10 +59,10 @@ export const NotificationProvider = ({ children }) => {
         }
 
         // Use dynamic base URL based on environment
-        const isProduction = true || window.location.hostname === 'new.digitask.store' ||
-            window.location.hostname === 'digitask.store' ||
-            window.location.hostname === 'app.digitask.store';
-        const wsBase = isProduction ? 'wss://app.digitask.store' : 'ws://127.0.0.1:8000';
+        const isProduction = true || window.location.hostname === 'new.digitask.digigroup.az' ||
+            window.location.hostname === 'digitask.digigroup.az' ||
+            window.location.hostname === 'app.digitask.digigroup.az';
+        const wsBase = isProduction ? 'wss://app.digitask.digigroup.az' : 'ws://127.0.0.1:8000';
         const url = `${wsBase}/ws/notifications/?token=${token}`;
 
         ws.current = new WebSocket(url);

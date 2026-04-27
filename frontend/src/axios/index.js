@@ -1,21 +1,21 @@
 import axios from 'axios';
 
 // Determine if we're in production
-const isProduction = true || window.location.hostname === 'new.digitask.store' ||
-    window.location.hostname === 'digitask.store' ||
-    window.location.hostname === 'app.digitask.store';
+const isProduction = true || window.location.hostname === 'new.digitask.digigroup.az' ||
+    window.location.hostname === 'digitask.digigroup.az' ||
+    window.location.hostname === 'app.digitask.digigroup.az';
 
 const baseURL = isProduction
-    ? 'https://app.digitask.store/api/'
+    ? 'https://app.digitask.digigroup.az/api/'
     : 'http://127.0.0.1:8000/api/';
 
 // Export these for use in other parts of the app
 export const getBaseUrl = () => isProduction
-    ? 'https://app.digitask.store'
+    ? 'https://app.digitask.digigroup.az'
     : 'http://127.0.0.1:8000';
 
 export const getWsUrl = () => isProduction
-    ? 'wss://app.digitask.store'
+    ? 'wss://app.digitask.digigroup.az'
     : 'ws://127.0.0.1:8000';
 
 const axiosInstance = axios.create({

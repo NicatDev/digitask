@@ -182,7 +182,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 #     "http://127.0.0.1:5173",
 # ]
 
-CSRF_TRUSTED_ORIGINS = ["https://new.digitask.store", "https://new-app.digitask.store", "https://app.digitask.store", "https://digitask.store"]
+CSRF_TRUSTED_ORIGINS = ["https://new.digitask.digigroup.az", "https://new-app.digitask.digigroup.az", "https://app.digitask.digigroup.az", "https://digitask.digigroup.az"]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

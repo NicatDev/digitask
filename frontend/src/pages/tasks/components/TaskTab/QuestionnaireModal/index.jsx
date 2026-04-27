@@ -20,10 +20,10 @@ const getFullUrl = (path) => {
     if (!path) return '';
     if (path.startsWith('http')) return path;
     const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-    const isProduction = window.location.hostname === 'new.digitask.store' ||
-        window.location.hostname === 'digitask.store' ||
-        window.location.hostname === 'app.digitask.store';
-    const baseUrl = isProduction ? 'https://app.digitask.store' : 'http://127.0.0.1:8000';
+    const isProduction = window.location.hostname === 'new.digitask.digigroup.az' ||
+        window.location.hostname === 'digitask.digigroup.az' ||
+        window.location.hostname === 'app.digitask.digigroup.az';
+    const baseUrl = isProduction ? 'https://app.digitask.digigroup.az' : 'http://127.0.0.1:8000';
     return `${baseUrl}/${cleanPath}`;
 };
 

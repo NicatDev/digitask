@@ -132,10 +132,10 @@ const ChatPage = () => {
         }
         intentionalClose.current = false;
 
-        const isProduction = window.location.hostname === 'new.digitask.store' ||
-            window.location.hostname === 'digitask.store' ||
-            window.location.hostname === 'app.digitask.store';
-        const wsBase = isProduction ? 'wss://app.digitask.store' : 'ws://127.0.0.1:8000';
+        const isProduction = window.location.hostname === 'new.digitask.digigroup.az' ||
+            window.location.hostname === 'digitask.digigroup.az' ||
+            window.location.hostname === 'app.digitask.digigroup.az';
+        const wsBase = isProduction ? 'wss://app.digitask.digigroup.az' : 'ws://127.0.0.1:8000';
         const token = localStorage.getItem('access_token');
         if (!token) return;
         const url = `${wsBase}/ws/chat/groups/${groupId}/?token=${token}`;
