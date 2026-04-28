@@ -346,7 +346,7 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
   late final TextEditingController _name;
   late final TextEditingController _description;
   late Map<String, bool> _taskPermissions;
-  late Set<String> _visibleStatuses;
+  late Map<String, bool> _statusEnabled;
   late Map<String, Map<String, bool>> _taskStatusPermissions;
   late bool _whWriter;
   late bool _whReader;
@@ -374,7 +374,10 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
     final rawStatuses = (rawVisibility['visible_statuses'] is List)
         ? (rawVisibility['visible_statuses'] as List)
         : const [];
-    _visibleStatuses = rawStatuses.map((s) => s.toString()).where(_taskStatusOptions.contains).toSet();
+    final enabledStatuses = rawStatuses.map((s) => s.toString()).where(_taskStatusOptions.contains).toSet();
+    _statusEnabled = {
+      for (final status in _taskStatusOptions) status: enabledStatuses.contains(status),
+    };
     final rawStatusPermissions = (e?['task_status_permissions'] is Map)
         ? (e!['task_status_permissions'] as Map)
         : const {};
@@ -437,13 +440,13 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
       'description': _description.text.isEmpty ? '' : _description.text,
       'task_permissions': normalizedTaskPermissions,
       'task_status_visibility': {
-        'visible_statuses': _visibleStatuses.toList(),
+        'visible_statuses': _taskStatusOptions.where((s) => _statusEnabled[s] == true).toList(),
       },
       'task_status_permissions': {
         for (final status in _taskStatusOptions)
           status: {
             for (final key in _taskStatusActionKeys)
-              key: _visibleStatuses.contains(status)
+              key: _statusEnabled[status] == true
                   ? (_taskStatusPermissions[status]?[key] == true)
                   : false,
           },
@@ -543,34 +546,20 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
                   padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: Text('Görünən statuslar', style: TextStyle(fontWeight: FontWeight.w600)),
-                  ),
-                ),
-                ..._taskStatusOptions.map(
-                  (status) => CheckboxListTile(
-                    title: Text(_taskStatusLabels[status] ?? status),
-                    value: _visibleStatuses.contains(status),
-                    onChanged: (checked) {
-                      setState(() {
-                        if (checked == true) {
-                          _visibleStatuses.add(status);
-                        } else {
-                          _visibleStatuses.remove(status);
-                        }
-                      });
-                    },
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
                     child: Text('Status üzrə icazələr', style: TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
                 ..._taskStatusOptions.map(
                   (status) => ExpansionTile(
-                    title: Text('${_taskStatusLabels[status] ?? status} üçün icazələr'),
+                    title: Row(
+                      children: [
+                        Expanded(child: Text('${_taskStatusLabels[status] ?? status} üçün icazələr')),
+                        Switch(
+                          value: _statusEnabled[status] == true,
+                          onChanged: (v) => setState(() => _statusEnabled[status] = v),
+                        ),
+                      ],
+                    ),
                     children: _taskStatusActionKeys
                         .map(
                           (actionKey) => SwitchListTile(
@@ -579,7 +568,7 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
                                 .firstWhere((o) => o['key'] == actionKey)['label']
                                 .toString()),
                             value: _taskStatusPermissions[status]?[actionKey] == true,
-                            onChanged: _visibleStatuses.contains(status)
+                            onChanged: _statusEnabled[status] == true
                                 ? (v) => setState(() {
                                       _taskStatusPermissions[status]![actionKey] = v;
                                     })
