@@ -29,6 +29,7 @@ class TaskCard extends StatelessWidget {
   final bool canJoinTask;
   final bool canEditCustomerAddress;
   final bool canCommentActivity;
+  final bool canMarkExternalArchived;
 
   const TaskCard({
     super.key,
@@ -48,6 +49,7 @@ class TaskCard extends StatelessWidget {
     this.canJoinTask = false,
     this.canEditCustomerAddress = false,
     this.canCommentActivity = false,
+    this.canMarkExternalArchived = false,
   });
 
   @override
@@ -130,7 +132,7 @@ class TaskCard extends StatelessWidget {
                         task: task,
                         allServices: allServices,
                         onArchivedMarked: onRefresh,
-                        canMarkExternalArchived: canEditGeneral,
+                        canMarkExternalArchived: canMarkExternalArchived,
                         canCommentActivity: canCommentActivity,
                       ),
                     ),
@@ -437,8 +439,8 @@ class TaskCard extends StatelessWidget {
                 _buildActionBtn(
                   context,
                   Icons.inventory_2,
-                  isExternallyArchived ? Colors.green : (canEditGeneral ? Colors.amber.shade700 : Colors.grey.shade300),
-                  (canEditGeneral && !isExternallyArchived)
+                  isExternallyArchived ? Colors.green : (canMarkExternalArchived ? Colors.amber.shade700 : Colors.grey.shade300),
+                  (canMarkExternalArchived && !isExternallyArchived)
                       ? () => _markExternalArchived(context)
                       : null,
                 ),
@@ -553,7 +555,7 @@ class TaskCard extends StatelessWidget {
       await ApiClient().dio.post('/tasks/tasks/${task['id']}/mark-external-archived/');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tapşırıq məlumatları arxivləşdirildi')),
+          const SnackBar(content: Text('Məlumatlar əlaqəli platformalara köçürüldü')),
         );
       }
       onRefresh();

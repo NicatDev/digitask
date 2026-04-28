@@ -32,10 +32,12 @@ const TASK_PERMISSION_GROUPS = [
             { key: 'manage_assignees', label: 'İcraçı idarə et' },
             { key: 'join_task', label: 'İcraya qoşul' },
             { key: 'comment_activity', label: 'Activity şərh yaz' },
+            { key: 'mark_external_archived', label: 'Məlumatlar əlaqəli platformalara köçürüldü' },
         ],
     },
 ];
 const TASK_PERMISSION_KEYS = TASK_PERMISSION_GROUPS.flatMap((g) => g.options.map((o) => o.key));
+const TASK_STATUS_ACTION_KEYS = TASK_PERMISSION_KEYS.filter((key) => !['view_module', 'create'].includes(key));
 
 const TASK_STATUS_OPTIONS = [
     { value: 'todo', label: 'Gözləyir' },
@@ -67,6 +69,44 @@ const ROLE_PERMISSION_GROUPS = [
                 <Col span={24}>
                     <Form.Item name={['task_status_visibility', 'visible_statuses']} label="Görünən statuslar">
                         <Select mode="multiple" allowClear options={TASK_STATUS_OPTIONS} />
+                    </Form.Item>
+                </Col>
+                <Col span={24}>
+                    <Form.Item noStyle shouldUpdate>
+                        {({ getFieldValue }) => {
+                            const visible = getFieldValue(['task_status_visibility', 'visible_statuses']) || [];
+                            return (
+                                <Collapse
+                                    size="small"
+                                    items={TASK_STATUS_OPTIONS.map((status) => ({
+                                        key: status.value,
+                                        label: `${status.label} üçün icazələr`,
+                                        children: (
+                                            <Row gutter={12}>
+                                                {TASK_PERMISSION_GROUPS.slice(1).map((permGroup) => (
+                                                    <React.Fragment key={`${status.value}-${permGroup.title}`}>
+                                                        <Col span={24}>
+                                                            <div style={{ fontWeight: 600, marginBottom: 6 }}>{permGroup.title}</div>
+                                                        </Col>
+                                                        {permGroup.options.map((opt) => (
+                                                            <Col span={12} key={`${status.value}-${opt.key}`}>
+                                                                <Form.Item
+                                                                    name={['task_status_permissions', status.value, opt.key]}
+                                                                    label={opt.label}
+                                                                    valuePropName="checked"
+                                                                >
+                                                                    <Switch disabled={!visible.includes(status.value)} />
+                                                                </Form.Item>
+                                                            </Col>
+                                                        ))}
+                                                    </React.Fragment>
+                                                ))}
+                                            </Row>
+                                        ),
+                                    }))}
+                                />
+                            );
+                        }}
                     </Form.Item>
                 </Col>
             </>
@@ -189,6 +229,17 @@ const RoleTab = ({ isActive }) => {
                 task_status_visibility: {
                     visible_statuses: values?.task_status_visibility?.visible_statuses || [],
                 },
+                task_status_permissions: Object.fromEntries(
+                    TASK_STATUS_OPTIONS.map((status) => {
+                        const row = values?.task_status_permissions?.[status.value] || {};
+                        return [
+                            status.value,
+                            Object.fromEntries(
+                                TASK_STATUS_ACTION_KEYS.map((actionKey) => [actionKey, row[actionKey] === true])
+                            ),
+                        ];
+                    })
+                ),
                 // Backward-compatible flags (derived from dynamic permissions)
                 is_task_reader: Boolean(
                     taskPermissions.view_module ||
@@ -271,8 +322,9 @@ const RoleTab = ({ isActive }) => {
                             ...record,
                             task_permissions: record.task_permissions || {},
                             task_status_visibility: record.task_status_visibility || {
-                                visible_statuses: ['todo'],
+                                visible_statuses: [],
                             },
+                            task_status_permissions: record.task_status_permissions || {},
                         });
                         setIsModalOpen(true);
                     }}>Düzəliş</Button>
@@ -351,10 +403,12 @@ const RoleTab = ({ isActive }) => {
                                     toggle_active: false,
                                     comment_activity: false,
                                     edit_customer_address: false,
+                                    mark_external_archived: false,
                                 },
                                 task_status_visibility: {
                                     visible_statuses: [],
                                 },
+                                task_status_permissions: {},
                             });
                             setIsModalOpen(true);
                         }}>
@@ -397,7 +451,7 @@ const RoleTab = ({ isActive }) => {
                         }))}
                     />
 
-                    <Button type="primary" htmlType="submit" block>
+                    <Button type="primary" htmlType="submit" block style={{ marginTop: 16 }}>
                         Təsdiqlə
                     </Button>
                 </Form>

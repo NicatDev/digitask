@@ -96,7 +96,7 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
       });
       widget.onArchivedMarked?.call();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tapşırıq məlumatları arxivləşdirildi')),
+        const SnackBar(content: Text('Məlumatlar əlaqəli platformalara köçürüldü')),
       );
       _loadActivity();
     } catch (_) {
@@ -348,7 +348,7 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
                                       child: ElevatedButton.icon(
                                         onPressed: (archived || !widget.canMarkExternalArchived) ? null : _markExternalArchived,
                                         icon: Icon(archived ? Icons.check_circle : Icons.inventory_2),
-                                        label: Text(archived ? 'Arxivləşdirmə tamamlanıb' : 'Arxivləşdirməni tamamla'),
+                                        label: Text(archived ? 'Məlumatlar əlaqəli platformalara köçürüldü' : 'Məlumatları köçürüldü kimi işarələ'),
                                       ),
                                     ),
                                     const SizedBox(height: 12),

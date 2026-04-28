@@ -18,6 +18,22 @@ TASK_ACTION_KEYS = [
     "toggle_active",
     "comment_activity",
     "edit_customer_address",
+    "mark_external_archived",
+]
+
+TASK_STATUS_ACTION_KEYS = [
+    "edit_general",
+    "delete",
+    "change_status",
+    "manage_products",
+    "manage_documents",
+    "manage_surveys",
+    "manage_assignees",
+    "join_task",
+    "toggle_active",
+    "comment_activity",
+    "edit_customer_address",
+    "mark_external_archived",
 ]
 
 
@@ -54,7 +70,7 @@ def _coerce_status_list(source: Any) -> List[str]:
 def parse_role_description(description: str) -> Dict[str, Any]:
     raw = (description or "").strip()
     if not raw:
-        return {"text": "", "task_permissions": {}, "task_status_visibility": {}}
+        return {"text": "", "task_permissions": {}, "task_status_visibility": {}, "task_status_permissions": {}}
 
     if raw.startswith(DESCRIPTION_CONFIG_PREFIX):
         payload = raw[len(DESCRIPTION_CONFIG_PREFIX) :].strip()
@@ -68,17 +84,19 @@ def parse_role_description(description: str) -> Dict[str, Any]:
                         (parsed.get("task_status_visibility") or {}).get("visible_statuses")
                     )
                 },
+                "task_status_permissions": _coerce_status_action_map(parsed.get("task_status_permissions")),
             }
         except Exception:
-            return {"text": raw, "task_permissions": {}, "task_status_visibility": {}}
+            return {"text": raw, "task_permissions": {}, "task_status_visibility": {}, "task_status_permissions": {}}
 
-    return {"text": raw, "task_permissions": {}, "task_status_visibility": {}}
+    return {"text": raw, "task_permissions": {}, "task_status_visibility": {}, "task_status_permissions": {}}
 
 
 def build_role_description(
     text: str,
     task_permissions: Dict[str, Any] | None = None,
     task_status_visibility: Dict[str, Any] | None = None,
+    task_status_permissions: Dict[str, Any] | None = None,
 ) -> str:
     payload = {
         "text": (text or "").strip(),
@@ -86,6 +104,7 @@ def build_role_description(
         "task_status_visibility": {
             "visible_statuses": _coerce_status_list((task_status_visibility or {}).get("visible_statuses"))
         },
+        "task_status_permissions": _coerce_status_action_map(task_status_permissions or {}),
     }
     return f"{DESCRIPTION_CONFIG_PREFIX}{json.dumps(payload, ensure_ascii=True, separators=(',', ':'))}"
 
@@ -94,35 +113,52 @@ def _role_or_none(user):
     return getattr(user, "role", None) if user else None
 
 
+def _coerce_status_action_map(source: Any) -> Dict[str, Dict[str, bool]]:
+    if not isinstance(source, dict):
+        return {}
+    allowed_statuses = set(_all_task_statuses())
+    out: Dict[str, Dict[str, bool]] = {}
+    for status, mapping in source.items():
+        status_key = str(status)
+        if status_key not in allowed_statuses:
+            continue
+        out[status_key] = _coerce_bool_map(mapping, TASK_STATUS_ACTION_KEYS)
+    return out
+
+
 def get_task_permissions_for_user(user) -> Dict[str, bool]:
     role = _role_or_none(user)
     parsed = parse_role_description(getattr(role, "description", "") if role else "")
-    configured = _coerce_bool_map(parsed.get("task_permissions"), TASK_ACTION_KEYS)
-    if configured:
-        return configured
-
-    # Backward-compatible defaults for old roles that do not have dynamic config yet.
-    is_reader = bool(role and getattr(role, "is_task_reader", False))
-    is_writer = bool(role and getattr(role, "is_task_writer", False))
-    return {
-        "view_module": is_reader or is_writer,
-        "create": is_writer,
-        "edit_general": is_writer,
-        "delete": is_writer,
-        "change_status": is_reader or is_writer,
-        "manage_products": is_reader or is_writer,
-        "manage_documents": is_reader or is_writer,
-        "manage_surveys": is_reader or is_writer,
-        "manage_assignees": is_writer,
-        "join_task": is_reader or is_writer,
-        "toggle_active": is_writer,
-        "comment_activity": is_reader or is_writer,
-        "edit_customer_address": is_writer,
-    }
+    return _coerce_bool_map(parsed.get("task_permissions"), TASK_ACTION_KEYS)
 
 
 def can_task_action(user, action: str) -> bool:
-    return get_task_permissions_for_user(user).get(action, False)
+    return can_task_action_for_task(user, action, None)
+
+
+def get_task_status_permissions_for_user(user) -> Dict[str, Dict[str, bool]]:
+    role = _role_or_none(user)
+    parsed = parse_role_description(getattr(role, "description", "") if role else "")
+    return _coerce_status_action_map(parsed.get("task_status_permissions"))
+
+
+def can_task_action_for_task(user, action: str, task) -> bool:
+    action = (action or "").strip()
+    global_map = get_task_permissions_for_user(user)
+    if action in ("view_module", "create"):
+        return global_map.get(action, False)
+
+    # Task-dependent actions are allowed only if that status is visible and explicitly enabled for that status.
+    if task is None:
+        return False
+
+    status = getattr(task, "status", None)
+    visible_statuses = set(get_task_status_visibility_for_user(user).get("visible_statuses", []))
+    if status not in visible_statuses:
+        return False
+
+    status_map = get_task_status_permissions_for_user(user)
+    return bool((status_map.get(status) or {}).get(action, False))
 
 
 def get_task_status_visibility_for_user(user) -> Dict[str, List[str]]:

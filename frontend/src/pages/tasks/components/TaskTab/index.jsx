@@ -116,7 +116,9 @@ const TaskTab = ({ isActive }) => {
         canToggleActive: hasTaskActionPermission(user, TASK_ACTIONS.TOGGLE_ACTIVE),
         canCommentActivity: hasTaskActionPermission(user, TASK_ACTIONS.COMMENT_ACTIVITY),
         canEditCustomerAddress: hasTaskActionPermission(user, TASK_ACTIONS.EDIT_CUSTOMER_ADDRESS),
+        canMarkExternalArchived: hasTaskActionPermission(user, TASK_ACTIONS.MARK_EXTERNAL_ARCHIVED),
     };
+    const canForTask = (action, task) => hasTaskActionPermission(user, action, task?.status);
 
     // Debounce Search
     useEffect(() => {
@@ -487,7 +489,7 @@ const TaskTab = ({ isActive }) => {
     const handleMarkExternalArchived = async (record) => {
         try {
             await markTaskExternalArchived(record.id);
-            message.success('Tapşırıq məlumatları arxivləşdirildi');
+            message.success('Məlumatlar əlaqəli platformalara köçürüldü');
             fetchData();
         } catch (error) {
             handleApiError(error, 'Arxivləşdirmə uğursuz oldu');
@@ -549,6 +551,7 @@ const TaskTab = ({ isActive }) => {
                 disableAssigneeManage={!taskCaps.canManageAssignees}
                 disableJoinTask={!taskCaps.canJoinTask}
                 disableActiveToggle={!taskCaps.canToggleActive}
+                canForTask={canForTask}
                 onStatusChange={openStatusModal}
                 onToggleActive={handleToggleActive}
                 onQuestionnaire={openQuestionnaireModal}
@@ -581,7 +584,7 @@ const TaskTab = ({ isActive }) => {
                 taskTypes={taskTypes}
                 onEditCustomerAddress={handleOpenAddressEditor}
                 canSubmit={editingItem ? taskCaps.canEditGeneral : taskCaps.canCreate}
-                canEditCustomerAddress={taskCaps.canEditCustomerAddress}
+                canEditCustomerAddress={editingItem ? canForTask(TASK_ACTIONS.EDIT_CUSTOMER_ADDRESS, editingItem) : taskCaps.canEditCustomerAddress}
             />
 
             <QuestionnaireModal
@@ -636,8 +639,8 @@ const TaskTab = ({ isActive }) => {
                 services={services}
                 onRefresh={fetchData}
                 onMarkExternalArchived={handleMarkExternalArchived}
-                canComment={taskCaps.canCommentActivity}
-                canMarkExternalArchived={taskCaps.canEditGeneral}
+                canComment={selectedTaskForDetail ? canForTask(TASK_ACTIONS.COMMENT_ACTIVITY, selectedTaskForDetail) : taskCaps.canCommentActivity}
+                canMarkExternalArchived={selectedTaskForDetail ? canForTask(TASK_ACTIONS.MARK_EXTERNAL_ARCHIVED, selectedTaskForDetail) : taskCaps.canMarkExternalArchived}
             />
 
             <AssigneeModal

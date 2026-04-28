@@ -36,11 +36,17 @@ export const hasPermission = (user, permissions, requireAll = false) => {
     return perms.some(hasSingle);
 };
 
-export const hasTaskActionPermission = (user, action) => {
+export const hasTaskActionPermission = (user, action, taskStatus = null) => {
     if (!user) return false;
-    const fromMap = user.task_permissions?.[action];
-    if (typeof fromMap === 'boolean') return fromMap;
-    return false;
+    if (action === 'create' || action === 'view_module') {
+        return user.task_permissions?.[action] === true;
+    }
+    const visibleStatuses = user.task_status_visibility?.visible_statuses || [];
+    if (!taskStatus) {
+        return visibleStatuses.some((status) => user.task_status_permissions?.[status]?.[action] === true);
+    }
+    if (!visibleStatuses.includes(taskStatus)) return false;
+    return user.task_status_permissions?.[taskStatus]?.[action] === true;
 };
 
 // Permission Constants
@@ -76,4 +82,5 @@ export const TASK_ACTIONS = {
     TOGGLE_ACTIVE: 'toggle_active',
     COMMENT_ACTIVITY: 'comment_activity',
     EDIT_CUSTOMER_ADDRESS: 'edit_customer_address',
+    MARK_EXTERNAL_ARCHIVED: 'mark_external_archived',
 };

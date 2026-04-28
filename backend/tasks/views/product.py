@@ -6,7 +6,8 @@ from rest_framework.exceptions import PermissionDenied
 from ..models import TaskProduct
 from ..serializers import TaskProductSerializer, TaskProductCreateSerializer
 from warehouse.models import Product, Warehouse
-from users.task_permissions import can_task_action
+from users.task_permissions import can_task_action_for_task
+from tasks.models import Task
 
 
 class TaskProductViewSet(viewsets.ModelViewSet):
@@ -28,26 +29,30 @@ class TaskProductViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        if not can_task_action(self.request.user, 'manage_products'):
+        task = serializer.validated_data.get('task')
+        if not can_task_action_for_task(self.request.user, 'manage_products', task):
             raise PermissionDenied("Task product create permission denied")
         serializer.save()
 
     def perform_update(self, serializer):
-        if not can_task_action(self.request.user, 'manage_products'):
+        if not can_task_action_for_task(self.request.user, 'manage_products', serializer.instance.task):
             raise PermissionDenied("Task product update permission denied")
         serializer.save()
 
     def destroy(self, request, *args, **kwargs):
-        if not can_task_action(request.user, 'manage_products'):
+        instance = self.get_object()
+        if not can_task_action_for_task(request.user, 'manage_products', instance.task):
             return Response({'error': 'You do not have permission to remove task products.'}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
     
     @action(detail=False, methods=['post'], url_path='bulk-create')
     def bulk_create(self, request):
         """Toplu TaskProduct yaratmaq."""
-        if not can_task_action(request.user, 'manage_products'):
+        task_id = request.data.get('task_id')
+        task = Task.objects.filter(pk=task_id).first() if task_id else None
+        if not can_task_action_for_task(request.user, 'manage_products', task):
             return Response({'error': 'You do not have permission to add task products.'}, status=status.HTTP_403_FORBIDDEN)
-        from tasks.models import Task, TaskActivity
+        from tasks.models import TaskActivity
         from tasks.services.task_activity import log_task_activity
 
         serializer = TaskProductCreateSerializer(data=request.data)

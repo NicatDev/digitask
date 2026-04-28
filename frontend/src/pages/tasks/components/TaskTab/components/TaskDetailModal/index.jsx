@@ -226,8 +226,8 @@ const TaskDetailModal = ({
                                 disabled={task.is_externally_archived || !canMarkExternalArchived}
                             >
                                 {task.is_externally_archived
-                                    ? 'Arxivləşdirmə tamamlanıb'
-                                    : 'Arxivləşdirməni tamamla'}
+                                    ? 'Məlumatlar əlaqəli platformalara köçürüldü'
+                                    : 'Məlumatları köçürüldü kimi işarələ'}
                             </Button>
                         </Field>
                         <Button

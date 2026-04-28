@@ -37,6 +37,7 @@ from notifications.task_helpers import (
 )
 from users.task_permissions import (
     can_task_action,
+    can_task_action_for_task,
     get_task_status_visibility_for_user,
 )
 
@@ -252,12 +253,12 @@ class TaskViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         changed_fields = set(serializer.validated_data.keys())
         is_only_toggle_active = bool(changed_fields) and changed_fields.issubset({'is_active'})
-        if is_only_toggle_active:
-            if not can_task_action(self.request.user, 'toggle_active'):
-                raise PermissionDenied("Task active toggle permission denied")
-        elif not can_task_action(self.request.user, 'edit_general'):
-            raise PermissionDenied("Task edit permission denied")
         instance = serializer.instance
+        if is_only_toggle_active:
+            if not can_task_action_for_task(self.request.user, 'toggle_active', instance):
+                raise PermissionDenied("Task active toggle permission denied")
+        elif not can_task_action_for_task(self.request.user, 'edit_general', instance):
+            raise PermissionDenied("Task edit permission denied")
         old_title = instance.title
         old_note = instance.note
         task = serializer.save()
@@ -276,12 +277,12 @@ class TaskViewSet(viewsets.ModelViewSet):
     
     def destroy(self, request, *args, **kwargs):
         """Soft delete - set is_active to False. Only privileged users can delete."""
-        if not can_task_action(request.user, 'delete'):
+        instance = self.get_object()
+        if not can_task_action_for_task(request.user, 'delete', instance):
             return Response(
                 {'error': 'You do not have permission to delete tasks.'},
                 status=status.HTTP_403_FORBIDDEN
             )
-        instance = self.get_object()
         instance.is_active = False
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -296,7 +297,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         body = (request.data.get('body') or '').strip()
         if not body:
             return Response({'error': 'body is required'}, status=status.HTTP_400_BAD_REQUEST)
-        if not can_task_action(request.user, 'comment_activity'):
+        if not can_task_action_for_task(request.user, 'comment_activity', task):
             return Response({'error': 'You do not have permission to comment.'}, status=status.HTTP_403_FORBIDDEN)
         act = log_task_activity(
             task,
@@ -339,9 +340,9 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['patch'])
     def update_status(self, request, pk=None):
         """Update task status."""
-        if not can_task_action(request.user, 'change_status'):
-            return Response({'error': 'You do not have permission to change task status.'}, status=status.HTTP_403_FORBIDDEN)
         task = self.get_object()
+        if not can_task_action_for_task(request.user, 'change_status', task):
+            return Response({'error': 'You do not have permission to change task status.'}, status=status.HTTP_403_FORBIDDEN)
         old_status = task.status
         serializer = TaskStatusUpdateSerializer(data=request.data)
         
@@ -421,9 +422,9 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def add_assignee(self, request, pk=None):
         """Add a user to the task's assignees. Only existing assignees can add others."""
-        if not can_task_action(request.user, 'manage_assignees'):
-            return Response({'error': 'You do not have permission to manage assignees.'}, status=status.HTTP_403_FORBIDDEN)
         task = self.get_object()
+        if not can_task_action_for_task(request.user, 'manage_assignees', task):
+            return Response({'error': 'You do not have permission to manage assignees.'}, status=status.HTTP_403_FORBIDDEN)
         user_id = request.data.get('user_id')
         
         if not user_id:
@@ -451,9 +452,9 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def join_task(self, request, pk=None):
         """Allow current user to join the task as an assignee."""
-        if not can_task_action(request.user, 'join_task'):
-            return Response({'error': 'You do not have permission to join tasks.'}, status=status.HTTP_403_FORBIDDEN)
         task = self.get_object()
+        if not can_task_action_for_task(request.user, 'join_task', task):
+            return Response({'error': 'You do not have permission to join tasks.'}, status=status.HTTP_403_FORBIDDEN)
         task.assigned_to.add(request.user)
         log_task_activity(
             task,
@@ -467,9 +468,9 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='mark-external-archived')
     def mark_external_archived(self, request, pk=None):
         """Mark task as successfully transferred to external system."""
-        if not can_task_action(request.user, 'edit_general'):
-            return Response({'error': 'You do not have permission for this action.'}, status=status.HTTP_403_FORBIDDEN)
         task = self.get_object()
+        if not can_task_action_for_task(request.user, 'mark_external_archived', task):
+            return Response({'error': 'You do not have permission for this action.'}, status=status.HTTP_403_FORBIDDEN)
         already_marked = TaskActivity.objects.filter(
             task=task,
             action=TaskActivity.Action.TASK_UPDATED,
@@ -482,7 +483,7 @@ class TaskViewSet(viewsets.ModelViewSet):
             task,
             request.user,
             TaskActivity.Action.TASK_UPDATED,
-            message='Tapşırıq məlumatları arxivləşdirildi',
+            message='Məlumatlar əlaqəli platformalara köçürüldü',
             meta={'event': 'external_archive_marked'},
         )
 
@@ -492,7 +493,7 @@ class TaskViewSet(viewsets.ModelViewSet):
             line = format_task_line(task_enriched)
             send_notification(
                 title='Tapşırıq arxivləşdirildi',
-                message=f"{line}\nTapşırıq məlumatları arxivləşdirildi",
+                message=f"{line}\nMəlumatlar əlaqəli platformalara köçürüldü",
                 notification_type=Notification.NotificationType.GENERAL,
                 related_task=task_enriched,
                 target_user_ids=recipient_ids,
@@ -614,7 +615,8 @@ class TaskServiceViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        if not can_task_action(self.request.user, 'manage_surveys'):
+        target_task = serializer.validated_data.get('task')
+        if not can_task_action_for_task(self.request.user, 'manage_surveys', target_task):
             raise PermissionDenied("Task survey create permission denied")
         ts = serializer.save()
         log_task_activity(
@@ -638,7 +640,7 @@ class TaskServiceViewSet(viewsets.ModelViewSet):
             )
 
     def perform_update(self, serializer):
-        if not can_task_action(self.request.user, 'manage_surveys'):
+        if not can_task_action_for_task(self.request.user, 'manage_surveys', serializer.instance.task):
             raise PermissionDenied("Task survey update permission denied")
         ts = serializer.save()
         log_task_activity(

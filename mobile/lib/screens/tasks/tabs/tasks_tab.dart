@@ -333,23 +333,26 @@ class _TasksTabState extends State<TasksTab> {
                                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                                 itemBuilder: (ctx, index) {
                                   final me = ChatService().currentUser.value;
+                                  final task = _tasks[index];
+                                  final taskStatus = (task['status'] ?? '').toString();
                                   return TaskCard(
-                                    task: _tasks[index],
+                                    task: task,
                                     allServices: _services,
                                     allUsers: _users,
                                     onEdit: () => _openTaskForm(_tasks[index]),
                                     onRefresh: () => _fetchTasks(refresh: true),
                                     onAccept: () => _acceptTask(_tasks[index]['id']),
-                                    canEditGeneral: me?.hasTaskAction('edit_general') ?? false,
-                                    canDelete: me?.hasTaskAction('delete') ?? false,
-                                    canChangeStatus: me?.hasTaskAction('change_status') ?? false,
-                                    canManageProducts: me?.hasTaskAction('manage_products') ?? false,
-                                    canManageDocuments: me?.hasTaskAction('manage_documents') ?? false,
-                                    canManageSurveys: me?.hasTaskAction('manage_surveys') ?? false,
-                                    canManageAssignees: me?.hasTaskAction('manage_assignees') ?? false,
-                                    canJoinTask: me?.hasTaskAction('join_task') ?? false,
-                                    canEditCustomerAddress: me?.hasTaskAction('edit_customer_address') ?? false,
-                                    canCommentActivity: me?.hasTaskAction('comment_activity') ?? false,
+                                    canEditGeneral: me?.hasTaskAction('edit_general', status: taskStatus) ?? false,
+                                    canDelete: me?.hasTaskAction('delete', status: taskStatus) ?? false,
+                                    canChangeStatus: me?.hasTaskAction('change_status', status: taskStatus) ?? false,
+                                    canManageProducts: me?.hasTaskAction('manage_products', status: taskStatus) ?? false,
+                                    canManageDocuments: me?.hasTaskAction('manage_documents', status: taskStatus) ?? false,
+                                    canManageSurveys: me?.hasTaskAction('manage_surveys', status: taskStatus) ?? false,
+                                    canManageAssignees: me?.hasTaskAction('manage_assignees', status: taskStatus) ?? false,
+                                    canJoinTask: me?.hasTaskAction('join_task', status: taskStatus) ?? false,
+                                    canEditCustomerAddress: me?.hasTaskAction('edit_customer_address', status: taskStatus) ?? false,
+                                    canCommentActivity: me?.hasTaskAction('comment_activity', status: taskStatus) ?? false,
+                                    canMarkExternalArchived: me?.hasTaskAction('mark_external_archived', status: taskStatus) ?? false,
                                   );
                                 },
                               ),

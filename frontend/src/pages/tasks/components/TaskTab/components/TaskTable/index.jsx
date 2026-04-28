@@ -70,6 +70,7 @@ const TaskTable = ({
     disableAssigneeManage = false,
     disableJoinTask = false,
     disableActiveToggle = false,
+    canForTask,
 }) => {
     const { user } = useAuth();
 
@@ -314,7 +315,7 @@ const TaskTable = ({
                                     icon={<UserAddOutlined />}
                                     onClick={() => onAddAssignee(record)}
                                     ghost
-                                    disabled={isDone || disableAssigneeManage}
+                                    disabled={isDone || disableAssigneeManage || !canForTask?.('manage_assignees', record)}
                                 >
                                     İcraçı əlavə et
                                 </Button>
@@ -324,7 +325,7 @@ const TaskTable = ({
                                     size="small"
                                     icon={<TeamOutlined />}
                                     onClick={() => onJoinTask(record)}
-                                    disabled={isDone || disableJoinTask}
+                                    disabled={isDone || disableJoinTask || !canForTask?.('join_task', record)}
                                 >
                                     İcraya qoşul
                                 </Button>
@@ -390,7 +391,7 @@ const TaskTable = ({
                 <Switch
                     checked={active}
                     onChange={(checked) => onToggleActive(record.id, checked)}
-                    disabled={disableActiveToggle}
+                    disabled={disableActiveToggle || !canForTask?.('toggle_active', record)}
                 />
             )
         },
@@ -400,13 +401,13 @@ const TaskTable = ({
             width: 420,
             render: (_, record) => (
                 <Space size={[6, 6]} wrap>
-                    <Button type="link" size="small" onClick={() => onEdit(record)} disabled={disableEdit}>Düzəliş</Button>
-                    <Button type="link" size="small" onClick={() => onStatusChange(record)} disabled={disableStatus}>Status</Button>
-                    <Button type="link" size="small" onClick={() => onQuestionnaire(record)} disabled={disableQuestionnaire}>Anket</Button>
-                    <Button type="link" size="small" onClick={() => onProductSelect(record)} disabled={disableProducts}>
+                    <Button type="link" size="small" onClick={() => onEdit(record)} disabled={disableEdit || !canForTask?.('edit_general', record)}>Düzəliş</Button>
+                    <Button type="link" size="small" onClick={() => onStatusChange(record)} disabled={disableStatus || !canForTask?.('change_status', record)}>Status</Button>
+                    <Button type="link" size="small" onClick={() => onQuestionnaire(record)} disabled={disableQuestionnaire || !canForTask?.('manage_surveys', record)}>Anket</Button>
+                    <Button type="link" size="small" onClick={() => onProductSelect(record)} disabled={disableProducts || !canForTask?.('manage_products', record)}>
                         Məhsul ({record.task_products?.length || 0})
                     </Button>
-                    <Button type="link" size="small" onClick={() => onDocumentAdd(record)} disabled={disableDocuments}>
+                    <Button type="link" size="small" onClick={() => onDocumentAdd(record)} disabled={disableDocuments || !canForTask?.('manage_documents', record)}>
                         <FileAddOutlined /> ({record.task_documents?.length || 0})
                     </Button>
                     <Button
@@ -414,9 +415,9 @@ const TaskTable = ({
                         size="small"
                         icon={<CheckCircleOutlined />}
                         onClick={() => onMarkExternalArchived?.(record)}
-                        disabled={disableEdit || record.is_externally_archived}
+                        disabled={disableEdit || !canForTask?.('mark_external_archived', record) || record.is_externally_archived}
                     >
-                        {record.is_externally_archived ? 'Arxivləşdirmə tamamlanıb' : 'Arxivləşdirməni tamamla'}
+                        {record.is_externally_archived ? 'Məlumatlar əlaqəli platformalara köçürüldü' : 'Məlumatları köçürüldü kimi işarələ'}
                     </Button>
                     {!disableDelete && (
                         <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => onDelete(record.id)}>

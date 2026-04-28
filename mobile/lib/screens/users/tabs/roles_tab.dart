@@ -302,8 +302,23 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
         {'key': 'manage_assignees', 'label': 'İcraçı idarə et'},
         {'key': 'join_task', 'label': 'İcraya qoşul'},
         {'key': 'comment_activity', 'label': 'Activity şərh yaz'},
+        {'key': 'mark_external_archived', 'label': 'Məlumatlar əlaqəli platformalara köçürüldü'},
       ],
     },
+  ];
+  static const List<String> _taskStatusActionKeys = [
+    'edit_general',
+    'delete',
+    'toggle_active',
+    'edit_customer_address',
+    'change_status',
+    'manage_products',
+    'manage_documents',
+    'manage_surveys',
+    'manage_assignees',
+    'join_task',
+    'comment_activity',
+    'mark_external_archived',
   ];
   static const List<String> _taskStatusOptions = [
     'todo',
@@ -332,6 +347,7 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
   late final TextEditingController _description;
   late Map<String, bool> _taskPermissions;
   late Set<String> _visibleStatuses;
+  late Map<String, Map<String, bool>> _taskStatusPermissions;
   late bool _whWriter;
   late bool _whReader;
   late bool _docWriter;
@@ -359,6 +375,18 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
         ? (rawVisibility['visible_statuses'] as List)
         : const [];
     _visibleStatuses = rawStatuses.map((s) => s.toString()).where(_taskStatusOptions.contains).toSet();
+    final rawStatusPermissions = (e?['task_status_permissions'] is Map)
+        ? (e!['task_status_permissions'] as Map)
+        : const {};
+    _taskStatusPermissions = {
+      for (final status in _taskStatusOptions)
+        status: {
+          for (final key in _taskStatusActionKeys)
+            key: (rawStatusPermissions[status] is Map)
+                ? ((rawStatusPermissions[status][key]) == true)
+                : false,
+        },
+    };
     _whWriter = e?['is_warehouse_writer'] == true;
     _whReader = e?['is_warehouse_reader'] == true;
     _docWriter = e?['is_document_writer'] == true;
@@ -410,6 +438,15 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
       'task_permissions': normalizedTaskPermissions,
       'task_status_visibility': {
         'visible_statuses': _visibleStatuses.toList(),
+      },
+      'task_status_permissions': {
+        for (final status in _taskStatusOptions)
+          status: {
+            for (final key in _taskStatusActionKeys)
+              key: _visibleStatuses.contains(status)
+                  ? (_taskStatusPermissions[status]?[key] == true)
+                  : false,
+          },
       },
       // Backward-compatible role flags
       'is_task_writer': isTaskWriter,
@@ -522,6 +559,34 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
                         }
                       });
                     },
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Status üzrə icazələr', style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+                ..._taskStatusOptions.map(
+                  (status) => ExpansionTile(
+                    title: Text('${_taskStatusLabels[status] ?? status} üçün icazələr'),
+                    children: _taskStatusActionKeys
+                        .map(
+                          (actionKey) => SwitchListTile(
+                            title: Text(_taskPermissionGroups
+                                .expand((g) => (g['options'] as List))
+                                .firstWhere((o) => o['key'] == actionKey)['label']
+                                .toString()),
+                            value: _taskStatusPermissions[status]?[actionKey] == true,
+                            onChanged: _visibleStatuses.contains(status)
+                                ? (v) => setState(() {
+                                      _taskStatusPermissions[status]![actionKey] = v;
+                                    })
+                                : null,
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
               ],

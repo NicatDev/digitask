@@ -15,6 +15,7 @@ class User {
   final bool isSuperAdmin;
   final Map<String, bool> taskPermissions;
   final Map<String, dynamic> taskStatusVisibility;
+  final Map<String, Map<String, bool>> taskStatusPermissions;
 
   User({
     required this.id,
@@ -33,6 +34,7 @@ class User {
     this.isSuperAdmin = false,
     this.taskPermissions = const {},
     this.taskStatusVisibility = const {},
+    this.taskStatusPermissions = const {},
   });
 
   String get fullName {
@@ -48,6 +50,19 @@ class User {
     rawTaskPermissions.forEach((key, value) {
       parsedTaskPermissions[key.toString()] = value == true;
     });
+
+    final parsedTaskStatusPermissions = <String, Map<String, bool>>{};
+    if (json['task_status_permissions'] is Map) {
+      (json['task_status_permissions'] as Map).forEach((statusKey, value) {
+        final row = <String, bool>{};
+        if (value is Map) {
+          value.forEach((actionKey, actionVal) {
+            row[actionKey.toString()] = actionVal == true;
+          });
+        }
+        parsedTaskStatusPermissions[statusKey.toString()] = row;
+      });
+    }
 
     return User(
       id: json['id'],
@@ -68,12 +83,18 @@ class User {
       taskStatusVisibility: (json['task_status_visibility'] is Map)
           ? Map<String, dynamic>.from(json['task_status_visibility'])
           : const {},
+      taskStatusPermissions: parsedTaskStatusPermissions,
     );
   }
 
-  bool hasTaskAction(String action) {
-    final dynamic val = taskPermissions[action];
-    if (val is bool) return val;
-    return false;
+  bool hasTaskAction(String action, {String? status}) {
+    if (action == 'create' || action == 'view_module') {
+      return taskPermissions[action] == true;
+    }
+    if (status == null || status.isEmpty) return false;
+    final visibleStatuses =
+        (taskStatusVisibility['visible_statuses'] as List?)?.cast<dynamic>() ?? const [];
+    if (!visibleStatuses.contains(status)) return false;
+    return taskStatusPermissions[status]?[action] == true;
   }
 }

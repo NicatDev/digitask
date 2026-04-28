@@ -3,6 +3,7 @@ from ..models import User, Role
 from ..task_permissions import (
     build_role_description,
     get_task_permissions_for_user,
+    get_task_status_permissions_for_user,
     get_task_status_visibility_for_user,
     parse_role_description,
 )
@@ -10,6 +11,7 @@ from ..task_permissions import (
 class RoleSerializer(serializers.ModelSerializer):
     task_permissions = serializers.JSONField(required=False)
     task_status_visibility = serializers.JSONField(required=False)
+    task_status_permissions = serializers.JSONField(required=False)
 
     class Meta:
         model = Role
@@ -19,7 +21,7 @@ class RoleSerializer(serializers.ModelSerializer):
             'is_document_reader', 'is_document_writer',
             'is_warehouse_reader', 'is_warehouse_writer',
             'is_admin', 'is_super_admin',
-            'task_permissions', 'task_status_visibility',
+            'task_permissions', 'task_status_visibility', 'task_status_permissions',
         ]
 
     def to_representation(self, instance):
@@ -28,16 +30,19 @@ class RoleSerializer(serializers.ModelSerializer):
         data['description'] = parsed.get('text') or ''
         data['task_permissions'] = parsed.get('task_permissions') or {}
         data['task_status_visibility'] = parsed.get('task_status_visibility') or {}
+        data['task_status_permissions'] = parsed.get('task_status_permissions') or {}
         return data
 
     def create(self, validated_data):
         task_permissions = validated_data.pop('task_permissions', {})
         task_status_visibility = validated_data.pop('task_status_visibility', {})
+        task_status_permissions = validated_data.pop('task_status_permissions', {})
         description_text = validated_data.pop('description', '')
         validated_data['description'] = build_role_description(
             description_text,
             task_permissions,
             task_status_visibility,
+            task_status_permissions,
         )
         return super().create(validated_data)
 
@@ -47,12 +52,15 @@ class RoleSerializer(serializers.ModelSerializer):
             parsed['task_permissions'] = validated_data.pop('task_permissions') or {}
         if 'task_status_visibility' in validated_data:
             parsed['task_status_visibility'] = validated_data.pop('task_status_visibility') or {}
+        if 'task_status_permissions' in validated_data:
+            parsed['task_status_permissions'] = validated_data.pop('task_status_permissions') or {}
         if 'description' in validated_data:
             parsed['text'] = validated_data.pop('description') or ''
         validated_data['description'] = build_role_description(
             parsed.get('text') or '',
             parsed.get('task_permissions') or {},
             parsed.get('task_status_visibility') or {},
+            parsed.get('task_status_permissions') or {},
         )
         return super().update(instance, validated_data)
 
@@ -72,6 +80,7 @@ class UserSerializer(serializers.ModelSerializer):
     is_super_admin = serializers.BooleanField(source='role.is_super_admin', read_only=True)
     task_permissions = serializers.SerializerMethodField()
     task_status_visibility = serializers.SerializerMethodField()
+    task_status_permissions = serializers.SerializerMethodField()
     
     is_online = serializers.SerializerMethodField()
     last_seen = serializers.SerializerMethodField()
@@ -83,7 +92,7 @@ class UserSerializer(serializers.ModelSerializer):
             'role', 'role_name', 'group', 'group_name', 'is_active', 'password', 'address', 'address_coordinates',
             'is_task_reader', 'is_task_writer', 'is_task_view_all', 'is_warehouse_reader', 'is_warehouse_writer',
             'is_document_reader', 'is_document_writer', 'is_admin', 'is_super_admin',
-            'task_permissions', 'task_status_visibility',
+            'task_permissions', 'task_status_visibility', 'task_status_permissions',
             'is_online', 'last_seen'
         ]
         extra_kwargs = {'password': {'write_only': True, 'required': False}}
@@ -104,6 +113,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_task_status_visibility(self, obj):
         return get_task_status_visibility_for_user(obj)
+
+    def get_task_status_permissions(self, obj):
+        return get_task_status_permissions_for_user(obj)
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
