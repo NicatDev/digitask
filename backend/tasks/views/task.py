@@ -42,6 +42,7 @@ from users.task_permissions import (
 )
 
 User = get_user_model()
+TaskAssigneeThrough = Task.assigned_to.through
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -176,7 +177,12 @@ class TaskViewSet(viewsets.ModelViewSet):
             queryset = queryset.order_by(*ordering_whitelist[ordering])
         else:
             today = timezone.now().date()
+            assigned_to_me_exists = TaskAssigneeThrough.objects.filter(
+                task_id=OuterRef('pk'),
+                user_id=user.id,
+            )
             queryset = queryset.annotate(
+                _assigned_to_me=Exists(assigned_to_me_exists),
                 _pending_bucket=Case(
                     When(
                         Q(status=Task.Status.PENDING)
@@ -210,7 +216,7 @@ class TaskViewSet(viewsets.ModelViewSet):
                 ),
                 # Mənə assign olunmuş tapşırıqlar eyni status daxilində yuxarıda görsənir
                 _is_mine=Case(
-                    When(assigned_to=user, then=Value(0)),
+                    When(_assigned_to_me=True, then=Value(0)),
                     default=Value(1),
                     output_field=IntegerField(),
                 ),

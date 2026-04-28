@@ -415,7 +415,7 @@ const TaskTable = ({
                         size="small"
                         icon={<CheckCircleOutlined />}
                         onClick={() => onMarkExternalArchived?.(record)}
-                        disabled={disableEdit || !canForTask?.('mark_external_archived', record) || record.is_externally_archived}
+                        disabled={!canForTask?.('mark_external_archived', record) || record.is_externally_archived}
                     >
                         {record.is_externally_archived ? 'Məlumatlar əlaqəli platformalara köçürüldü' : 'Məlumatları köçürüldü kimi işarələ'}
                     </Button>
