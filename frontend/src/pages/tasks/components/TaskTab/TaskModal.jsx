@@ -129,7 +129,9 @@ const TaskModal = ({
     users,
     services,
     taskTypes = [],
-    onEditCustomerAddress
+    onEditCustomerAddress,
+    canSubmit = false,
+    canEditCustomerAddress = false,
 }) => {
     const status = Form.useWatch('status', form);
     const selectedCustomerId = Form.useWatch('customer', form);
@@ -314,6 +316,7 @@ const TaskModal = ({
                                                 })
                                             }
                                             block
+                                            disabled={!canEditCustomerAddress}
                                         >
                                             Müştəri ünvanını redaktə et
                                         </Button>
@@ -380,7 +383,7 @@ const TaskModal = ({
                         },
                     ]}
                 />
-                <Button type="primary" htmlType="submit" block>
+                <Button type="primary" htmlType="submit" block disabled={!canSubmit}>
                     Təsdiqlə
                 </Button>
             </Form>

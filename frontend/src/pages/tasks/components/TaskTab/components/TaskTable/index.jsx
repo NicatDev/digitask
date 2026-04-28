@@ -416,7 +416,7 @@ const TaskTable = ({
                         onClick={() => onMarkExternalArchived?.(record)}
                         disabled={disableEdit || record.is_externally_archived}
                     >
-                        {record.is_externally_archived ? 'Arxivləşdirilib' : 'Məlumatları arxivləşdir'}
+                        {record.is_externally_archived ? 'Arxivləşdirmə tamamlanıb' : 'Arxivləşdirməni tamamla'}
                     </Button>
                     {!disableDelete && (
                         <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => onDelete(record.id)}>

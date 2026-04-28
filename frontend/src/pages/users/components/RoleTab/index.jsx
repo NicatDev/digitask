@@ -35,13 +35,14 @@ const TASK_PERMISSION_GROUPS = [
         ],
     },
 ];
+const TASK_PERMISSION_KEYS = TASK_PERMISSION_GROUPS.flatMap((g) => g.options.map((o) => o.key));
 
 const TASK_STATUS_OPTIONS = [
-    { value: 'todo', label: 'Todo' },
-    { value: 'in_progress', label: 'In Progress' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'done', label: 'Done' },
-    { value: 'rejected', label: 'Rejected' },
+    { value: 'todo', label: 'Gözləyir' },
+    { value: 'in_progress', label: 'İcrada' },
+    { value: 'pending', label: 'Təxirə salınıb' },
+    { value: 'done', label: 'Tamamlandı' },
+    { value: 'rejected', label: 'Rədd edildi' },
 ];
 
 const ROLE_PERMISSION_GROUPS = [
@@ -178,12 +179,15 @@ const RoleTab = ({ isActive }) => {
 
     const onFinish = async (values) => {
         try {
-            const taskPermissions = values.task_permissions || {};
+            const rawTaskPermissions = values.task_permissions || {};
+            const taskPermissions = Object.fromEntries(
+                TASK_PERMISSION_KEYS.map((key) => [key, rawTaskPermissions[key] === true])
+            );
             const payload = {
                 ...values,
                 task_permissions: taskPermissions,
-                task_status_visibility: values.task_status_visibility || {
-                    visible_statuses: ['todo'],
+                task_status_visibility: {
+                    visible_statuses: values?.task_status_visibility?.visible_statuses || [],
                 },
                 // Backward-compatible flags (derived from dynamic permissions)
                 is_task_reader: Boolean(
@@ -334,16 +338,22 @@ const RoleTab = ({ isActive }) => {
                             form.resetFields();
                             form.setFieldsValue({
                                 task_permissions: {
-                                    view_module: true,
-                                    change_status: true,
-                                    manage_products: true,
-                                    manage_documents: true,
-                                    manage_surveys: true,
-                                    join_task: true,
-                                    comment_activity: true,
+                                    view_module: false,
+                                    create: false,
+                                    edit_general: false,
+                                    delete: false,
+                                    change_status: false,
+                                    manage_products: false,
+                                    manage_documents: false,
+                                    manage_surveys: false,
+                                    manage_assignees: false,
+                                    join_task: false,
+                                    toggle_active: false,
+                                    comment_activity: false,
+                                    edit_customer_address: false,
                                 },
                                 task_status_visibility: {
-                                    visible_statuses: ['todo'],
+                                    visible_statuses: [],
                                 },
                             });
                             setIsModalOpen(true);

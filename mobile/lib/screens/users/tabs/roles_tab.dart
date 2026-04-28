@@ -359,9 +359,6 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
         ? (rawVisibility['visible_statuses'] as List)
         : const [];
     _visibleStatuses = rawStatuses.map((s) => s.toString()).where(_taskStatusOptions.contains).toSet();
-    if (_visibleStatuses.isEmpty) {
-      _visibleStatuses = {'todo'};
-    }
     _whWriter = e?['is_warehouse_writer'] == true;
     _whReader = e?['is_warehouse_reader'] == true;
     _docWriter = e?['is_document_writer'] == true;
@@ -399,10 +396,18 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
         _taskPermissions['manage_assignees'] == true ||
         _taskPermissions['edit_customer_address'] == true;
 
+    final normalizedTaskPermissions = <String, bool>{};
+    for (final group in _taskPermissionGroups) {
+      for (final option in (group['options'] as List)) {
+        final key = option['key'].toString();
+        normalizedTaskPermissions[key] = _taskPermissions[key] == true;
+      }
+    }
+
     final data = <String, dynamic>{
       'name': _name.text,
       'description': _description.text.isEmpty ? '' : _description.text,
-      'task_permissions': _taskPermissions,
+      'task_permissions': normalizedTaskPermissions,
       'task_status_visibility': {
         'visible_statuses': _visibleStatuses.toList(),
       },
@@ -514,9 +519,6 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
                           _visibleStatuses.add(status);
                         } else {
                           _visibleStatuses.remove(status);
-                          if (_visibleStatuses.isEmpty) {
-                            _visibleStatuses.add('todo');
-                          }
                         }
                       });
                     },

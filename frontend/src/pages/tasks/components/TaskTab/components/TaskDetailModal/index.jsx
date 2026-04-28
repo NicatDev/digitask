@@ -38,7 +38,16 @@ const resolveMediaUrl = (raw) => {
 
 const IMAGE_EXT = /\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i;
 
-const TaskDetailModal = ({ open, onCancel, task, services = [], onRefresh, onMarkExternalArchived }) => {
+const TaskDetailModal = ({
+    open,
+    onCancel,
+    task,
+    services = [],
+    onRefresh,
+    onMarkExternalArchived,
+    canComment = false,
+    canMarkExternalArchived = false,
+}) => {
     const [activities, setActivities] = useState([]);
     const [actLoading, setActLoading] = useState(false);
     const [comment, setComment] = useState('');
@@ -214,11 +223,11 @@ const TaskDetailModal = ({ open, onCancel, task, services = [], onRefresh, onMar
                                 icon={<CheckCircleOutlined />}
                                 type={task.is_externally_archived ? 'default' : 'primary'}
                                 onClick={() => onMarkExternalArchived?.(task)}
-                                disabled={task.is_externally_archived}
+                                disabled={task.is_externally_archived || !canMarkExternalArchived}
                             >
                                 {task.is_externally_archived
-                                    ? 'Tapşırıq məlumatları arxivləşdirildi'
-                                    : 'Tapşırıq məlumatları arxivləşdirildi'}
+                                    ? 'Arxivləşdirmə tamamlanıb'
+                                    : 'Arxivləşdirməni tamamla'}
                             </Button>
                         </Field>
                         <Button
@@ -329,7 +338,7 @@ const TaskDetailModal = ({ open, onCancel, task, services = [], onRefresh, onMar
                                             style={{ marginTop: 8 }}
                                             loading={submitting}
                                             onClick={handleComment}
-                                            disabled={!comment.trim()}
+                                            disabled={!comment.trim() || !canComment}
                                         >
                                             Göndər
                                         </Button>

@@ -12,12 +12,16 @@ class TaskDetailModal extends StatefulWidget {
   final Map<String, dynamic> task;
   final List<dynamic> allServices;
   final VoidCallback? onArchivedMarked;
+  final bool canMarkExternalArchived;
+  final bool canCommentActivity;
 
   const TaskDetailModal({
     super.key,
     required this.task,
     this.allServices = const [],
     this.onArchivedMarked,
+    this.canMarkExternalArchived = false,
+    this.canCommentActivity = false,
   });
 
   @override
@@ -342,9 +346,9 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
                                     SizedBox(
                                       width: double.infinity,
                                       child: ElevatedButton.icon(
-                                        onPressed: archived ? null : _markExternalArchived,
+                                        onPressed: (archived || !widget.canMarkExternalArchived) ? null : _markExternalArchived,
                                         icon: Icon(archived ? Icons.check_circle : Icons.inventory_2),
-                                        label: const Text('Tapşırıq məlumatları arxivləşdirildi'),
+                                        label: Text(archived ? 'Arxivləşdirmə tamamlanıb' : 'Arxivləşdirməni tamamla'),
                                       ),
                                     ),
                                     const SizedBox(height: 12),
@@ -446,7 +450,7 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton(
-                                    onPressed: _sending ? null : _sendComment,
+                                    onPressed: (_sending || !widget.canCommentActivity) ? null : _sendComment,
                                     child: _sending
                                         ? const SizedBox(
                                             height: 20,

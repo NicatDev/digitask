@@ -28,6 +28,7 @@ class TaskCard extends StatelessWidget {
   final bool canManageAssignees;
   final bool canJoinTask;
   final bool canEditCustomerAddress;
+  final bool canCommentActivity;
 
   const TaskCard({
     super.key,
@@ -46,6 +47,7 @@ class TaskCard extends StatelessWidget {
     this.canManageAssignees = false,
     this.canJoinTask = false,
     this.canEditCustomerAddress = false,
+    this.canCommentActivity = false,
   });
 
   @override
@@ -128,6 +130,8 @@ class TaskCard extends StatelessWidget {
                         task: task,
                         allServices: allServices,
                         onArchivedMarked: onRefresh,
+                        canMarkExternalArchived: canEditGeneral,
+                        canCommentActivity: canCommentActivity,
                       ),
                     ),
                     child: Text(

@@ -349,6 +349,7 @@ class _TasksTabState extends State<TasksTab> {
                                     canManageAssignees: me?.hasTaskAction('manage_assignees') ?? false,
                                     canJoinTask: me?.hasTaskAction('join_task') ?? false,
                                     canEditCustomerAddress: me?.hasTaskAction('edit_customer_address') ?? false,
+                                    canCommentActivity: me?.hasTaskAction('comment_activity') ?? false,
                                   );
                                 },
                               ),

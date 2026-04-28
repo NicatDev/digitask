@@ -74,28 +74,6 @@ class User {
   bool hasTaskAction(String action) {
     final dynamic val = taskPermissions[action];
     if (val is bool) return val;
-
-    // Backward-compatible fallback
-    switch (action) {
-      case 'create':
-      case 'edit_general':
-      case 'delete':
-      case 'toggle_active':
-      case 'manage_assignees':
-      case 'edit_customer_address':
-        return isTaskWriter;
-      case 'change_status':
-      case 'manage_products':
-      case 'manage_documents':
-      case 'manage_surveys':
-      case 'join_task':
-      case 'comment_activity':
-      case 'view_module':
-        return isTaskReader || isTaskWriter;
-      case 'view_all_statuses':
-        return isTaskViewAll;
-      default:
-        return false;
-    }
+    return false;
   }
 }

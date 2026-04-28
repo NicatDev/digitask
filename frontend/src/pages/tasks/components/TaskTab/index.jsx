@@ -114,6 +114,8 @@ const TaskTab = ({ isActive }) => {
         canManageAssignees: hasTaskActionPermission(user, TASK_ACTIONS.MANAGE_ASSIGNEES),
         canJoinTask: hasTaskActionPermission(user, TASK_ACTIONS.JOIN_TASK),
         canToggleActive: hasTaskActionPermission(user, TASK_ACTIONS.TOGGLE_ACTIVE),
+        canCommentActivity: hasTaskActionPermission(user, TASK_ACTIONS.COMMENT_ACTIVITY),
+        canEditCustomerAddress: hasTaskActionPermission(user, TASK_ACTIONS.EDIT_CUSTOMER_ADDRESS),
     };
 
     // Debounce Search
@@ -578,6 +580,8 @@ const TaskTab = ({ isActive }) => {
                 services={services}
                 taskTypes={taskTypes}
                 onEditCustomerAddress={handleOpenAddressEditor}
+                canSubmit={editingItem ? taskCaps.canEditGeneral : taskCaps.canCreate}
+                canEditCustomerAddress={taskCaps.canEditCustomerAddress}
             />
 
             <QuestionnaireModal
@@ -632,6 +636,8 @@ const TaskTab = ({ isActive }) => {
                 services={services}
                 onRefresh={fetchData}
                 onMarkExternalArchived={handleMarkExternalArchived}
+                canComment={taskCaps.canCommentActivity}
+                canMarkExternalArchived={taskCaps.canEditGeneral}
             />
 
             <AssigneeModal

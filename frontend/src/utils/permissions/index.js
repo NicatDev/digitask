@@ -40,26 +40,7 @@ export const hasTaskActionPermission = (user, action) => {
     if (!user) return false;
     const fromMap = user.task_permissions?.[action];
     if (typeof fromMap === 'boolean') return fromMap;
-
-    // Backward-compatible fallback for users that don't yet expose task_permissions.
-    switch (action) {
-        case 'create':
-        case 'edit_general':
-        case 'delete':
-        case 'toggle_active':
-        case 'manage_assignees':
-        case 'edit_customer_address':
-            return !!user.is_task_writer;
-        case 'change_status':
-        case 'manage_products':
-        case 'manage_documents':
-        case 'manage_surveys':
-        case 'join_task':
-        case 'comment_activity':
-            return !!(user.is_task_reader || user.is_task_writer);
-        default:
-            return false;
-    }
+    return false;
 };
 
 // Permission Constants
