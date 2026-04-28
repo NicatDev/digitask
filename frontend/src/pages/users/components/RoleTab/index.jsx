@@ -36,6 +36,86 @@ const TASK_PERMISSION_GROUPS = [
     },
 ];
 
+const ROLE_PERMISSION_GROUPS = [
+    {
+        title: 'Tapşırıq modulu',
+        children: (
+            <>
+                {TASK_PERMISSION_GROUPS.map((group) => (
+                    <React.Fragment key={group.title}>
+                        <Col span={24}>
+                            <div style={{ fontWeight: 600, marginBottom: 6 }}>{group.title}</div>
+                        </Col>
+                        {group.options.map((opt) => (
+                            <Col span={12} key={opt.key}>
+                                <Form.Item name={['task_permissions', opt.key]} label={opt.label} valuePropName="checked">
+                                    <Switch />
+                                </Form.Item>
+                            </Col>
+                        ))}
+                    </React.Fragment>
+                ))}
+                <Col span={24}>
+                    <Form.Item name={['task_status_visibility', 'visible_statuses']} label="Görünən statuslar">
+                        <Select mode="multiple" allowClear options={TASK_STATUS_OPTIONS} />
+                    </Form.Item>
+                </Col>
+            </>
+        ),
+    },
+    {
+        title: 'Anbar modulu',
+        children: (
+            <>
+                <Col span={12}>
+                    <Form.Item name="is_warehouse_reader" label="Anbar (Oxumaq)" valuePropName="checked">
+                        <Switch />
+                    </Form.Item>
+                </Col>
+                <Col span={12}>
+                    <Form.Item name="is_warehouse_writer" label="Anbar (Yazmaq)" valuePropName="checked">
+                        <Switch />
+                    </Form.Item>
+                </Col>
+            </>
+        ),
+    },
+    {
+        title: 'Sənəd modulu',
+        children: (
+            <>
+                <Col span={12}>
+                    <Form.Item name="is_document_reader" label="Sənəd (Oxumaq)" valuePropName="checked">
+                        <Switch />
+                    </Form.Item>
+                </Col>
+                <Col span={12}>
+                    <Form.Item name="is_document_writer" label="Sənəd (Yazmaq)" valuePropName="checked">
+                        <Switch />
+                    </Form.Item>
+                </Col>
+            </>
+        ),
+    },
+    {
+        title: 'İdarəetmə',
+        children: (
+            <>
+                <Col span={12}>
+                    <Form.Item name="is_admin" label="Admin" valuePropName="checked">
+                        <Switch />
+                    </Form.Item>
+                </Col>
+                <Col span={12}>
+                    <Form.Item name="is_super_admin" label="Super Admin" valuePropName="checked">
+                        <Switch />
+                    </Form.Item>
+                </Col>
+            </>
+        ),
+    },
+];
+
 const TASK_STATUS_OPTIONS = [
     { value: 'todo', label: 'Todo' },
     { value: 'in_progress', label: 'In Progress' },
@@ -299,57 +379,14 @@ const RoleTab = ({ isActive }) => {
                         <Input.TextArea />
                     </Form.Item>
                     <Row gutter={16}>
-                        {TASK_PERMISSION_GROUPS.map((group) => (
+                        {ROLE_PERMISSION_GROUPS.map((group) => (
                             <React.Fragment key={group.title}>
                                 <Col span={24}>
-                                    <div style={{ fontWeight: 600, marginBottom: 6 }}>{group.title}</div>
+                                    <div style={{ fontWeight: 700, marginTop: 6, marginBottom: 6 }}>{group.title}</div>
                                 </Col>
-                                {group.options.map((opt) => (
-                                    <Col span={12} key={opt.key}>
-                                        <Form.Item name={['task_permissions', opt.key]} label={opt.label} valuePropName="checked">
-                                            <Switch />
-                                        </Form.Item>
-                                    </Col>
-                                ))}
+                                {group.children}
                             </React.Fragment>
                         ))}
-
-                        <Col span={24}>
-                            <Form.Item name={['task_status_visibility', 'visible_statuses']} label="Görünən statuslar">
-                                <Select mode="multiple" allowClear options={TASK_STATUS_OPTIONS} />
-                            </Form.Item>
-                        </Col>
-
-                        <Col span={12}>
-                            <Form.Item name="is_warehouse_writer" label="Anbar (Yazmaq)" valuePropName="checked">
-                                <Switch />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="is_warehouse_reader" label="Anbar (Oxumaq)" valuePropName="checked">
-                                <Switch />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="is_document_writer" label="Sənəd (Yazmaq)" valuePropName="checked">
-                                <Switch />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="is_document_reader" label="Sənəd (Oxumaq)" valuePropName="checked">
-                                <Switch />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="is_admin" label="Admin" valuePropName="checked">
-                                <Switch />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="is_super_admin" label="Super Admin" valuePropName="checked">
-                                <Switch />
-                            </Form.Item>
-                        </Col>
                     </Row>
 
                     <Button type="primary" htmlType="submit" block>

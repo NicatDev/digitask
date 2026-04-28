@@ -312,6 +312,14 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
     'done',
     'rejected',
   ];
+  static const List<MapEntry<String, String>> _warehousePermissionOptions = [
+    MapEntry('is_warehouse_reader', 'Anbar (Oxumaq)'),
+    MapEntry('is_warehouse_writer', 'Anbar (Yazmaq)'),
+  ];
+  static const List<MapEntry<String, String>> _documentPermissionOptions = [
+    MapEntry('is_document_reader', 'Sənəd (Oxumaq)'),
+    MapEntry('is_document_writer', 'Sənəd (Yazmaq)'),
+  ];
 
   late final TextEditingController _name;
   late final TextEditingController _description;
@@ -457,7 +465,7 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
             ),
             const SizedBox(height: 8),
             const SizedBox(height: 8),
-            const Text('Task permissionları', style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text('Tapşırıq modulu', style: TextStyle(fontWeight: FontWeight.w700)),
             ..._taskPermissionGroups.expand((group) {
               final groupTitle = group['title'].toString();
               final options = (group['options'] as List);
@@ -497,26 +505,38 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
                 },
               ),
             ),
-            SwitchListTile(
-              title: const Text('Anbar (yazmaq)'),
-              value: _whWriter,
-              onChanged: (v) => setState(() => _whWriter = v),
+            const SizedBox(height: 8),
+            const Text('Anbar modulu', style: TextStyle(fontWeight: FontWeight.w700)),
+            ..._warehousePermissionOptions.map(
+              (entry) => SwitchListTile(
+                title: Text(entry.value),
+                value: entry.key == 'is_warehouse_reader' ? _whReader : _whWriter,
+                onChanged: (v) => setState(() {
+                  if (entry.key == 'is_warehouse_reader') {
+                    _whReader = v;
+                  } else {
+                    _whWriter = v;
+                  }
+                }),
+              ),
             ),
-            SwitchListTile(
-              title: const Text('Anbar (oxumaq)'),
-              value: _whReader,
-              onChanged: (v) => setState(() => _whReader = v),
+            const SizedBox(height: 8),
+            const Text('Sənəd modulu', style: TextStyle(fontWeight: FontWeight.w700)),
+            ..._documentPermissionOptions.map(
+              (entry) => SwitchListTile(
+                title: Text(entry.value),
+                value: entry.key == 'is_document_reader' ? _docReader : _docWriter,
+                onChanged: (v) => setState(() {
+                  if (entry.key == 'is_document_reader') {
+                    _docReader = v;
+                  } else {
+                    _docWriter = v;
+                  }
+                }),
+              ),
             ),
-            SwitchListTile(
-              title: const Text('Sənəd (yazmaq)'),
-              value: _docWriter,
-              onChanged: (v) => setState(() => _docWriter = v),
-            ),
-            SwitchListTile(
-              title: const Text('Sənəd (oxumaq)'),
-              value: _docReader,
-              onChanged: (v) => setState(() => _docReader = v),
-            ),
+            const SizedBox(height: 8),
+            const Text('İdarəetmə', style: TextStyle(fontWeight: FontWeight.w700)),
             SwitchListTile(
               title: const Text('Admin'),
               value: _admin,

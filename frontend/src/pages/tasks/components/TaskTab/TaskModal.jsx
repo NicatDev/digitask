@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Form, Input, Button, Select, Row, Col, DatePicker, Grid, Spin } from 'antd';
+import { Modal, Form, Input, Button, Select, Row, Col, DatePicker, Grid, Spin, Tabs } from 'antd';
 import styles from './style.module.scss';
 import { TASK_STATUSES } from './constants';
 import { getCustomer, getCustomerOptions } from '../../../../axios/api/tasks';
@@ -221,144 +221,165 @@ const TaskModal = ({
             destroyOnClose
         >
             <Form form={form} onFinish={onFinish} layout="vertical">
-                <Row gutter={[16, 0]}>
-                    <Col xs={24} sm={12}>
-                        <Form.Item name="title" label="Başlıq" rules={[{ required: true }]}>
-                            <Input />
-                        </Form.Item>
-                    </Col>
-                    <Col xs={24} sm={12}>
-                        <Form.Item name="task_type" label="Növ">
-                            <Select allowClear>
-                                {taskTypes.map(t => (
-                                    <Option key={t.id} value={t.id}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: t.color }} />
-                                            {t.name}
-                                        </div>
-                                    </Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
-                    </Col>
-                </Row>
-
-                <Row gutter={[16, 0]}>
-                    <Col xs={24}>
-                        <Form.Item name="customer" label="Müştəri" rules={[{ required: true }]}>
-                            <CustomerRemoteSelect />
-                        </Form.Item>
-                    </Col>
-                </Row>
-
-                <Row gutter={[16, 0]}>
-                    <Col xs={24} sm={12}>
-                        <Form.Item
-                            name="status"
-                            label="Status"
-                            initialValue="todo"
-                            rules={[{ required: true }]}
-                        >
-                            <Select
-                                onChange={(v) => {
-                                    if (v !== 'pending') {
-                                        form.setFieldValue('rescheduled_date', undefined);
-                                    }
-                                }}
-                            >
-                                {TASK_STATUSES.map(s => (
-                                    <Option key={s.value} value={s.value}>
-                                        <span style={{ color: s.color, marginRight: 8 }}>●</span>
-                                        {s.label}
-                                    </Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
-                    </Col>
-                    {status === 'pending' && (
-                        <Col xs={24} sm={12}>
-                            <Form.Item
-                                name="rescheduled_date"
-                                label="Rescheduled date"
-                                rules={[{ required: true, message: 'Təxirə salındı üçün tarix seçin' }]}
-                            >
-                                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" placeholder="Tarix seçin" />
-                            </Form.Item>
-                        </Col>
-                    )}
-                </Row>
-
-                <Row gutter={[16, 0]}>
-                    <Col xs={24} md={12}>
-                        <Form.Item name="group" label="Qrup">
-                            <Select showSearch optionFilterProp="children">
-                                {groups.map(g => (
-                                    <Option key={g.id} value={g.id}>{g.region_name} - {g.name}</Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
-                    </Col>
-                    <Col xs={24} md={12}>
-                        <Form.Item name="assigned_to" label="İcraçılar">
-                            <Select
-                                mode="multiple"
-                                allowClear
-                                showSearch
-                                optionFilterProp="children"
-                                placeholder="İcraçıları seçin"
-                            >
-                                {users.filter(u => u.is_active).map(u => (
-                                    <Option key={u.id} value={u.id}>{u.first_name} {u.last_name}</Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
-                    </Col>
-                </Row>
-
-                {editingItem?.reporter_name ? (
-                    <Row gutter={[16, 0]} style={{ marginBottom: 8 }}>
-                        <Col span={24}>
-                            <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)', marginBottom: 4 }}>Reporter</div>
-                            <div>{editingItem.reporter_name}</div>
-                        </Col>
-                    </Row>
-                ) : null}
-
-                <Row gutter={[16, 0]}>
-                    <Col span={24}>
-                        <Form.Item name="services" label="Servislər">
-                            <Select
-                                mode="multiple"
-                                placeholder="Servisləri seçin"
-                                optionFilterProp="children"
-                            >
-                                {services.filter(s => s.is_active).map(s => (
-                                    <Option key={s.id} value={s.id}>{s.name}</Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
-                    </Col>
-                </Row>
-
-                <Form.Item name="note" label="Qeyd">
-                    <TextArea rows={3} />
-                </Form.Item>
-
-                {editingItem && status !== 'todo' && selectedCustomerId ? (
-                    <Button
-                        style={{ marginBottom: 12 }}
-                        onClick={() =>
-                            onEditCustomerAddress?.({
-                                id: selectedCustomerId,
-                                name: editingItem.customer_name,
-                            })
-                        }
-                        block
-                    >
-                        Müştəri ünvanını redaktə et
-                    </Button>
-                ) : null}
-
+                <Tabs
+                    defaultActiveKey="task"
+                    items={[
+                        {
+                            key: 'task',
+                            label: 'Tapşırıq',
+                            children: (
+                                <>
+                                    <Row gutter={[16, 0]}>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="title" label="Başlıq" rules={[{ required: true }]}>
+                                                <Input />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="task_type" label="Növ">
+                                                <Select allowClear>
+                                                    {taskTypes.map(t => (
+                                                        <Option key={t.id} value={t.id}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: t.color }} />
+                                                                {t.name}
+                                                            </div>
+                                                        </Option>
+                                                    ))}
+                                                </Select>
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                    <Row gutter={[16, 0]}>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item
+                                                name="status"
+                                                label="Status"
+                                                initialValue="todo"
+                                                rules={[{ required: true }]}
+                                            >
+                                                <Select
+                                                    onChange={(v) => {
+                                                        if (v !== 'pending') {
+                                                            form.setFieldValue('rescheduled_date', undefined);
+                                                        }
+                                                    }}
+                                                >
+                                                    {TASK_STATUSES.map(s => (
+                                                        <Option key={s.value} value={s.value}>
+                                                            <span style={{ color: s.color, marginRight: 8 }}>●</span>
+                                                            {s.label}
+                                                        </Option>
+                                                    ))}
+                                                </Select>
+                                            </Form.Item>
+                                        </Col>
+                                        {status === 'pending' && (
+                                            <Col xs={24} sm={12}>
+                                                <Form.Item
+                                                    name="rescheduled_date"
+                                                    label="Rescheduled date"
+                                                    rules={[{ required: true, message: 'Təxirə salındı üçün tarix seçin' }]}
+                                                >
+                                                    <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" placeholder="Tarix seçin" />
+                                                </Form.Item>
+                                            </Col>
+                                        )}
+                                    </Row>
+                                    <Form.Item name="note" label="Qeyd">
+                                        <TextArea rows={3} />
+                                    </Form.Item>
+                                </>
+                            ),
+                        },
+                        {
+                            key: 'customer',
+                            label: 'Müştəri',
+                            children: (
+                                <>
+                                    <Row gutter={[16, 0]}>
+                                        <Col xs={24}>
+                                            <Form.Item name="customer" label="Müştəri" rules={[{ required: true }]}>
+                                                <CustomerRemoteSelect />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                    {editingItem && status !== 'todo' && selectedCustomerId ? (
+                                        <Button
+                                            style={{ marginBottom: 12 }}
+                                            onClick={() =>
+                                                onEditCustomerAddress?.({
+                                                    id: selectedCustomerId,
+                                                    name: editingItem.customer_name,
+                                                })
+                                            }
+                                            block
+                                        >
+                                            Müştəri ünvanını redaktə et
+                                        </Button>
+                                    ) : null}
+                                </>
+                            ),
+                        },
+                        {
+                            key: 'execution',
+                            label: 'İcra',
+                            children: (
+                                <>
+                                    <Row gutter={[16, 0]}>
+                                        <Col xs={24} md={12}>
+                                            <Form.Item name="group" label="Qrup">
+                                                <Select showSearch optionFilterProp="children">
+                                                    {groups.map(g => (
+                                                        <Option key={g.id} value={g.id}>{g.region_name} - {g.name}</Option>
+                                                    ))}
+                                                </Select>
+                                            </Form.Item>
+                                        </Col>
+                                        <Col xs={24} md={12}>
+                                            <Form.Item name="assigned_to" label="İcraçılar">
+                                                <Select
+                                                    mode="multiple"
+                                                    allowClear
+                                                    showSearch
+                                                    optionFilterProp="children"
+                                                    placeholder="İcraçıları seçin"
+                                                >
+                                                    {users.filter(u => u.is_active).map(u => (
+                                                        <Option key={u.id} value={u.id}>{u.first_name} {u.last_name}</Option>
+                                                    ))}
+                                                </Select>
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                    {editingItem?.reporter_name ? (
+                                        <Row gutter={[16, 0]} style={{ marginBottom: 8 }}>
+                                            <Col span={24}>
+                                                <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)', marginBottom: 4 }}>Reporter</div>
+                                                <div>{editingItem.reporter_name}</div>
+                                            </Col>
+                                        </Row>
+                                    ) : null}
+                                    <Row gutter={[16, 0]}>
+                                        <Col span={24}>
+                                            <Form.Item name="services" label="Servislər">
+                                                <Select
+                                                    mode="multiple"
+                                                    placeholder="Servisləri seçin"
+                                                    optionFilterProp="children"
+                                                >
+                                                    {services.filter(s => s.is_active).map(s => (
+                                                        <Option key={s.id} value={s.id}>{s.name}</Option>
+                                                    ))}
+                                                </Select>
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                </>
+                            ),
+                        },
+                    ]}
+                />
                 <Button type="primary" htmlType="submit" block>
                     Təsdiqlə
                 </Button>
