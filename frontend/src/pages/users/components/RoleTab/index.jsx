@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, message, Popconfirm, Switch, Row, Col, Select, Grid } from 'antd';
+import { Table, Button, Modal, Form, Input, message, Popconfirm, Switch, Row, Col, Select, Grid, Collapse } from 'antd';
 import { FilterOutlined } from '@ant-design/icons';
 import styles from './style.module.scss';
 import { getRoles, createRole, updateRole, deleteRole, updateRoleStatus } from '../../../../axios/api/account';
@@ -378,16 +378,14 @@ const RoleTab = ({ isActive }) => {
                     <Form.Item name="description" label="Təsvir">
                         <Input.TextArea />
                     </Form.Item>
-                    <Row gutter={16}>
-                        {ROLE_PERMISSION_GROUPS.map((group) => (
-                            <React.Fragment key={group.title}>
-                                <Col span={24}>
-                                    <div style={{ fontWeight: 700, marginTop: 6, marginBottom: 6 }}>{group.title}</div>
-                                </Col>
-                                {group.children}
-                            </React.Fragment>
-                        ))}
-                    </Row>
+                    <Collapse
+                        defaultActiveKey={['Tapşırıq modulu']}
+                        items={ROLE_PERMISSION_GROUPS.map((group) => ({
+                            key: group.title,
+                            label: <span style={{ fontWeight: 700 }}>{group.title}</span>,
+                            children: <Row gutter={16}>{group.children}</Row>,
+                        }))}
+                    />
 
                     <Button type="primary" htmlType="submit" block>
                         Təsdiqlə
