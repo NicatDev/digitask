@@ -5,17 +5,20 @@ import styles from './style.module.scss';
 import { getRoles, createRole, updateRole, deleteRole, updateRoleStatus } from '../../../../axios/api/account';
 import { handleApiError } from '../../../../utils/errorHandler';
 
-const TASK_PERMISSION_GROUPS = [
+const TASK_GLOBAL_PERMISSION_GROUPS = [
     {
         title: 'Giriş və görünüş',
         options: [
             { key: 'view_module', label: 'Task modulu görünüşü' },
+            { key: 'create', label: 'Tapşırıq yarat' },
         ],
     },
+];
+
+const TASK_STATUS_PERMISSION_GROUPS = [
     {
         title: 'Yaratma və redaktə',
         options: [
-            { key: 'create', label: 'Tapşırıq yarat' },
             { key: 'edit_general', label: 'Ümumi düzəliş' },
             { key: 'delete', label: 'Tapşırıq sil' },
             { key: 'toggle_active', label: 'Aktiv/deaktiv dəyiş' },
@@ -36,8 +39,8 @@ const TASK_PERMISSION_GROUPS = [
         ],
     },
 ];
-const TASK_PERMISSION_KEYS = TASK_PERMISSION_GROUPS.flatMap((g) => g.options.map((o) => o.key));
-const TASK_STATUS_ACTION_KEYS = TASK_PERMISSION_KEYS.filter((key) => !['view_module', 'create'].includes(key));
+const TASK_PERMISSION_KEYS = [...TASK_GLOBAL_PERMISSION_GROUPS, ...TASK_STATUS_PERMISSION_GROUPS].flatMap((g) => g.options.map((o) => o.key));
+const TASK_STATUS_ACTION_KEYS = TASK_STATUS_PERMISSION_GROUPS.flatMap((g) => g.options.map((o) => o.key));
 
 const TASK_STATUS_OPTIONS = [
     { value: 'todo', label: 'Gözləyir' },
@@ -52,7 +55,7 @@ const ROLE_PERMISSION_GROUPS = [
         title: 'Tapşırıq modulu',
         children: (
             <>
-                {TASK_PERMISSION_GROUPS.map((group) => (
+                {TASK_GLOBAL_PERMISSION_GROUPS.map((group) => (
                     <React.Fragment key={group.title}>
                         <Col span={24}>
                             <div style={{ fontWeight: 600, marginBottom: 6 }}>{group.title}</div>
@@ -67,23 +70,25 @@ const ROLE_PERMISSION_GROUPS = [
                     </React.Fragment>
                 ))}
                 <Col span={24}>
-                    <Form.Item name={['task_status_visibility', 'visible_statuses']} label="Görünən statuslar">
-                        <Select mode="multiple" allowClear options={TASK_STATUS_OPTIONS} />
-                    </Form.Item>
-                </Col>
-                <Col span={24}>
                     <Form.Item noStyle shouldUpdate>
                         {({ getFieldValue }) => {
-                            const visible = getFieldValue(['task_status_visibility', 'visible_statuses']) || [];
+                            const enabledMap = getFieldValue(['task_status_enabled']) || {};
                             return (
                                 <Collapse
                                     size="small"
                                     items={TASK_STATUS_OPTIONS.map((status) => ({
                                         key: status.value,
-                                        label: `${status.label} üçün icazələr`,
+                                        label: (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span>{status.label} üçün icazələr</span>
+                                                <Form.Item name={['task_status_enabled', status.value]} valuePropName="checked" noStyle>
+                                                    <Switch onClick={(_, e) => e?.stopPropagation?.()} />
+                                                </Form.Item>
+                                            </div>
+                                        ),
                                         children: (
                                             <Row gutter={12}>
-                                                {TASK_PERMISSION_GROUPS.slice(1).map((permGroup) => (
+                                                {TASK_STATUS_PERMISSION_GROUPS.map((permGroup) => (
                                                     <React.Fragment key={`${status.value}-${permGroup.title}`}>
                                                         <Col span={24}>
                                                             <div style={{ fontWeight: 600, marginBottom: 6 }}>{permGroup.title}</div>
@@ -95,7 +100,7 @@ const ROLE_PERMISSION_GROUPS = [
                                                                     label={opt.label}
                                                                     valuePropName="checked"
                                                                 >
-                                                                    <Switch disabled={!visible.includes(status.value)} />
+                                                                    <Switch disabled={enabledMap[status.value] !== true} />
                                                                 </Form.Item>
                                                             </Col>
                                                         ))}
@@ -227,7 +232,7 @@ const RoleTab = ({ isActive }) => {
                 ...values,
                 task_permissions: taskPermissions,
                 task_status_visibility: {
-                    visible_statuses: values?.task_status_visibility?.visible_statuses || [],
+                    visible_statuses: TASK_STATUS_OPTIONS.filter((status) => values?.task_status_enabled?.[status.value] === true).map((status) => status.value),
                 },
                 task_status_permissions: Object.fromEntries(
                     TASK_STATUS_OPTIONS.map((status) => {
@@ -324,6 +329,12 @@ const RoleTab = ({ isActive }) => {
                             task_status_visibility: record.task_status_visibility || {
                                 visible_statuses: [],
                             },
+                            task_status_enabled: Object.fromEntries(
+                                TASK_STATUS_OPTIONS.map((status) => [
+                                    status.value,
+                                    (record.task_status_visibility?.visible_statuses || []).includes(status.value),
+                                ])
+                            ),
                             task_status_permissions: record.task_status_permissions || {},
                         });
                         setIsModalOpen(true);
@@ -408,6 +419,9 @@ const RoleTab = ({ isActive }) => {
                                 task_status_visibility: {
                                     visible_statuses: [],
                                 },
+                                task_status_enabled: Object.fromEntries(
+                                    TASK_STATUS_OPTIONS.map((status) => [status.value, false])
+                                ),
                                 task_status_permissions: {},
                             });
                             setIsModalOpen(true);
