@@ -312,6 +312,13 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
     'done',
     'rejected',
   ];
+  static const Map<String, String> _taskStatusLabels = {
+    'todo': 'Gözləyir',
+    'in_progress': 'İcrada',
+    'pending': 'Təxirə salınıb',
+    'done': 'Tamamlandı',
+    'rejected': 'Rədd edildi',
+  };
   static const List<MapEntry<String, String>> _warehousePermissionOptions = [
     MapEntry('is_warehouse_reader', 'Anbar (Oxumaq)'),
     MapEntry('is_warehouse_writer', 'Anbar (Yazmaq)'),
@@ -464,88 +471,105 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
               maxLines: 3,
             ),
             const SizedBox(height: 8),
-            const SizedBox(height: 8),
-            const Text('Tapşırıq modulu', style: TextStyle(fontWeight: FontWeight.w700)),
-            ..._taskPermissionGroups.expand((group) {
-              final groupTitle = group['title'].toString();
-              final options = (group['options'] as List);
-              return [
-                Padding(
-                  padding: const EdgeInsets.only(top: 8, bottom: 4),
-                  child: Text(groupTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+            ExpansionTile(
+              initiallyExpanded: true,
+              title: const Text('Tapşırıq modulu', style: TextStyle(fontWeight: FontWeight.w700)),
+              children: [
+                ..._taskPermissionGroups.expand((group) {
+                  final groupTitle = group['title'].toString();
+                  final options = (group['options'] as List);
+                  return [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(groupTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                    ...options.map((raw) {
+                      final key = raw['key'].toString();
+                      final label = raw['label'].toString();
+                      return SwitchListTile(
+                        title: Text(label),
+                        value: _taskPermissions[key] == true,
+                        onChanged: (v) => setState(() => _taskPermissions[key] = v),
+                      );
+                    }),
+                  ];
+                }),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Görünən statuslar', style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
                 ),
-                ...options.map((raw) {
-                  final key = raw['key'].toString();
-                  final label = raw['label'].toString();
-                  return SwitchListTile(
-                    title: Text(label),
-                    value: _taskPermissions[key] == true,
-                    onChanged: (v) => setState(() => _taskPermissions[key] = v),
-                  );
-                }),
-              ];
-            }),
-            const SizedBox(height: 8),
-            const Text('Görünən statuslar', style: TextStyle(fontWeight: FontWeight.w600)),
-            ..._taskStatusOptions.map(
-              (status) => CheckboxListTile(
-                title: Text(status),
-                value: _visibleStatuses.contains(status),
-                onChanged: (checked) {
-                  setState(() {
-                    if (checked == true) {
-                      _visibleStatuses.add(status);
+                ..._taskStatusOptions.map(
+                  (status) => CheckboxListTile(
+                    title: Text(_taskStatusLabels[status] ?? status),
+                    value: _visibleStatuses.contains(status),
+                    onChanged: (checked) {
+                      setState(() {
+                        if (checked == true) {
+                          _visibleStatuses.add(status);
+                        } else {
+                          _visibleStatuses.remove(status);
+                          if (_visibleStatuses.isEmpty) {
+                            _visibleStatuses.add('todo');
+                          }
+                        }
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+            ExpansionTile(
+              title: const Text('Anbar modulu', style: TextStyle(fontWeight: FontWeight.w700)),
+              children: _warehousePermissionOptions.map(
+                (entry) => SwitchListTile(
+                  title: Text(entry.value),
+                  value: entry.key == 'is_warehouse_reader' ? _whReader : _whWriter,
+                  onChanged: (v) => setState(() {
+                    if (entry.key == 'is_warehouse_reader') {
+                      _whReader = v;
                     } else {
-                      _visibleStatuses.remove(status);
-                      if (_visibleStatuses.isEmpty) {
-                        _visibleStatuses.add('todo');
-                      }
+                      _whWriter = v;
                     }
-                  });
-                },
-              ),
+                  }),
+                ),
+              ).toList(),
             ),
-            const SizedBox(height: 8),
-            const Text('Anbar modulu', style: TextStyle(fontWeight: FontWeight.w700)),
-            ..._warehousePermissionOptions.map(
-              (entry) => SwitchListTile(
-                title: Text(entry.value),
-                value: entry.key == 'is_warehouse_reader' ? _whReader : _whWriter,
-                onChanged: (v) => setState(() {
-                  if (entry.key == 'is_warehouse_reader') {
-                    _whReader = v;
-                  } else {
-                    _whWriter = v;
-                  }
-                }),
-              ),
+            ExpansionTile(
+              title: const Text('Sənəd modulu', style: TextStyle(fontWeight: FontWeight.w700)),
+              children: _documentPermissionOptions.map(
+                (entry) => SwitchListTile(
+                  title: Text(entry.value),
+                  value: entry.key == 'is_document_reader' ? _docReader : _docWriter,
+                  onChanged: (v) => setState(() {
+                    if (entry.key == 'is_document_reader') {
+                      _docReader = v;
+                    } else {
+                      _docWriter = v;
+                    }
+                  }),
+                ),
+              ).toList(),
             ),
-            const SizedBox(height: 8),
-            const Text('Sənəd modulu', style: TextStyle(fontWeight: FontWeight.w700)),
-            ..._documentPermissionOptions.map(
-              (entry) => SwitchListTile(
-                title: Text(entry.value),
-                value: entry.key == 'is_document_reader' ? _docReader : _docWriter,
-                onChanged: (v) => setState(() {
-                  if (entry.key == 'is_document_reader') {
-                    _docReader = v;
-                  } else {
-                    _docWriter = v;
-                  }
-                }),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text('İdarəetmə', style: TextStyle(fontWeight: FontWeight.w700)),
-            SwitchListTile(
-              title: const Text('Admin'),
-              value: _admin,
-              onChanged: (v) => setState(() => _admin = v),
-            ),
-            SwitchListTile(
-              title: const Text('Super admin'),
-              value: _superAdmin,
-              onChanged: (v) => setState(() => _superAdmin = v),
+            ExpansionTile(
+              title: const Text('İdarəetmə', style: TextStyle(fontWeight: FontWeight.w700)),
+              children: [
+                SwitchListTile(
+                  title: const Text('Admin'),
+                  value: _admin,
+                  onChanged: (v) => setState(() => _admin = v),
+                ),
+                SwitchListTile(
+                  title: const Text('Super admin'),
+                  value: _superAdmin,
+                  onChanged: (v) => setState(() => _superAdmin = v),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             FilledButton(
