@@ -410,15 +410,26 @@ const TaskTable = ({
                     <Button type="link" size="small" onClick={() => onDocumentAdd(record)} disabled={disableDocuments || !canForTask?.('manage_documents', record)}>
                         <FileAddOutlined /> ({record.task_documents?.length || 0})
                     </Button>
-                    <Button
-                        type={record.is_externally_archived ? 'default' : 'link'}
-                        size="small"
-                        icon={<CheckCircleOutlined />}
-                        onClick={() => onMarkExternalArchived?.(record)}
-                        disabled={!canForTask?.('mark_external_archived', record) || record.is_externally_archived}
-                    >
-                        {record.is_externally_archived ? 'Məlumatlar əlaqəli platformalara köçürüldü' : 'Məlumatları köçürüldü kimi işarələ'}
-                    </Button>
+                    {record.is_externally_archived ? (
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+                            disabled
+                        >
+                            Arxivdədir
+                        </Button>
+                    ) : (
+                        <Button
+                            type="primary"
+                            size="small"
+                            icon={<CheckCircleOutlined />}
+                            onClick={() => onMarkExternalArchived?.(record)}
+                            disabled={!canForTask?.('mark_external_archived', record)}
+                        >
+                            Arxivə köçür
+                        </Button>
+                    )}
                     {!disableDelete && (
                         <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => onDelete(record.id)}>
                             <Button type="link" size="small" danger>Sil</Button>

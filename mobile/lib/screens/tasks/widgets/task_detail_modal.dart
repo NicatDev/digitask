@@ -343,14 +343,43 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
                                     const SizedBox(height: 16),
                                     _taskInfoColumn(context, task, createdAt, updatedAt),
                                     const SizedBox(height: 8),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton.icon(
-                                        onPressed: (archived || !widget.canMarkExternalArchived) ? null : _markExternalArchived,
-                                        icon: Icon(archived ? Icons.check_circle : Icons.inventory_2),
-                                        label: Text(archived ? 'Məlumatlar əlaqəli platformalara köçürüldü' : 'Məlumatları köçürüldü kimi işarələ'),
+                                    if (archived)
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.withOpacity(0.08),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: Colors.green.withOpacity(0.35)),
+                                        ),
+                                        child: const Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.check_circle, color: Colors.green),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Arxivdədir',
+                                              style: TextStyle(
+                                                color: Colors.green,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    else
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.blue,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                          onPressed: widget.canMarkExternalArchived ? _markExternalArchived : null,
+                                          icon: const Icon(Icons.inventory_2),
+                                          label: const Text('Arxivə köçür'),
+                                        ),
                                       ),
-                                    ),
                                     const SizedBox(height: 12),
                                     TextButton.icon(
                                       onPressed: _openCustomerHistory,

@@ -235,7 +235,6 @@ class TaskCard extends StatelessWidget {
                 InkWell(
                   onTap: () => _openCustomerAddressEditor(
                     context: context,
-                    isCurrentUserAssignee: isCurrentUserAssignee,
                   ),
                   borderRadius: BorderRadius.circular(12),
                   child: const Padding(
@@ -400,8 +399,8 @@ class TaskCard extends StatelessWidget {
                 
                 // Status change - only for assignees
                 _buildActionBtn(context, Icons.sync_alt, 
-                    (isCurrentUserAssignee && canChangeStatus) ? Colors.orange : Colors.grey.shade300, 
-                    (isCurrentUserAssignee && canChangeStatus) ? () {
+                    canChangeStatus ? Colors.orange : Colors.grey.shade300, 
+                    canChangeStatus ? () {
                   showModalBottomSheet(
                     context: context, 
                     isScrollControlled: true,
@@ -409,10 +408,10 @@ class TaskCard extends StatelessWidget {
                     builder: (_) => StatusModal(task: task, onSuccess: onRefresh)
                   );
                 } : null),
-                // Survey/Anket - only for assignees
+                // Survey/Anket
                 _buildActionBtn(context, Icons.assignment, 
-                    (isCurrentUserAssignee && canManageSurveys) ? Colors.purple : Colors.grey.shade300, 
-                    (isCurrentUserAssignee && canManageSurveys) ? () {
+                    canManageSurveys ? Colors.purple : Colors.grey.shade300, 
+                    canManageSurveys ? () {
                   showModalBottomSheet(
                     context: context, 
                     isScrollControlled: true, 
@@ -424,23 +423,25 @@ class TaskCard extends StatelessWidget {
                     )
                   );
                 } : null),
-                // Files - only for assignees
+                // Files
                 _buildActionBtn(context, Icons.attach_file, 
-                    (isCurrentUserAssignee && canManageDocuments) ? Colors.grey : Colors.grey.shade300, 
-                    (isCurrentUserAssignee && canManageDocuments) ? () {
+                    canManageDocuments ? Colors.grey : Colors.grey.shade300, 
+                    canManageDocuments ? () {
                    showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => FilesModal(task: task, onSuccess: onRefresh));
                 } : null),
-                // Products - only for assignees
+                // Products
                  _buildActionBtn(context, Icons.shopping_bag, 
-                    (isCurrentUserAssignee && canManageProducts) ? Colors.green : Colors.grey.shade300, 
-                    (isCurrentUserAssignee && canManageProducts) ? () {
+                    canManageProducts ? Colors.green : Colors.grey.shade300, 
+                    canManageProducts ? () {
                    showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => ProductsModal(task: task, onSuccess: onRefresh));
                 } : null),
                 _buildActionBtn(
                   context,
-                  Icons.inventory_2,
-                  isExternallyArchived ? Colors.green : (canMarkExternalArchived ? Colors.amber.shade700 : Colors.grey.shade300),
-                  (canMarkExternalArchived && !isExternallyArchived)
+                  isExternallyArchived ? Icons.check_circle : Icons.inventory_2,
+                  isExternallyArchived
+                      ? Colors.green
+                      : (canMarkExternalArchived ? Colors.blue : Colors.grey.shade300),
+                  (!isExternallyArchived && canMarkExternalArchived)
                       ? () => _markExternalArchived(context)
                       : null,
                 ),
@@ -508,9 +509,8 @@ class TaskCard extends StatelessWidget {
 
   Future<void> _openCustomerAddressEditor({
     required BuildContext context,
-    required bool isCurrentUserAssignee,
   }) async {
-    if (!isCurrentUserAssignee || !canEditCustomerAddress) {
+    if (!canEditCustomerAddress) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Müştəri ünvanı redaktəsi üçün icazəniz yoxdur')),

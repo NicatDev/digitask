@@ -219,16 +219,24 @@ const TaskDetailModal = ({
                                 : '—'}
                         </Field>
                         <Field label="Xarici sistemə köçürülmə">
-                            <Button
-                                icon={<CheckCircleOutlined />}
-                                type={task.is_externally_archived ? 'default' : 'primary'}
-                                onClick={() => onMarkExternalArchived?.(task)}
-                                disabled={task.is_externally_archived || !canMarkExternalArchived}
-                            >
-                                {task.is_externally_archived
-                                    ? 'Məlumatlar əlaqəli platformalara köçürüldü'
-                                    : 'Məlumatları köçürüldü kimi işarələ'}
-                            </Button>
+                            {task.is_externally_archived ? (
+                                <Button
+                                    type="text"
+                                    icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+                                    disabled
+                                >
+                                    Arxivdədir
+                                </Button>
+                            ) : (
+                                <Button
+                                    icon={<CheckCircleOutlined />}
+                                    type="primary"
+                                    onClick={() => onMarkExternalArchived?.(task)}
+                                    disabled={!canMarkExternalArchived}
+                                >
+                                    Arxivə köçür
+                                </Button>
+                            )}
                         </Field>
                         <Button
                             type="link"
