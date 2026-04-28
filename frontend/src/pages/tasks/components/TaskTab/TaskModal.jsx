@@ -132,6 +132,7 @@ const TaskModal = ({
     onEditCustomerAddress,
     canSubmit = false,
     canEditCustomerAddress = false,
+    isSubmitting = false,
 }) => {
     const status = Form.useWatch('status', form);
     const selectedCustomerId = Form.useWatch('customer', form);
@@ -383,7 +384,7 @@ const TaskModal = ({
                         },
                     ]}
                 />
-                <Button type="primary" htmlType="submit" block disabled={!canSubmit}>
+                <Button type="primary" htmlType="submit" block disabled={!canSubmit || isSubmitting} loading={isSubmitting}>
                     Təsdiqlə
                 </Button>
             </Form>

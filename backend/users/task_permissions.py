@@ -36,6 +36,8 @@ TASK_STATUS_ACTION_KEYS = [
     "mark_external_archived",
 ]
 
+TASK_STATUS_SCOPE_KEYS = ("mine", "group", "all")
+
 
 def _all_task_statuses() -> List[str]:
     from tasks.models import Task
@@ -67,6 +69,21 @@ def _coerce_status_list(source: Any) -> List[str]:
     return out
 
 
+def _coerce_status_scope_map(source: Any) -> Dict[str, str]:
+    if not isinstance(source, dict):
+        return {}
+    allowed_statuses = set(_all_task_statuses())
+    out: Dict[str, str] = {}
+    for status, raw_scope in source.items():
+        status_key = str(status)
+        if status_key not in allowed_statuses:
+            continue
+        scope = str(raw_scope or "").strip().lower()
+        if scope in TASK_STATUS_SCOPE_KEYS:
+            out[status_key] = scope
+    return out
+
+
 def parse_role_description(description: str) -> Dict[str, Any]:
     raw = (description or "").strip()
     if not raw:
@@ -82,7 +99,10 @@ def parse_role_description(description: str) -> Dict[str, Any]:
                 "task_status_visibility": {
                     "visible_statuses": _coerce_status_list(
                         (parsed.get("task_status_visibility") or {}).get("visible_statuses")
-                    )
+                    ),
+                    "status_scopes": _coerce_status_scope_map(
+                        (parsed.get("task_status_visibility") or {}).get("status_scopes")
+                    ),
                 },
                 "task_status_permissions": _coerce_status_action_map(parsed.get("task_status_permissions")),
             }
@@ -102,7 +122,8 @@ def build_role_description(
         "text": (text or "").strip(),
         "task_permissions": _coerce_bool_map(task_permissions or {}, TASK_ACTION_KEYS),
         "task_status_visibility": {
-            "visible_statuses": _coerce_status_list((task_status_visibility or {}).get("visible_statuses"))
+            "visible_statuses": _coerce_status_list((task_status_visibility or {}).get("visible_statuses")),
+            "status_scopes": _coerce_status_scope_map((task_status_visibility or {}).get("status_scopes")),
         },
         "task_status_permissions": _coerce_status_action_map(task_status_permissions or {}),
     }
@@ -161,11 +182,14 @@ def can_task_action_for_task(user, action: str, task) -> bool:
     return bool((status_map.get(status) or {}).get(action, False))
 
 
-def get_task_status_visibility_for_user(user) -> Dict[str, List[str]]:
+def get_task_status_visibility_for_user(user) -> Dict[str, Any]:
     role = _role_or_none(user)
 
     parsed = parse_role_description(getattr(role, "description", "") if role else "")
     visibility_cfg = parsed.get("task_status_visibility") or {}
     if isinstance(visibility_cfg, dict) and "visible_statuses" in visibility_cfg:
-        return {"visible_statuses": _coerce_status_list(visibility_cfg.get("visible_statuses"))}
-    return {"visible_statuses": []}
+        return {
+            "visible_statuses": _coerce_status_list(visibility_cfg.get("visible_statuses")),
+            "status_scopes": _coerce_status_scope_map(visibility_cfg.get("status_scopes")),
+        }
+    return {"visible_statuses": [], "status_scopes": {}}

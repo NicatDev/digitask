@@ -83,7 +83,21 @@ class TaskViewSet(viewsets.ModelViewSet):
         
         visibility = get_task_status_visibility_for_user(user)
         visible_statuses = visibility.get('visible_statuses', [])
-        queryset = queryset.filter(status__in=visible_statuses)
+        status_scopes = visibility.get('status_scopes', {}) or {}
+        visibility_q = models.Q(pk__in=[])
+        for status in visible_statuses:
+            scope = status_scopes.get(status, 'mine')
+            if scope == 'all':
+                visibility_q |= models.Q(status=status)
+            elif scope == 'group':
+                user_group_id = getattr(user, 'group_id', None)
+                if user_group_id:
+                    visibility_q |= models.Q(status=status, group_id=user_group_id)
+            else:
+                visibility_q |= models.Q(status=status) & (
+                    models.Q(assigned_to=user) | models.Q(reporter=user)
+                )
+        queryset = queryset.filter(visibility_q)
         
         # Filter by status (query param)
         task_status = self.request.query_params.get('status')

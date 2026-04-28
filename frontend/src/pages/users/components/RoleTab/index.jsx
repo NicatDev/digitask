@@ -49,6 +49,11 @@ const TASK_STATUS_OPTIONS = [
     { value: 'done', label: 'Tamamlandı' },
     { value: 'rejected', label: 'Rədd edildi' },
 ];
+const TASK_SCOPE_OPTIONS = [
+    { value: 'mine', label: 'Yalnız öz task-ları' },
+    { value: 'group', label: 'Yalnız eyni qrup' },
+    { value: 'all', label: 'Hamısı' },
+];
 
 const ROLE_PERMISSION_GROUPS = [
     {
@@ -88,6 +93,11 @@ const ROLE_PERMISSION_GROUPS = [
                                         ),
                                         children: (
                                             <Row gutter={12}>
+                                                <Col span={24}>
+                                                    <Form.Item name={['task_status_scope', status.value]} label="Kim görə bilər?">
+                                                        <Select options={TASK_SCOPE_OPTIONS} disabled={enabledMap[status.value] !== true} />
+                                                    </Form.Item>
+                                                </Col>
                                                 {TASK_STATUS_PERMISSION_GROUPS.map((permGroup) => (
                                                     <React.Fragment key={`${status.value}-${permGroup.title}`}>
                                                         <Col span={24}>
@@ -233,6 +243,14 @@ const RoleTab = ({ isActive }) => {
                 task_permissions: taskPermissions,
                 task_status_visibility: {
                     visible_statuses: TASK_STATUS_OPTIONS.filter((status) => values?.task_status_enabled?.[status.value] === true).map((status) => status.value),
+                    status_scopes: Object.fromEntries(
+                        TASK_STATUS_OPTIONS.map((status) => [
+                            status.value,
+                            (values?.task_status_enabled?.[status.value] === true
+                                ? values?.task_status_scope?.[status.value]
+                                : null) || 'mine',
+                        ])
+                    ),
                 },
                 task_status_permissions: Object.fromEntries(
                     TASK_STATUS_OPTIONS.map((status) => {
@@ -335,6 +353,12 @@ const RoleTab = ({ isActive }) => {
                                     (record.task_status_visibility?.visible_statuses || []).includes(status.value),
                                 ])
                             ),
+                            task_status_scope: Object.fromEntries(
+                                TASK_STATUS_OPTIONS.map((status) => [
+                                    status.value,
+                                    record.task_status_visibility?.status_scopes?.[status.value] || 'mine',
+                                ])
+                            ),
                             task_status_permissions: record.task_status_permissions || {},
                         });
                         setIsModalOpen(true);
@@ -421,6 +445,9 @@ const RoleTab = ({ isActive }) => {
                                 },
                                 task_status_enabled: Object.fromEntries(
                                     TASK_STATUS_OPTIONS.map((status) => [status.value, false])
+                                ),
+                                task_status_scope: Object.fromEntries(
+                                    TASK_STATUS_OPTIONS.map((status) => [status.value, 'mine'])
                                 ),
                                 task_status_permissions: {},
                             });

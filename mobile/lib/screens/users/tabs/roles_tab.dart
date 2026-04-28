@@ -334,6 +334,11 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
     'done': 'Tamamlandı',
     'rejected': 'Rədd edildi',
   };
+  static const Map<String, String> _taskScopeLabels = {
+    'mine': 'Yalnız öz task-ları',
+    'group': 'Yalnız eyni qrup',
+    'all': 'Hamısı',
+  };
   static const List<MapEntry<String, String>> _warehousePermissionOptions = [
     MapEntry('is_warehouse_reader', 'Anbar (Oxumaq)'),
     MapEntry('is_warehouse_writer', 'Anbar (Yazmaq)'),
@@ -347,6 +352,7 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
   late final TextEditingController _description;
   late Map<String, bool> _taskPermissions;
   late Map<String, bool> _statusEnabled;
+  late Map<String, String> _statusScopes;
   late Map<String, Map<String, bool>> _taskStatusPermissions;
   late bool _whWriter;
   late bool _whReader;
@@ -377,6 +383,13 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
     final enabledStatuses = rawStatuses.map((s) => s.toString()).where(_taskStatusOptions.contains).toSet();
     _statusEnabled = {
       for (final status in _taskStatusOptions) status: enabledStatuses.contains(status),
+    };
+    final rawScopes = (rawVisibility['status_scopes'] is Map) ? (rawVisibility['status_scopes'] as Map) : const {};
+    _statusScopes = {
+      for (final status in _taskStatusOptions)
+        status: _taskScopeLabels.containsKey(rawScopes[status]?.toString())
+            ? rawScopes[status].toString()
+            : 'mine',
     };
     final rawStatusPermissions = (e?['task_status_permissions'] is Map)
         ? (e!['task_status_permissions'] as Map)
@@ -441,6 +454,10 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
       'task_permissions': normalizedTaskPermissions,
       'task_status_visibility': {
         'visible_statuses': _taskStatusOptions.where((s) => _statusEnabled[s] == true).toList(),
+        'status_scopes': {
+          for (final status in _taskStatusOptions)
+            status: _statusEnabled[status] == true ? (_statusScopes[status] ?? 'mine') : 'mine',
+        },
       },
       'task_status_permissions': {
         for (final status in _taskStatusOptions)
@@ -560,7 +577,30 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
                         ),
                       ],
                     ),
-                    children: _taskStatusActionKeys
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: DropdownButtonFormField<String>(
+                          value: _statusScopes[status] ?? 'mine',
+                          decoration: const InputDecoration(
+                            labelText: 'Kim görə bilər?',
+                            isDense: true,
+                          ),
+                          items: _taskScopeLabels.entries
+                              .map((entry) => DropdownMenuItem<String>(
+                                    value: entry.key,
+                                    child: Text(entry.value),
+                                  ))
+                              .toList(),
+                          onChanged: _statusEnabled[status] == true
+                              ? (v) {
+                                  if (v == null) return;
+                                  setState(() => _statusScopes[status] = v);
+                                }
+                              : null,
+                        ),
+                      ),
+                      ..._taskStatusActionKeys
                         .map(
                           (actionKey) => SwitchListTile(
                             title: Text(_taskPermissionGroups
@@ -576,6 +616,7 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
                           ),
                         )
                         .toList(),
+                    ],
                   ),
                 ),
               ],

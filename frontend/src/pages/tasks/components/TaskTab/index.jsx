@@ -101,6 +101,8 @@ const TaskTab = ({ isActive }) => {
     const [currentTaskForAssignee, setCurrentTaskForAssignee] = useState(null);
     const [isAddressEditOpen, setIsAddressEditOpen] = useState(false);
     const [addressEditCustomer, setAddressEditCustomer] = useState(null);
+    const [isSubmittingTaskForm, setIsSubmittingTaskForm] = useState(false);
+    const lastCreateSubmitAtRef = useRef(0);
 
     const [form] = Form.useForm();
     const taskCaps = {
@@ -350,7 +352,15 @@ const TaskTab = ({ isActive }) => {
 
 
     const onFinish = async (values) => {
+        if (isSubmittingTaskForm) return;
+        const isCreate = !editingItem;
+        const now = Date.now();
+        if (isCreate && now - lastCreateSubmitAtRef.current < 3000) {
+            message.warning('Zəhmət olmasa bir neçə saniyə gözləyin.');
+            return;
+        }
         try {
+            setIsSubmittingTaskForm(true);
             const submitData = { ...values };
             if (submitData.rescheduled_date && dayjs.isDayjs(submitData.rescheduled_date)) {
                 submitData.rescheduled_date = submitData.rescheduled_date.format('YYYY-MM-DD');
@@ -363,6 +373,7 @@ const TaskTab = ({ isActive }) => {
                 await updateTask(editingItem.id, submitData);
                 message.success('Tapşırıq yeniləndi');
             } else {
+                lastCreateSubmitAtRef.current = now;
                 await createTask(submitData);
                 message.success('Tapşırıq yaradıldı');
             }
@@ -373,6 +384,8 @@ const TaskTab = ({ isActive }) => {
         } catch (error) {
             console.log(error,'---------------------------')
             handleApiError(error, 'Əməliyyat uğursuz oldu');
+        } finally {
+            setIsSubmittingTaskForm(false);
         }
     };
 
@@ -585,6 +598,7 @@ const TaskTab = ({ isActive }) => {
                 onEditCustomerAddress={handleOpenAddressEditor}
                 canSubmit={editingItem ? taskCaps.canEditGeneral : taskCaps.canCreate}
                 canEditCustomerAddress={editingItem ? canForTask(TASK_ACTIONS.EDIT_CUSTOMER_ADDRESS, editingItem) : taskCaps.canEditCustomerAddress}
+                isSubmitting={isSubmittingTaskForm}
             />
 
             <QuestionnaireModal
