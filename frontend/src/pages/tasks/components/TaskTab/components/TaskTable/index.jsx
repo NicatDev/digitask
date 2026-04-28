@@ -3,7 +3,7 @@ import React from 'react';
 /** Serverdə ordering; cədvəl mövcud səhifəni yenidən qarışdırmır */
 const serverSideSorter = { compare: () => 0 };
 import { Table, Button, Switch, Tooltip, Popconfirm, message, Space, Tag, Input } from 'antd';
-import { EnvironmentOutlined, FileAddOutlined, UserAddOutlined, TeamOutlined } from '@ant-design/icons';
+import { EnvironmentOutlined, FileAddOutlined, UserAddOutlined, TeamOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { TASK_STATUSES } from '../../constants';
 import { useAuth } from '../../../../../../context/AuthContext';
 import styles from '../../style.module.scss';
@@ -49,6 +49,7 @@ const TaskTable = ({
     onDocumentAdd,
     onAddAssignee,
     onJoinTask,
+    onMarkExternalArchived,
     pagination,
     onChange,
     tableOrdering = null,
@@ -60,7 +61,15 @@ const TaskTable = ({
     onColumnRegisterInputChange,
     onColumnRegisterFilterClear,
     onColumnRegisterFilterFlush,
-    disableActions = false
+    disableEdit = false,
+    disableDelete = false,
+    disableStatus = false,
+    disableQuestionnaire = false,
+    disableProducts = false,
+    disableDocuments = false,
+    disableAssigneeManage = false,
+    disableJoinTask = false,
+    disableActiveToggle = false,
 }) => {
     const { user } = useAuth();
 
@@ -305,7 +314,7 @@ const TaskTable = ({
                                     icon={<UserAddOutlined />}
                                     onClick={() => onAddAssignee(record)}
                                     ghost
-                                    disabled={isDone}
+                                    disabled={isDone || disableAssigneeManage}
                                 >
                                     İcraçı əlavə et
                                 </Button>
@@ -315,7 +324,7 @@ const TaskTable = ({
                                     size="small"
                                     icon={<TeamOutlined />}
                                     onClick={() => onJoinTask(record)}
-                                    disabled={isDone}
+                                    disabled={isDone || disableJoinTask}
                                 >
                                     İcraya qoşul
                                 </Button>
@@ -381,6 +390,7 @@ const TaskTable = ({
                 <Switch
                     checked={active}
                     onChange={(checked) => onToggleActive(record.id, checked)}
+                    disabled={disableActiveToggle}
                 />
             )
         },
@@ -390,18 +400,27 @@ const TaskTable = ({
             width: 420,
             render: (_, record) => (
                 <Space size={[6, 6]} wrap>
-                    <Button type="link" size="small" onClick={() => onEdit(record)} disabled={disableActions}>Düzəliş</Button>
-                    <Button type="link" size="small" onClick={() => onStatusChange(record)}>Status</Button>
-                    <Button type="link" size="small" onClick={() => onQuestionnaire(record)}>Anket</Button>
-                    <Button type="link" size="small" onClick={() => onProductSelect(record)}>
+                    <Button type="link" size="small" onClick={() => onEdit(record)} disabled={disableEdit}>Düzəliş</Button>
+                    <Button type="link" size="small" onClick={() => onStatusChange(record)} disabled={disableStatus}>Status</Button>
+                    <Button type="link" size="small" onClick={() => onQuestionnaire(record)} disabled={disableQuestionnaire}>Anket</Button>
+                    <Button type="link" size="small" onClick={() => onProductSelect(record)} disabled={disableProducts}>
                         Məhsul ({record.task_products?.length || 0})
                     </Button>
-                    <Button type="link" size="small" onClick={() => onDocumentAdd(record)}>
+                    <Button type="link" size="small" onClick={() => onDocumentAdd(record)} disabled={disableDocuments}>
                         <FileAddOutlined /> ({record.task_documents?.length || 0})
                     </Button>
-                    {(user?.is_task_writer || user?.is_admin || user?.is_super_admin) && (
-                        <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => onDelete(record.id)} disabled={disableActions}>
-                            <Button type="link" size="small" danger disabled={disableActions}>Sil</Button>
+                    <Button
+                        type={record.is_externally_archived ? 'default' : 'link'}
+                        size="small"
+                        icon={<CheckCircleOutlined />}
+                        onClick={() => onMarkExternalArchived?.(record)}
+                        disabled={disableEdit || record.is_externally_archived}
+                    >
+                        {record.is_externally_archived ? 'Arxivləşdirilib' : 'Məlumatları arxivləşdir'}
+                    </Button>
+                    {!disableDelete && (
+                        <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => onDelete(record.id)}>
+                            <Button type="link" size="small" danger>Sil</Button>
                         </Popconfirm>
                     )}
                 </Space>

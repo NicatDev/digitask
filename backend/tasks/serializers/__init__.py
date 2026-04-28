@@ -8,7 +8,7 @@ from .task import (
     TaskStatusUpdateSerializer,
     TaskCustomerHistorySerializer,
 )
-from .task_activity import TaskActivitySerializer
+from .task_activity import TaskActivitySerializer, TaskActivityFeedSerializer
 
 from .product import TaskProductSerializer, TaskProductCreateSerializer
 from .support import SupportRequestSerializer, SupportCommentSerializer

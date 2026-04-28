@@ -3,11 +3,11 @@ import { Form, message, Grid } from 'antd';
 import dayjs from 'dayjs';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { getTasks, createTask, updateTask, deleteTask, updateTaskStatus, getServices, getColumns, getTaskTypes, addTaskAssignee, joinTask } from '../../../../axios/api/tasks';
+import { getTasks, createTask, updateTask, deleteTask, updateTaskStatus, getServices, getColumns, getTaskTypes, addTaskAssignee, joinTask, markTaskExternalArchived } from '../../../../axios/api/tasks';
 import { getGroups, getUsers } from '../../../../axios/api/account';
 import { handleApiError } from '../../../../utils/errorHandler';
 import { useAuth } from '../../../../context/AuthContext';
-import { hasPermission, PERMISSIONS } from '../../../../utils/permissions';
+import { hasTaskActionPermission, TASK_ACTIONS } from '../../../../utils/permissions';
 
 // Components
 import TaskModal from './TaskModal';
@@ -103,6 +103,18 @@ const TaskTab = ({ isActive }) => {
     const [addressEditCustomer, setAddressEditCustomer] = useState(null);
 
     const [form] = Form.useForm();
+    const taskCaps = {
+        canCreate: hasTaskActionPermission(user, TASK_ACTIONS.CREATE),
+        canEditGeneral: hasTaskActionPermission(user, TASK_ACTIONS.EDIT_GENERAL),
+        canDelete: hasTaskActionPermission(user, TASK_ACTIONS.DELETE),
+        canChangeStatus: hasTaskActionPermission(user, TASK_ACTIONS.CHANGE_STATUS),
+        canManageSurveys: hasTaskActionPermission(user, TASK_ACTIONS.MANAGE_SURVEYS),
+        canManageProducts: hasTaskActionPermission(user, TASK_ACTIONS.MANAGE_PRODUCTS),
+        canManageDocuments: hasTaskActionPermission(user, TASK_ACTIONS.MANAGE_DOCUMENTS),
+        canManageAssignees: hasTaskActionPermission(user, TASK_ACTIONS.MANAGE_ASSIGNEES),
+        canJoinTask: hasTaskActionPermission(user, TASK_ACTIONS.JOIN_TASK),
+        canToggleActive: hasTaskActionPermission(user, TASK_ACTIONS.TOGGLE_ACTIVE),
+    };
 
     // Debounce Search
     useEffect(() => {
@@ -470,6 +482,16 @@ const TaskTab = ({ isActive }) => {
         }
     };
 
+    const handleMarkExternalArchived = async (record) => {
+        try {
+            await markTaskExternalArchived(record.id);
+            message.success('Tapşırıq məlumatları arxivləşdirildi');
+            fetchData();
+        } catch (error) {
+            handleApiError(error, 'Arxivləşdirmə uğursuz oldu');
+        }
+    };
+
     const handleOpenAddressEditor = ({ id, name }) => {
         setAddressEditCustomer({ id, name });
         setIsAddressEditOpen(true);
@@ -497,7 +519,7 @@ const TaskTab = ({ isActive }) => {
                 groups={groups}
                 users={users}
                 onNewTask={handleNewTask}
-                disableCreate={!hasPermission(user, PERMISSIONS.TASK_WRITER)}
+                disableCreate={!taskCaps.canCreate}
             />
 
             <TaskTable
@@ -516,7 +538,15 @@ const TaskTab = ({ isActive }) => {
                 onColumnRegisterFilterFlush={flushColumnRegisterSearch}
                 services={services}
                 onEdit={openEditModal}
-                disableActions={!hasPermission(user, PERMISSIONS.TASK_WRITER)}
+                disableEdit={!taskCaps.canEditGeneral}
+                disableDelete={!taskCaps.canDelete}
+                disableStatus={!taskCaps.canChangeStatus}
+                disableQuestionnaire={!taskCaps.canManageSurveys}
+                disableProducts={!taskCaps.canManageProducts}
+                disableDocuments={!taskCaps.canManageDocuments}
+                disableAssigneeManage={!taskCaps.canManageAssignees}
+                disableJoinTask={!taskCaps.canJoinTask}
+                disableActiveToggle={!taskCaps.canToggleActive}
                 onStatusChange={openStatusModal}
                 onToggleActive={handleToggleActive}
                 onQuestionnaire={openQuestionnaireModal}
@@ -534,6 +564,7 @@ const TaskTab = ({ isActive }) => {
                 }}
                 onAddAssignee={handleOpenAssigneeModal}
                 onJoinTask={handleJoinTask}
+                onMarkExternalArchived={handleMarkExternalArchived}
             />
 
             <TaskModal
@@ -600,6 +631,7 @@ const TaskTab = ({ isActive }) => {
                 task={selectedTaskForDetail}
                 services={services}
                 onRefresh={fetchData}
+                onMarkExternalArchived={handleMarkExternalArchived}
             />
 
             <AssigneeModal

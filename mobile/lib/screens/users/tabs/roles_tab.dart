@@ -275,11 +275,48 @@ class _RoleFormSheet extends StatefulWidget {
 }
 
 class _RoleFormSheetState extends State<_RoleFormSheet> {
+  static const List<Map<String, dynamic>> _taskPermissionGroups = [
+    {
+      'title': 'Giriş və görünüş',
+      'options': [
+        {'key': 'view_module', 'label': 'Task modulu görünüşü'},
+      ],
+    },
+    {
+      'title': 'Yaratma və redaktə',
+      'options': [
+        {'key': 'create', 'label': 'Tapşırıq yarat'},
+        {'key': 'edit_general', 'label': 'Ümumi düzəliş'},
+        {'key': 'delete', 'label': 'Tapşırıq sil'},
+        {'key': 'toggle_active', 'label': 'Aktiv/deaktiv dəyiş'},
+        {'key': 'edit_customer_address', 'label': 'Müştəri ünvanı redaktə et'},
+      ],
+    },
+    {
+      'title': 'İcra və əməliyyatlar',
+      'options': [
+        {'key': 'change_status', 'label': 'Status dəyiş'},
+        {'key': 'manage_products', 'label': 'Məhsul idarə et'},
+        {'key': 'manage_documents', 'label': 'Sənəd idarə et'},
+        {'key': 'manage_surveys', 'label': 'Anket idarə et'},
+        {'key': 'manage_assignees', 'label': 'İcraçı idarə et'},
+        {'key': 'join_task', 'label': 'İcraya qoşul'},
+        {'key': 'comment_activity', 'label': 'Activity şərh yaz'},
+      ],
+    },
+  ];
+  static const List<String> _taskStatusOptions = [
+    'todo',
+    'in_progress',
+    'pending',
+    'done',
+    'rejected',
+  ];
+
   late final TextEditingController _name;
   late final TextEditingController _description;
-  late bool _taskWriter;
-  late bool _taskReader;
-  late bool _taskViewAll;
+  late Map<String, bool> _taskPermissions;
+  late Set<String> _visibleStatuses;
   late bool _whWriter;
   late bool _whReader;
   late bool _docWriter;
@@ -294,9 +331,22 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
     final e = widget.existing;
     _name = TextEditingController(text: e?['name']?.toString() ?? '');
     _description = TextEditingController(text: e?['description']?.toString() ?? '');
-    _taskWriter = e?['is_task_writer'] == true;
-    _taskReader = e?['is_task_reader'] == true;
-    _taskViewAll = e?['is_task_view_all'] == true;
+    final rawTaskPermissions = (e?['task_permissions'] is Map) ? (e!['task_permissions'] as Map) : const {};
+    _taskPermissions = {
+      for (final group in _taskPermissionGroups)
+        for (final option in (group['options'] as List))
+          option['key'].toString(): rawTaskPermissions[option['key']] == true,
+    };
+    final rawVisibility = (e?['task_status_visibility'] is Map)
+        ? (e!['task_status_visibility'] as Map)
+        : const {};
+    final rawStatuses = (rawVisibility['visible_statuses'] is List)
+        ? (rawVisibility['visible_statuses'] as List)
+        : const [];
+    _visibleStatuses = rawStatuses.map((s) => s.toString()).where(_taskStatusOptions.contains).toSet();
+    if (_visibleStatuses.isEmpty) {
+      _visibleStatuses = {'todo'};
+    }
     _whWriter = e?['is_warehouse_writer'] == true;
     _whReader = e?['is_warehouse_reader'] == true;
     _docWriter = e?['is_document_writer'] == true;
@@ -320,12 +370,31 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
       return;
     }
     setState(() => _submitting = true);
+    final isTaskReader = _taskPermissions['view_module'] == true ||
+        _taskPermissions['change_status'] == true ||
+        _taskPermissions['manage_products'] == true ||
+        _taskPermissions['manage_documents'] == true ||
+        _taskPermissions['manage_surveys'] == true ||
+        _taskPermissions['join_task'] == true ||
+        _taskPermissions['comment_activity'] == true;
+    final isTaskWriter = _taskPermissions['create'] == true ||
+        _taskPermissions['edit_general'] == true ||
+        _taskPermissions['delete'] == true ||
+        _taskPermissions['toggle_active'] == true ||
+        _taskPermissions['manage_assignees'] == true ||
+        _taskPermissions['edit_customer_address'] == true;
+
     final data = <String, dynamic>{
       'name': _name.text,
       'description': _description.text.isEmpty ? '' : _description.text,
-      'is_task_writer': _taskWriter,
-      'is_task_reader': _taskReader,
-      'is_task_view_all': _taskViewAll,
+      'task_permissions': _taskPermissions,
+      'task_status_visibility': {
+        'visible_statuses': _visibleStatuses.toList(),
+      },
+      // Backward-compatible role flags
+      'is_task_writer': isTaskWriter,
+      'is_task_reader': isTaskReader,
+      'is_task_view_all': false,
       'is_warehouse_writer': _whWriter,
       'is_warehouse_reader': _whReader,
       'is_document_writer': _docWriter,
@@ -387,20 +456,46 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
               maxLines: 3,
             ),
             const SizedBox(height: 8),
-            SwitchListTile(
-              title: const Text('Tapşırıq (yazmaq)'),
-              value: _taskWriter,
-              onChanged: (v) => setState(() => _taskWriter = v),
-            ),
-            SwitchListTile(
-              title: const Text('Tapşırıq (oxumaq)'),
-              value: _taskReader,
-              onChanged: (v) => setState(() => _taskReader = v),
-            ),
-            SwitchListTile(
-              title: const Text('Tapşırıq (hamısını gör)'),
-              value: _taskViewAll,
-              onChanged: (v) => setState(() => _taskViewAll = v),
+            const SizedBox(height: 8),
+            const Text('Task permissionları', style: TextStyle(fontWeight: FontWeight.w600)),
+            ..._taskPermissionGroups.expand((group) {
+              final groupTitle = group['title'].toString();
+              final options = (group['options'] as List);
+              return [
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 4),
+                  child: Text(groupTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+                ),
+                ...options.map((raw) {
+                  final key = raw['key'].toString();
+                  final label = raw['label'].toString();
+                  return SwitchListTile(
+                    title: Text(label),
+                    value: _taskPermissions[key] == true,
+                    onChanged: (v) => setState(() => _taskPermissions[key] = v),
+                  );
+                }),
+              ];
+            }),
+            const SizedBox(height: 8),
+            const Text('Görünən statuslar', style: TextStyle(fontWeight: FontWeight.w600)),
+            ..._taskStatusOptions.map(
+              (status) => CheckboxListTile(
+                title: Text(status),
+                value: _visibleStatuses.contains(status),
+                onChanged: (checked) {
+                  setState(() {
+                    if (checked == true) {
+                      _visibleStatuses.add(status);
+                    } else {
+                      _visibleStatuses.remove(status);
+                      if (_visibleStatuses.isEmpty) {
+                        _visibleStatuses.add('todo');
+                      }
+                    }
+                  });
+                },
+              ),
             ),
             SwitchListTile(
               title: const Text('Anbar (yazmaq)'),

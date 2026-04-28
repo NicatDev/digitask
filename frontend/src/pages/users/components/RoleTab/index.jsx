@@ -5,6 +5,45 @@ import styles from './style.module.scss';
 import { getRoles, createRole, updateRole, deleteRole, updateRoleStatus } from '../../../../axios/api/account';
 import { handleApiError } from '../../../../utils/errorHandler';
 
+const TASK_PERMISSION_GROUPS = [
+    {
+        title: 'Giriş və görünüş',
+        options: [
+            { key: 'view_module', label: 'Task modulu görünüşü' },
+        ],
+    },
+    {
+        title: 'Yaratma və redaktə',
+        options: [
+            { key: 'create', label: 'Tapşırıq yarat' },
+            { key: 'edit_general', label: 'Ümumi düzəliş' },
+            { key: 'delete', label: 'Tapşırıq sil' },
+            { key: 'toggle_active', label: 'Aktiv/deaktiv dəyiş' },
+            { key: 'edit_customer_address', label: 'Müştəri ünvanı redaktə et' },
+        ],
+    },
+    {
+        title: 'İcra və əməliyyatlar',
+        options: [
+            { key: 'change_status', label: 'Status dəyiş' },
+            { key: 'manage_products', label: 'Məhsul idarə et' },
+            { key: 'manage_documents', label: 'Sənəd idarə et' },
+            { key: 'manage_surveys', label: 'Anket idarə et' },
+            { key: 'manage_assignees', label: 'İcraçı idarə et' },
+            { key: 'join_task', label: 'İcraya qoşul' },
+            { key: 'comment_activity', label: 'Activity şərh yaz' },
+        ],
+    },
+];
+
+const TASK_STATUS_OPTIONS = [
+    { value: 'todo', label: 'Todo' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'done', label: 'Done' },
+    { value: 'rejected', label: 'Rejected' },
+];
+
 const RoleTab = ({ isActive }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -59,11 +98,39 @@ const RoleTab = ({ isActive }) => {
 
     const onFinish = async (values) => {
         try {
+            const taskPermissions = values.task_permissions || {};
+            const payload = {
+                ...values,
+                task_permissions: taskPermissions,
+                task_status_visibility: values.task_status_visibility || {
+                    visible_statuses: ['todo'],
+                },
+                // Backward-compatible flags (derived from dynamic permissions)
+                is_task_reader: Boolean(
+                    taskPermissions.view_module ||
+                    taskPermissions.change_status ||
+                    taskPermissions.manage_products ||
+                    taskPermissions.manage_documents ||
+                    taskPermissions.manage_surveys ||
+                    taskPermissions.join_task ||
+                    taskPermissions.comment_activity
+                ),
+                is_task_writer: Boolean(
+                    taskPermissions.create ||
+                    taskPermissions.edit_general ||
+                    taskPermissions.delete ||
+                    taskPermissions.toggle_active ||
+                    taskPermissions.manage_assignees ||
+                    taskPermissions.edit_customer_address
+                ),
+                is_task_view_all: false,
+            };
+
             if (editingItem) {
-                await updateRole(editingItem.id, values);
+                await updateRole(editingItem.id, payload);
                 message.success('Rol yeniləndi');
             } else {
-                await createRole(values);
+                await createRole(payload);
                 message.success('Rol yaradıldı');
             }
             setIsModalOpen(false);
@@ -116,7 +183,13 @@ const RoleTab = ({ isActive }) => {
                 <>
                     <Button type="link" onClick={() => {
                         setEditingItem(record);
-                        form.setFieldsValue(record);
+                        form.setFieldsValue({
+                            ...record,
+                            task_permissions: record.task_permissions || {},
+                            task_status_visibility: record.task_status_visibility || {
+                                visible_statuses: ['todo'],
+                            },
+                        });
                         setIsModalOpen(true);
                     }}>Düzəliş</Button>
                     <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => handleDelete(record.id)}>
@@ -179,6 +252,20 @@ const RoleTab = ({ isActive }) => {
                         <Button type="primary" block={!screens.md} onClick={() => {
                             setEditingItem(null);
                             form.resetFields();
+                            form.setFieldsValue({
+                                task_permissions: {
+                                    view_module: true,
+                                    change_status: true,
+                                    manage_products: true,
+                                    manage_documents: true,
+                                    manage_surveys: true,
+                                    join_task: true,
+                                    comment_activity: true,
+                                },
+                                task_status_visibility: {
+                                    visible_statuses: ['todo'],
+                                },
+                            });
                             setIsModalOpen(true);
                         }}>
                             Yeni Rol
@@ -212,27 +299,27 @@ const RoleTab = ({ isActive }) => {
                         <Input.TextArea />
                     </Form.Item>
                     <Row gutter={16}>
+                        {TASK_PERMISSION_GROUPS.map((group) => (
+                            <React.Fragment key={group.title}>
+                                <Col span={24}>
+                                    <div style={{ fontWeight: 600, marginBottom: 6 }}>{group.title}</div>
+                                </Col>
+                                {group.options.map((opt) => (
+                                    <Col span={12} key={opt.key}>
+                                        <Form.Item name={['task_permissions', opt.key]} label={opt.label} valuePropName="checked">
+                                            <Switch />
+                                        </Form.Item>
+                                    </Col>
+                                ))}
+                            </React.Fragment>
+                        ))}
 
-                        {/* Add detail permission toggles if needed here via logic, e.g. is_task_reader */}
-                        <Col span={12}>
-                            <Form.Item name="is_task_writer" label="Tapşırıq (Yazmaq)" valuePropName="checked">
-                                <Switch />
+                        <Col span={24}>
+                            <Form.Item name={['task_status_visibility', 'visible_statuses']} label="Görünən statuslar">
+                                <Select mode="multiple" allowClear options={TASK_STATUS_OPTIONS} />
                             </Form.Item>
                         </Col>
-                        <Col span={12}>
-                            <Form.Item name="is_task_reader" label="Tapşırıq (Oxumaq)" valuePropName="checked">
-                                <Switch />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                name="is_task_view_all"
-                                label="Tapşırıq (Hamısını gör)"
-                                valuePropName="checked"
-                            >
-                                <Switch />
-                            </Form.Item>
-                        </Col>
+
                         <Col span={12}>
                             <Form.Item name="is_warehouse_writer" label="Anbar (Yazmaq)" valuePropName="checked">
                                 <Switch />

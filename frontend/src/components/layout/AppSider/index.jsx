@@ -38,7 +38,7 @@ const AppSider = ({ collapsed, mobileOpen, setMobileOpen, location, navigate }) 
             key: '/map',
             icon: <GlobalOutlined />,
             label: 'Xəritə',
-            permission: ['is_task_reader', 'is_task_writer'] // Assuming map requires task access
+            permission: ['is_task_reader', 'is_task_writer']
         },
         {
             key: '/users',

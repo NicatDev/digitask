@@ -2,6 +2,7 @@ from django.db import models, transaction
 from django.db.models import Case, Exists, IntegerField, OuterRef, Q, Value, When
 from django.db.models.functions import Cast
 from django.utils import timezone
+from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -10,6 +11,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from decimal import Decimal
 from ..models import Task, TaskService, TaskProduct, TaskActivity, Customer
 from ..serializers import (
@@ -19,11 +21,12 @@ from ..serializers import (
     TaskProductSerializer,
     TaskProductCreateSerializer,
     TaskActivitySerializer,
+    TaskActivityFeedSerializer,
     TaskCustomerHistorySerializer,
 )
 from ..services.task_activity import log_task_activity, task_status_label
 from warehouse.models import WarehouseInventory, StockMovement
-from ..pagination import TaskPagination
+from ..pagination import TaskPagination, TaskActivityFeedPagination
 from notifications.models import Notification
 from notifications.services import send_notification  # type: ignore
 from notifications.task_helpers import (
@@ -31,6 +34,10 @@ from notifications.task_helpers import (
     task_with_customer,
     user_ids_in_task_group,
     user_ids_privileged_in_task_group,
+)
+from users.task_permissions import (
+    can_task_action,
+    get_task_status_visibility_for_user,
 )
 
 User = get_user_model()
@@ -66,29 +73,16 @@ class TaskViewSet(viewsets.ModelViewSet):
         )
         
         user = self.request.user
-        
-        # Visibility rules — admin / super_admin / Django superuser hamısını görür.
-        # Bundan əlavə: role.is_task_view_all seçiləndə (admin olmasa da) hamısını görür.
-        role = getattr(user, 'role', None)
-        is_privileged = (
-            (role and role.is_admin) or
-            (role and role.is_super_admin) or
-            (role and getattr(role, 'is_task_view_all', False)) or
-            user.is_superuser
+        external_archive_exists = TaskActivity.objects.filter(
+            task_id=OuterRef('pk'),
+            action=TaskActivity.Action.TASK_UPDATED,
+            meta__event='external_archive_marked',
         )
+        queryset = queryset.annotate(_is_externally_archived=Exists(external_archive_exists))
         
-        if not is_privileged:
-            # Regular users see:
-            # 1) All TODO tasks (unaccepted, visible to everyone)
-            # 2) Tasks where they are in assigned_to
-            # But ALWAYS exclude done/rejected tasks where they are assigned
-            queryset = queryset.filter(
-                models.Q(status='todo') |  # all TODO tasks
-                models.Q(assigned_to=user)  # tasks assigned to me
-            ).exclude(
-                assigned_to=user,
-                status__in=['done', 'rejected']
-            )
+        visibility = get_task_status_visibility_for_user(user)
+        visible_statuses = visibility.get('visible_statuses', [])
+        queryset = queryset.filter(status__in=visible_statuses)
         
         # Filter by status (query param)
         task_status = self.request.query_params.get('status')
@@ -183,7 +177,7 @@ class TaskViewSet(viewsets.ModelViewSet):
                     output_field=IntegerField(),
                 ),
                 _status_order=Case(
-                    When(status__in=['in_progress', 'arrived'], then=Value(0)),
+                    When(status=Task.Status.IN_PROGRESS, then=Value(0)),
                     # Legacy status in bəzi köhnə datalarda qala bilər.
                     When(status='review', then=Value(1)),
                     When(
@@ -227,6 +221,8 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Create task and notify users in the task's group only (not all users)."""
+        if not can_task_action(self.request.user, 'create'):
+            raise PermissionDenied("Task create permission denied")
         task = serializer.save(reporter=self.request.user)
         log_task_activity(
             task,
@@ -254,6 +250,13 @@ class TaskViewSet(viewsets.ModelViewSet):
         )
 
     def perform_update(self, serializer):
+        changed_fields = set(serializer.validated_data.keys())
+        is_only_toggle_active = bool(changed_fields) and changed_fields.issubset({'is_active'})
+        if is_only_toggle_active:
+            if not can_task_action(self.request.user, 'toggle_active'):
+                raise PermissionDenied("Task active toggle permission denied")
+        elif not can_task_action(self.request.user, 'edit_general'):
+            raise PermissionDenied("Task edit permission denied")
         instance = serializer.instance
         old_title = instance.title
         old_note = instance.note
@@ -273,13 +276,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     
     def destroy(self, request, *args, **kwargs):
         """Soft delete - set is_active to False. Only privileged users can delete."""
-        role = getattr(request.user, 'role', None)
-        is_privileged = (
-            (role and role.is_admin) or
-            (role and role.is_super_admin) or
-            request.user.is_superuser
-        )
-        if not is_privileged:
+        if not can_task_action(request.user, 'delete'):
             return Response(
                 {'error': 'You do not have permission to delete tasks.'},
                 status=status.HTTP_403_FORBIDDEN
@@ -299,6 +296,8 @@ class TaskViewSet(viewsets.ModelViewSet):
         body = (request.data.get('body') or '').strip()
         if not body:
             return Response({'error': 'body is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not can_task_action(request.user, 'comment_activity'):
+            return Response({'error': 'You do not have permission to comment.'}, status=status.HTTP_403_FORBIDDEN)
         act = log_task_activity(
             task,
             request.user,
@@ -340,6 +339,8 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['patch'])
     def update_status(self, request, pk=None):
         """Update task status."""
+        if not can_task_action(request.user, 'change_status'):
+            return Response({'error': 'You do not have permission to change task status.'}, status=status.HTTP_403_FORBIDDEN)
         task = self.get_object()
         old_status = task.status
         serializer = TaskStatusUpdateSerializer(data=request.data)
@@ -420,6 +421,8 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def add_assignee(self, request, pk=None):
         """Add a user to the task's assignees. Only existing assignees can add others."""
+        if not can_task_action(request.user, 'manage_assignees'):
+            return Response({'error': 'You do not have permission to manage assignees.'}, status=status.HTTP_403_FORBIDDEN)
         task = self.get_object()
         user_id = request.data.get('user_id')
         
@@ -448,6 +451,8 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def join_task(self, request, pk=None):
         """Allow current user to join the task as an assignee."""
+        if not can_task_action(request.user, 'join_task'):
+            return Response({'error': 'You do not have permission to join tasks.'}, status=status.HTTP_403_FORBIDDEN)
         task = self.get_object()
         task.assigned_to.add(request.user)
         log_task_activity(
@@ -458,6 +463,64 @@ class TaskViewSet(viewsets.ModelViewSet):
             meta={'self_join': True},
         )
         return Response(TaskSerializer(task).data)
+
+    @action(detail=True, methods=['post'], url_path='mark-external-archived')
+    def mark_external_archived(self, request, pk=None):
+        """Mark task as successfully transferred to external system."""
+        if not can_task_action(request.user, 'edit_general'):
+            return Response({'error': 'You do not have permission for this action.'}, status=status.HTTP_403_FORBIDDEN)
+        task = self.get_object()
+        already_marked = TaskActivity.objects.filter(
+            task=task,
+            action=TaskActivity.Action.TASK_UPDATED,
+            meta__event='external_archive_marked',
+        ).exists()
+        if already_marked:
+            return Response(TaskSerializer(task).data, status=status.HTTP_200_OK)
+
+        log_task_activity(
+            task,
+            request.user,
+            TaskActivity.Action.TASK_UPDATED,
+            message='Tapşırıq məlumatları arxivləşdirildi',
+            meta={'event': 'external_archive_marked'},
+        )
+
+        recipient_ids = list(task.assigned_to.values_list('id', flat=True))
+        if recipient_ids:
+            task_enriched = task_with_customer(task)
+            line = format_task_line(task_enriched)
+            send_notification(
+                title='Tapşırıq arxivləşdirildi',
+                message=f"{line}\nTapşırıq məlumatları arxivləşdirildi",
+                notification_type=Notification.NotificationType.GENERAL,
+                related_task=task_enriched,
+                target_user_ids=recipient_ids,
+                dedupe_seconds=30,
+            )
+
+        task = Task.objects.annotate(
+            _is_externally_archived=Exists(
+                TaskActivity.objects.filter(
+                    task_id=OuterRef('pk'),
+                    action=TaskActivity.Action.TASK_UPDATED,
+                    meta__event='external_archive_marked',
+                )
+            )
+        ).select_related(
+            'customer',
+            'customer__equipment',
+            'customer__optic_box',
+            'group',
+            'group__region',
+            'reporter',
+        ).prefetch_related(
+            'assigned_to',
+            'task_services', 'task_services__service', 'task_services__values',
+            'task_products', 'task_products__product', 'task_products__warehouse',
+            'task_documents',
+        ).get(pk=task.pk)
+        return Response(TaskSerializer(task).data, status=status.HTTP_200_OK)
     
     def _deduct_task_products(self, task, user):
         """Tapşırıq tamamlandıqda məhsulları anbardan çıxar."""
@@ -512,6 +575,24 @@ class TaskViewSet(viewsets.ModelViewSet):
                 import traceback
                 traceback.print_exc()
 
+    @action(detail=False, methods=['get'], url_path='activity-feed')
+    def activity_feed(self, request):
+        """Flat activity feed for tasks where current user is assignee."""
+        if not can_task_action(request.user, 'view_module'):
+            return Response({'error': 'You do not have permission to view task feed.'}, status=status.HTTP_403_FORBIDDEN)
+
+        since = timezone.now() - timedelta(days=7)
+        qs = (
+            TaskActivity.objects
+            .filter(task__assigned_to=request.user, created_at__gte=since)
+            .select_related('task', 'task__customer', 'user')
+            .order_by('-created_at')
+        )
+        paginator = TaskActivityFeedPagination()
+        page = paginator.paginate_queryset(qs, request, view=self)
+        ser = TaskActivityFeedSerializer(page, many=True)
+        return paginator.get_paginated_response(ser.data)
+
 
 class TaskServiceViewSet(viewsets.ModelViewSet):
     """ViewSet for TaskService operations."""
@@ -533,6 +614,8 @@ class TaskServiceViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
+        if not can_task_action(self.request.user, 'manage_surveys'):
+            raise PermissionDenied("Task survey create permission denied")
         ts = serializer.save()
         log_task_activity(
             ts.task,
@@ -555,6 +638,8 @@ class TaskServiceViewSet(viewsets.ModelViewSet):
             )
 
     def perform_update(self, serializer):
+        if not can_task_action(self.request.user, 'manage_surveys'):
+            raise PermissionDenied("Task survey update permission denied")
         ts = serializer.save()
         log_task_activity(
             ts.task,

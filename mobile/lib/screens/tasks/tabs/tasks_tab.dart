@@ -304,10 +304,10 @@ class _TasksTabState extends State<TasksTab> {
               ValueListenableBuilder<User?>(
                 valueListenable: ChatService().currentUser,
                 builder: (context, user, child) {
-                  final isWriter = user?.isTaskWriter ?? false;
+                  final canCreate = user?.hasTaskAction('create') ?? false;
                   return IconButton( 
-                    icon: Icon(Icons.add, color: isWriter ? Colors.blue : Colors.grey),
-                    onPressed: isWriter ? () => _openTaskForm() : null,
+                    icon: Icon(Icons.add, color: canCreate ? Colors.blue : Colors.grey),
+                    onPressed: canCreate ? () => _openTaskForm() : null,
                     style: IconButton.styleFrom(backgroundColor: Colors.white),
                   );
                 }
@@ -332,7 +332,7 @@ class _TasksTabState extends State<TasksTab> {
                                 itemCount: _tasks.length,
                                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                                 itemBuilder: (ctx, index) {
-                                  final isWriter = ChatService().currentUser.value?.isTaskWriter ?? false;
+                                  final me = ChatService().currentUser.value;
                                   return TaskCard(
                                     task: _tasks[index],
                                     allServices: _services,
@@ -340,7 +340,15 @@ class _TasksTabState extends State<TasksTab> {
                                     onEdit: () => _openTaskForm(_tasks[index]),
                                     onRefresh: () => _fetchTasks(refresh: true),
                                     onAccept: () => _acceptTask(_tasks[index]['id']),
-                                    isWriter: isWriter,
+                                    canEditGeneral: me?.hasTaskAction('edit_general') ?? false,
+                                    canDelete: me?.hasTaskAction('delete') ?? false,
+                                    canChangeStatus: me?.hasTaskAction('change_status') ?? false,
+                                    canManageProducts: me?.hasTaskAction('manage_products') ?? false,
+                                    canManageDocuments: me?.hasTaskAction('manage_documents') ?? false,
+                                    canManageSurveys: me?.hasTaskAction('manage_surveys') ?? false,
+                                    canManageAssignees: me?.hasTaskAction('manage_assignees') ?? false,
+                                    canJoinTask: me?.hasTaskAction('join_task') ?? false,
+                                    canEditCustomerAddress: me?.hasTaskAction('edit_customer_address') ?? false,
                                   );
                                 },
                               ),

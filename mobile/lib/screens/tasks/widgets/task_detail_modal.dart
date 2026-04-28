@@ -11,11 +11,13 @@ final _imageUrlRe = RegExp(r'\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$', caseSensit
 class TaskDetailModal extends StatefulWidget {
   final Map<String, dynamic> task;
   final List<dynamic> allServices;
+  final VoidCallback? onArchivedMarked;
 
   const TaskDetailModal({
     super.key,
     required this.task,
     this.allServices = const [],
+    this.onArchivedMarked,
   });
 
   @override
@@ -78,6 +80,26 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
       }
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _markExternalArchived() async {
+    try {
+      await ApiClient().dio.post('/tasks/tasks/$_taskId/mark-external-archived/');
+      if (!mounted) return;
+      setState(() {
+        widget.task['is_externally_archived'] = true;
+      });
+      widget.onArchivedMarked?.call();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tapşırıq məlumatları arxivləşdirildi')),
+      );
+      _loadActivity();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Arxivləşdirmə uğursuz oldu')),
+      );
     }
   }
 
@@ -269,147 +291,178 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
               ),
               const Divider(),
               Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final wide = constraints.maxWidth >= 600;
-                    final mediaWidgets = _buildMediaSection(task);
-                    return ListView(
-                      controller: scrollController,
-                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                      padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + keyboardInset),
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
+                child: DefaultTabController(
+                  length: 3,
+                  child: Column(
+                    children: [
+                      const TabBar(
+                        tabs: [
+                          Tab(text: 'Tapşırıq'),
+                          Tab(text: 'Müştəri'),
+                          Tab(text: 'Aktivlik'),
+                        ],
+                      ),
+                      Expanded(
+                        child: TabBarView(
                           children: [
-                            Container(
-                              width: 14,
-                              height: 14,
-                              decoration: BoxDecoration(
-                                color: taskTypeColorFromApi(task),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.black26, width: 0.5),
-                              ),
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final wide = constraints.maxWidth >= 600;
+                                final mediaWidgets = _buildMediaSection(task);
+                                final archived = task['is_externally_archived'] == true;
+                                return ListView(
+                                  controller: scrollController,
+                                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                                  padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + keyboardInset),
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          width: 14,
+                                          height: 14,
+                                          decoration: BoxDecoration(
+                                            color: taskTypeColorFromApi(task),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: Colors.black26, width: 0.5),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            taskTypeNameFromApi(task),
+                                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _taskInfoColumn(context, task, createdAt, updatedAt),
+                                    const SizedBox(height: 8),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: archived ? null : _markExternalArchived,
+                                        icon: Icon(archived ? Icons.check_circle : Icons.inventory_2),
+                                        label: const Text('Tapşırıq məlumatları arxivləşdirildi'),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextButton.icon(
+                                      onPressed: _openCustomerHistory,
+                                      icon: const Icon(Icons.history, size: 18),
+                                      label: const Text('Tapşırıq tarixçəsinə bax (müştəri üzrə)'),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _sectionTitle('Xidmətlər'),
+                                    if (hasTaskServices) ..._buildServicesList(taskServicesList!),
+                                    if (!hasTaskServices)
+                                      _infoRow(
+                                        context,
+                                        'Seçilmiş',
+                                        svcLabels.isNotEmpty ? svcLabels.join(', ') : '-',
+                                      ),
+                                    if (task['task_products'] != null &&
+                                        (task['task_products'] as List).isNotEmpty) ...[
+                                      const SizedBox(height: 16),
+                                      _sectionTitle('Məhsullar'),
+                                      ..._buildProductsList(task['task_products'] as List),
+                                    ],
+                                    if (task['task_documents'] != null &&
+                                        (task['task_documents'] as List).isNotEmpty) ...[
+                                      const SizedBox(height: 16),
+                                      _sectionTitle('Sənədlər'),
+                                      ..._buildDocumentsList(task['task_documents'] as List),
+                                    ],
+                                    if (mediaWidgets.isNotEmpty) ...[
+                                      const SizedBox(height: 16),
+                                      ...mediaWidgets,
+                                    ],
+                                  ],
+                                );
+                              },
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                taskTypeNameFromApi(task),
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                              ),
+                            ListView(
+                              controller: scrollController,
+                              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                              padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + keyboardInset),
+                              children: [
+                                _customerColumn(context, task),
+                              ],
+                            ),
+                            ListView(
+                              controller: scrollController,
+                              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                              padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + keyboardInset),
+                              children: [
+                                _sectionTitle('Aktivlik və şərhlər'),
+                                if (_actLoading)
+                                  const Padding(
+                                    padding: EdgeInsets.all(24),
+                                    child: Center(child: CircularProgressIndicator()),
+                                  )
+                                else if (_activities.isEmpty)
+                                  const Text('Hələ qeyd yoxdur.', style: TextStyle(color: Colors.grey))
+                                else
+                                  ..._activities.map((a) {
+                                    final m = a as Map<String, dynamic>;
+                                    final at = m['created_at'] != null
+                                        ? dateFormat.format(DateTime.parse(m['created_at']))
+                                        : '';
+                                    return Card(
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(10),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              '$at · ${m['user_name'] ?? ''}',
+                                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                            ),
+                                            Text(
+                                              m['action_display']?.toString() ?? '',
+                                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                            ),
+                                            if (m['message'] != null &&
+                                                m['message'].toString().isNotEmpty)
+                                              Text(m['message'].toString()),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                const SizedBox(height: 8),
+                                TextField(
+                                  controller: _commentCtrl,
+                                  maxLines: 3,
+                                  maxLength: 2000,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Şərh',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: _sending ? null : _sendComment,
+                                    child: _sending
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                          )
+                                        : const Text('Göndər'),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        if (wide)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: _taskInfoColumn(context, task, createdAt, updatedAt)),
-                              const SizedBox(width: 16),
-                              Expanded(child: _customerColumn(context, task)),
-                            ],
-                          )
-                        else ...[
-                          _taskInfoColumn(context, task, createdAt, updatedAt),
-                          const SizedBox(height: 16),
-                          _customerColumn(context, task),
-                        ],
-                        TextButton.icon(
-                          onPressed: _openCustomerHistory,
-                          icon: const Icon(Icons.history, size: 18),
-                          label: const Text('Tapşırıq tarixçəsinə bax (müştəri üzrə)'),
-                        ),
-                        const SizedBox(height: 16),
-                        _sectionTitle('Xidmətlər'),
-                        if (hasTaskServices) ..._buildServicesList(taskServicesList!),
-                        if (!hasTaskServices)
-                          _infoRow(
-                            context,
-                            'Seçilmiş',
-                            svcLabels.isNotEmpty ? svcLabels.join(', ') : '-',
-                          ),
-                        if (task['task_products'] != null &&
-                            (task['task_products'] as List).isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          _sectionTitle('Məhsullar'),
-                          ..._buildProductsList(task['task_products'] as List),
-                        ],
-                        if (task['task_documents'] != null &&
-                            (task['task_documents'] as List).isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          _sectionTitle('Sənədlər'),
-                          ..._buildDocumentsList(task['task_documents'] as List),
-                        ],
-                        if (mediaWidgets.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          ...mediaWidgets,
-                        ],
-                        const SizedBox(height: 16),
-                        _sectionTitle('Aktivlik və şərhlər'),
-                        if (_actLoading)
-                          const Padding(
-                            padding: EdgeInsets.all(24),
-                            child: Center(child: CircularProgressIndicator()),
-                          )
-                        else if (_activities.isEmpty)
-                          const Text('Hələ qeyd yoxdur.', style: TextStyle(color: Colors.grey))
-                        else
-                          ..._activities.map((a) {
-                            final m = a as Map<String, dynamic>;
-                            final at = m['created_at'] != null
-                                ? dateFormat.format(DateTime.parse(m['created_at']))
-                                : '';
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '$at · ${m['user_name'] ?? ''}',
-                                      style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                    ),
-                                    Text(
-                                      m['action_display']?.toString() ?? '',
-                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-                                    ),
-                                    if (m['message'] != null &&
-                                        m['message'].toString().isNotEmpty)
-                                      Text(m['message'].toString()),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: _commentCtrl,
-                          maxLines: 3,
-                          maxLength: 2000,
-                          decoration: const InputDecoration(
-                            labelText: 'Şərh',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _sending ? null : _sendComment,
-                            child: _sending
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : const Text('Göndər'),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                    );
-                  },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

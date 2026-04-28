@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/core/api/api_client.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/core/services/chat_service.dart';
@@ -18,7 +19,15 @@ class TaskCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onRefresh;
   final VoidCallback? onAccept;
-  final bool isWriter;
+  final bool canEditGeneral;
+  final bool canDelete;
+  final bool canChangeStatus;
+  final bool canManageProducts;
+  final bool canManageDocuments;
+  final bool canManageSurveys;
+  final bool canManageAssignees;
+  final bool canJoinTask;
+  final bool canEditCustomerAddress;
 
   const TaskCard({
     super.key,
@@ -28,7 +37,15 @@ class TaskCard extends StatelessWidget {
     required this.onEdit,
     required this.onRefresh,
     this.onAccept,
-    this.isWriter = false,
+    this.canEditGeneral = false,
+    this.canDelete = false,
+    this.canChangeStatus = false,
+    this.canManageProducts = false,
+    this.canManageDocuments = false,
+    this.canManageSurveys = false,
+    this.canManageAssignees = false,
+    this.canJoinTask = false,
+    this.canEditCustomerAddress = false,
   });
 
   @override
@@ -69,6 +86,7 @@ class TaskCard extends StatelessWidget {
     final bool highlightReschedule = isCurrentUserAssignee &&
         statusKey == 'pending' &&
         task['rescheduled_date'] != null;
+    final bool isExternallyArchived = task['is_externally_archived'] == true;
 
     String? rescheduleFootnote;
     String? pendingNoteFootnote;
@@ -109,6 +127,7 @@ class TaskCard extends StatelessWidget {
                       builder: (_) => TaskDetailModal(
                         task: task,
                         allServices: allServices,
+                        onArchivedMarked: onRefresh,
                       ),
                     ),
                     child: Text(
@@ -353,22 +372,30 @@ class TaskCard extends StatelessWidget {
                 // Assignee button: "İcraya qoşul" or "İcraçı əlavə et" 
                 _buildActionBtn(context, 
                   isCurrentUserAssignee ? Icons.person_add : Icons.group_add, 
-                  isDoneTask ? Colors.grey.shade300 : (isCurrentUserAssignee ? Colors.teal : Colors.blue), 
-                  isDoneTask ? null : () => _openAssigneeModal(context, assigneeIds, assigneeNames, isCurrentUserAssignee),
+                  isDoneTask
+                      ? Colors.grey.shade300
+                      : (isCurrentUserAssignee ? (canManageAssignees ? Colors.teal : Colors.grey.shade300) : (canJoinTask ? Colors.blue : Colors.grey.shade300)),
+                  isDoneTask
+                      ? null
+                      : () {
+                          if (isCurrentUserAssignee && !canManageAssignees) return;
+                          if (!isCurrentUserAssignee && !canJoinTask) return;
+                          _openAssigneeModal(context, assigneeIds, assigneeNames, isCurrentUserAssignee);
+                        },
                 ),
                 
                 // Edit Button - Disabled if not writer
                 _buildActionBtn(
                     context, 
                     Icons.edit, 
-                    isWriter ? Colors.blue : Colors.grey, 
-                    isWriter ? onEdit : null
+                    canEditGeneral ? Colors.blue : Colors.grey, 
+                    canEditGeneral ? onEdit : null
                 ),
                 
                 // Status change - only for assignees
                 _buildActionBtn(context, Icons.sync_alt, 
-                    isCurrentUserAssignee ? Colors.orange : Colors.grey.shade300, 
-                    isCurrentUserAssignee ? () {
+                    (isCurrentUserAssignee && canChangeStatus) ? Colors.orange : Colors.grey.shade300, 
+                    (isCurrentUserAssignee && canChangeStatus) ? () {
                   showModalBottomSheet(
                     context: context, 
                     isScrollControlled: true,
@@ -378,8 +405,8 @@ class TaskCard extends StatelessWidget {
                 } : null),
                 // Survey/Anket - only for assignees
                 _buildActionBtn(context, Icons.assignment, 
-                    isCurrentUserAssignee ? Colors.purple : Colors.grey.shade300, 
-                    isCurrentUserAssignee ? () {
+                    (isCurrentUserAssignee && canManageSurveys) ? Colors.purple : Colors.grey.shade300, 
+                    (isCurrentUserAssignee && canManageSurveys) ? () {
                   showModalBottomSheet(
                     context: context, 
                     isScrollControlled: true, 
@@ -393,18 +420,25 @@ class TaskCard extends StatelessWidget {
                 } : null),
                 // Files - only for assignees
                 _buildActionBtn(context, Icons.attach_file, 
-                    isCurrentUserAssignee ? Colors.grey : Colors.grey.shade300, 
-                    isCurrentUserAssignee ? () {
+                    (isCurrentUserAssignee && canManageDocuments) ? Colors.grey : Colors.grey.shade300, 
+                    (isCurrentUserAssignee && canManageDocuments) ? () {
                    showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => FilesModal(task: task, onSuccess: onRefresh));
                 } : null),
                 // Products - only for assignees
                  _buildActionBtn(context, Icons.shopping_bag, 
-                    isCurrentUserAssignee ? Colors.green : Colors.grey.shade300, 
-                    isCurrentUserAssignee ? () {
+                    (isCurrentUserAssignee && canManageProducts) ? Colors.green : Colors.grey.shade300, 
+                    (isCurrentUserAssignee && canManageProducts) ? () {
                    showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => ProductsModal(task: task, onSuccess: onRefresh));
                 } : null),
-                // Delete - only for privileged users (task_writer, admin, super_admin)
-                if (isWriter || (currentUser?.isAdmin ?? false) || (currentUser?.isSuperAdmin ?? false))
+                _buildActionBtn(
+                  context,
+                  Icons.inventory_2,
+                  isExternallyArchived ? Colors.green : (canEditGeneral ? Colors.amber.shade700 : Colors.grey.shade300),
+                  (canEditGeneral && !isExternallyArchived)
+                      ? () => _markExternalArchived(context)
+                      : null,
+                ),
+                if (canDelete)
                  _buildActionBtn(context, Icons.delete, Colors.red, () {
                    showDialog(context: context, builder: (_) => DeleteTaskDialog(taskId: task['id'], onSuccess: onRefresh));
                 }),
@@ -470,10 +504,10 @@ class TaskCard extends StatelessWidget {
     required BuildContext context,
     required bool isCurrentUserAssignee,
   }) async {
-    if (!isCurrentUserAssignee) {
+    if (!isCurrentUserAssignee || !canEditCustomerAddress) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Yalnız icraçılar müştəri ünvanını redaktə edə bilər')),
+          const SnackBar(content: Text('Müştəri ünvanı redaktəsi üçün icazəniz yoxdur')),
         );
       }
       return;
@@ -507,6 +541,24 @@ class TaskCard extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Müştəri ünvanı yeniləndi')),
       );
+    }
+  }
+
+  Future<void> _markExternalArchived(BuildContext context) async {
+    try {
+      await ApiClient().dio.post('/tasks/tasks/${task['id']}/mark-external-archived/');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tapşırıq məlumatları arxivləşdirildi')),
+        );
+      }
+      onRefresh();
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Arxivləşdirmə uğursuz oldu')),
+        );
+      }
     }
   }
 

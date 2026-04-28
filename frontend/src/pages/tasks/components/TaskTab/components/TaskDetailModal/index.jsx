@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Modal, Button, Input, Spin, Tag, Row, Col, Divider, message } from 'antd';
-import { FileOutlined } from '@ant-design/icons';
+import { Modal, Button, Input, Spin, Tag, Row, Col, Divider, Tabs, message } from 'antd';
+import { FileOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { TASK_STATUSES } from '../../constants';
 import {
@@ -38,7 +38,7 @@ const resolveMediaUrl = (raw) => {
 
 const IMAGE_EXT = /\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i;
 
-const TaskDetailModal = ({ open, onCancel, task, services = [], onRefresh }) => {
+const TaskDetailModal = ({ open, onCancel, task, services = [], onRefresh, onMarkExternalArchived }) => {
     const [activities, setActivities] = useState([]);
     const [actLoading, setActLoading] = useState(false);
     const [comment, setComment] = useState('');
@@ -147,8 +147,15 @@ const TaskDetailModal = ({ open, onCancel, task, services = [], onRefresh }) => 
                 className={styles.modal}
                 destroyOnClose
             >
-                <Row gutter={[24, 24]}>
-                    <Col xs={24} lg={12}>
+                <Tabs
+                    defaultActiveKey="task"
+                    items={[
+                        {
+                            key: 'task',
+                            label: 'Tapşırıq',
+                            children: (
+                                <Row gutter={[24, 24]}>
+                                    <Col xs={24}>
                         <h3 className={styles.sectionTitle}>Tapşırıq məlumatları</h3>
                         <Field label="Başlıq">{task.title}</Field>
                         <Field label="Status">
@@ -202,6 +209,18 @@ const TaskDetailModal = ({ open, onCancel, task, services = [], onRefresh }) => 
                                   })
                                 : '—'}
                         </Field>
+                        <Field label="Xarici sistemə köçürülmə">
+                            <Button
+                                icon={<CheckCircleOutlined />}
+                                type={task.is_externally_archived ? 'default' : 'primary'}
+                                onClick={() => onMarkExternalArchived?.(task)}
+                                disabled={task.is_externally_archived}
+                            >
+                                {task.is_externally_archived
+                                    ? 'Tapşırıq məlumatları arxivləşdirildi'
+                                    : 'Tapşırıq məlumatları arxivləşdirildi'}
+                            </Button>
+                        </Field>
                         <Button
                             type="link"
                             className={styles.historyBtn}
@@ -244,66 +263,82 @@ const TaskDetailModal = ({ open, onCancel, task, services = [], onRefresh }) => 
                         )}
                     </Col>
 
-                    <Col xs={24} lg={12}>
-                        <h3 className={styles.sectionTitle}>Müştəri məlumatları</h3>
-                        <Field label="Ad Soyad">{task.customer_name || '—'}</Field>
-                        <Field label="Telefon">{task.customer_phone || '—'}</Field>
-                        <Field label="Qeydiyyat No">{task.customer_register_number || '—'}</Field>
-                        <Field label="Ünvan">{task.customer_address || '—'}</Field>
-                        <Field label="Avadanlıq">{task.customer_equipment_name || '—'}</Field>
-                        <Field label="Optik qutu">{task.customer_optic_box_name || '—'}</Field>
-                    </Col>
                 </Row>
+                            ),
+                        },
+                        {
+                            key: 'customer',
+                            label: 'Müştəri',
+                            children: (
+                                <>
+                                    <h3 className={styles.sectionTitle}>Müştəri məlumatları</h3>
+                                    <Field label="Ad Soyad">{task.customer_name || '—'}</Field>
+                                    <Field label="Telefon">{task.customer_phone || '—'}</Field>
+                                    <Field label="Qeydiyyat No">{task.customer_register_number || '—'}</Field>
+                                    <Field label="Ünvan">{task.customer_address || '—'}</Field>
+                                    <Field label="Avadanlıq">{task.customer_equipment_name || '—'}</Field>
+                                    <Field label="Optik qutu">{task.customer_optic_box_name || '—'}</Field>
+                                </>
+                            ),
+                        },
+                        {
+                            key: 'activity',
+                            label: 'Aktivlik',
+                            children: (
+                                <>
+                                    <Divider />
+                                    <h3 className={styles.sectionTitle}>Aktivlik və şərhlər</h3>
+                                    {actLoading ? (
+                                        <div style={{ textAlign: 'center', padding: 24 }}>
+                                            <Spin />
+                                        </div>
+                                    ) : (
+                                        <div className={styles.activityList}>
+                                            {activities.length === 0 ? (
+                                                <div style={{ color: '#8c8c8c', fontSize: 13 }}>Hələ qeyd yoxdur.</div>
+                                            ) : (
+                                                activities.map((a) => (
+                                                    <div key={a.id} className={styles.activityItem}>
+                                                        <div className={styles.activityMeta}>
+                                                            {a.created_at
+                                                                ? dayjs(a.created_at).format('DD.MM.YYYY HH:mm')
+                                                                : ''}{' '}
+                                                            · {a.user_name}
+                                                        </div>
+                                                        <div className={styles.activityAction}>{a.action_display}</div>
+                                                        {a.message ? (
+                                                            <div className={styles.activityMsg}>{a.message}</div>
+                                                        ) : null}
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    )}
 
-                <Divider />
-
-                <h3 className={styles.sectionTitle}>Aktivlik və şərhlər</h3>
-                {actLoading ? (
-                    <div style={{ textAlign: 'center', padding: 24 }}>
-                        <Spin />
-                    </div>
-                ) : (
-                    <div className={styles.activityList}>
-                        {activities.length === 0 ? (
-                            <div style={{ color: '#8c8c8c', fontSize: 13 }}>Hələ qeyd yoxdur.</div>
-                        ) : (
-                            activities.map((a) => (
-                                <div key={a.id} className={styles.activityItem}>
-                                    <div className={styles.activityMeta}>
-                                        {a.created_at
-                                            ? dayjs(a.created_at).format('DD.MM.YYYY HH:mm')
-                                            : ''}{' '}
-                                        · {a.user_name}
+                                    <div className={styles.commentBox}>
+                                        <TextArea
+                                            rows={3}
+                                            placeholder="Şərh yazın..."
+                                            value={comment}
+                                            onChange={(e) => setComment(e.target.value)}
+                                            maxLength={2000}
+                                            showCount
+                                        />
+                                        <Button
+                                            type="primary"
+                                            style={{ marginTop: 8 }}
+                                            loading={submitting}
+                                            onClick={handleComment}
+                                            disabled={!comment.trim()}
+                                        >
+                                            Göndər
+                                        </Button>
                                     </div>
-                                    <div className={styles.activityAction}>{a.action_display}</div>
-                                    {a.message ? (
-                                        <div className={styles.activityMsg}>{a.message}</div>
-                                    ) : null}
-                                </div>
-                            ))
-                        )}
-                    </div>
-                )}
-
-                <div className={styles.commentBox}>
-                    <TextArea
-                        rows={3}
-                        placeholder="Şərh yazın..."
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        maxLength={2000}
-                        showCount
-                    />
-                    <Button
-                        type="primary"
-                        style={{ marginTop: 8 }}
-                        loading={submitting}
-                        onClick={handleComment}
-                        disabled={!comment.trim()}
-                    >
-                        Göndər
-                    </Button>
-                </div>
+                                </>
+                            ),
+                        },
+                    ]}
+                />
             </Modal>
 
             <CustomerHistoryModal

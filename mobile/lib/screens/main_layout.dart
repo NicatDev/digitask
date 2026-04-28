@@ -20,6 +20,7 @@ import 'package:mobile/screens/map/live_map_screen.dart';
 import 'package:mobile/screens/admin/admin_screen.dart';
 import 'package:mobile/screens/performance/performance_screen.dart';
 import 'package:mobile/screens/support/support_screen.dart';
+import 'package:mobile/screens/tasks/task_activity_feed_screen.dart';
 import 'package:mobile/models/user_model.dart';
 
 /// Overlay “Daha çox” menyusunda bütün sıra eyni en (veb/mobil uyğun görünüş).
@@ -122,9 +123,8 @@ class _MainLayoutState extends State<MainLayout> {
     final bool isAdminOrSuper = user.isAdmin || user.isSuperAdmin;
     final bool hasWarehouseAccess =
         user.isWarehouseReader || user.isWarehouseWriter || isAdminOrSuper;
-    final bool hasMapAccess = user.isTaskReader ||
-        user.isTaskWriter ||
-        isAdminOrSuper;
+    final bool hasMapAccess = user.hasTaskAction('view_module');
+    final bool hasTaskFeedAccess = user.hasTaskAction('view_module');
 
     // Bottom nav bar height + system bottom padding ≈ 76px; add 8px gap above it.
     const double menuBottomOffset = 76.0 + 8.0;
@@ -190,6 +190,14 @@ class _MainLayoutState extends State<MainLayout> {
                   ),
                   const SizedBox(height: 8),
                   _menuCard(
+                    icon: Icons.timeline_outlined,
+                    color: Colors.brown,
+                    label: 'Task hərəkətləri',
+                    hasAccess: hasTaskFeedAccess,
+                    onTap: () => _handleMenuSelection('task_activity_feed'),
+                  ),
+                  const SizedBox(height: 8),
+                  _menuCard(
                     icon: Icons.warehouse_outlined,
                     color: Colors.blue,
                     label: 'Anbar',
@@ -247,6 +255,11 @@ class _MainLayoutState extends State<MainLayout> {
       case 'support':
         Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => const SupportScreen()),
+        );
+        break;
+      case 'task_activity_feed':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const TaskActivityFeedScreen()),
         );
         break;
     }
@@ -547,8 +560,7 @@ class _MainLayoutState extends State<MainLayout> {
     final user = ChatService().currentUser.value;
 
     if (index == 2) {
-      final hasAccess =
-          user != null && (user.isTaskReader || user.isTaskWriter);
+      final hasAccess = user != null && user.hasTaskAction('view_module');
       if (!hasAccess) return _buildDisabledNavItem(icon, label);
     }
 

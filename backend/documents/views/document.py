@@ -1,12 +1,14 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from django.utils import timezone
 from ..models import TaskDocument
 from ..serializers import TaskDocumentSerializer
+from users.task_permissions import can_task_action
 
 
 class DocumentPagination(PageNumberPagination):
@@ -66,6 +68,8 @@ class TaskDocumentViewSet(viewsets.ModelViewSet):
     
     def destroy(self, request, *args, **kwargs):
         """Soft delete - set is_active to False."""
+        if not can_task_action(request.user, 'manage_documents'):
+            return Response({'error': 'You do not have permission to delete task documents.'}, status=status.HTTP_403_FORBIDDEN)
         instance = self.get_object()
         instance.is_active = False
         instance.save()
@@ -74,6 +78,8 @@ class TaskDocumentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def archive(self, request, pk=None):
         """Sənədi arxivə keçir - confirmed=True, shelf seçilir"""
+        if not can_task_action(request.user, 'manage_documents'):
+            return Response({'error': 'You do not have permission to archive task documents.'}, status=status.HTTP_403_FORBIDDEN)
         document = self.get_object()
         shelf_id = request.data.get('shelf')
         
@@ -93,6 +99,8 @@ class TaskDocumentViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def perform_create(self, serializer):
+        if not can_task_action(self.request.user, 'manage_documents'):
+            raise PermissionDenied("Task document create permission denied")
         from tasks.models import TaskActivity
         from tasks.services.task_activity import log_task_activity
 
@@ -118,3 +126,8 @@ class TaskDocumentViewSet(viewsets.ModelViewSet):
                 TaskActivity.Action.DOCUMENT_ADDED,
                 message=instance.title or action_text or 'Sənəd',
             )
+
+    def perform_update(self, serializer):
+        if not can_task_action(self.request.user, 'manage_documents'):
+            raise PermissionDenied("Task document update permission denied")
+        serializer.save()

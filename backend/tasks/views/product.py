@@ -2,9 +2,11 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from ..models import TaskProduct
 from ..serializers import TaskProductSerializer, TaskProductCreateSerializer
 from warehouse.models import Product, Warehouse
+from users.task_permissions import can_task_action
 
 
 class TaskProductViewSet(viewsets.ModelViewSet):
@@ -24,10 +26,27 @@ class TaskProductViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(task_id=task)
         
         return queryset
+
+    def perform_create(self, serializer):
+        if not can_task_action(self.request.user, 'manage_products'):
+            raise PermissionDenied("Task product create permission denied")
+        serializer.save()
+
+    def perform_update(self, serializer):
+        if not can_task_action(self.request.user, 'manage_products'):
+            raise PermissionDenied("Task product update permission denied")
+        serializer.save()
+
+    def destroy(self, request, *args, **kwargs):
+        if not can_task_action(request.user, 'manage_products'):
+            return Response({'error': 'You do not have permission to remove task products.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
     
     @action(detail=False, methods=['post'], url_path='bulk-create')
     def bulk_create(self, request):
         """Toplu TaskProduct yaratmaq."""
+        if not can_task_action(request.user, 'manage_products'):
+            return Response({'error': 'You do not have permission to add task products.'}, status=status.HTTP_403_FORBIDDEN)
         from tasks.models import Task, TaskActivity
         from tasks.services.task_activity import log_task_activity
 

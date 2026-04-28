@@ -66,6 +66,8 @@ export const getCustomerTaskHistoryByCustomerId = (customerId) =>
     axiosInstance.get('/tasks/tasks/by-customer/', { params: { customer: customerId } });
 export const addTaskAssignee = (taskId, userId) => axiosInstance.post(`/tasks/tasks/${taskId}/add_assignee/`, { user_id: userId });
 export const joinTask = (taskId) => axiosInstance.post(`/tasks/tasks/${taskId}/join_task/`);
+export const markTaskExternalArchived = (taskId) =>
+    axiosInstance.post(`/tasks/tasks/${taskId}/mark-external-archived/`);
 
 // TaskServices API
 export const getTaskServices = (params) => axiosInstance.get('/tasks/task-services/', { params });

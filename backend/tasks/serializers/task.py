@@ -159,6 +159,7 @@ class TaskSerializer(serializers.ModelSerializer):
     reporter = serializers.PrimaryKeyRelatedField(read_only=True)
     reporter_name = serializers.SerializerMethodField()
     pending_note = serializers.SerializerMethodField()
+    is_externally_archived = serializers.SerializerMethodField()
 
     class Meta:
         model = Task
@@ -172,6 +173,7 @@ class TaskSerializer(serializers.ModelSerializer):
             'group', 'group_name', 'region_name', 'is_active',
             'task_type', 'task_type_details',
             'reporter', 'reporter_name',
+            'is_externally_archived',
             'services', 'task_services', 'task_products', 'task_documents', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'reporter', 'created_at', 'updated_at']
@@ -182,13 +184,6 @@ class TaskSerializer(serializers.ModelSerializer):
             return None
         name = u.get_full_name()
         return (name or '').strip() or u.username
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        if data.get('status') == 'arrived':
-            data['status'] = Task.Status.IN_PROGRESS
-            data['status_display'] = Task.Status.IN_PROGRESS.label
-        return data
 
     def validate(self, attrs):
         status = attrs.get('status', self.instance.status if self.instance else Task.Status.TODO)
@@ -257,6 +252,15 @@ class TaskSerializer(serializers.ModelSerializer):
                 return note
         return None
 
+    def get_is_externally_archived(self, obj):
+        annotated = getattr(obj, '_is_externally_archived', None)
+        if annotated is not None:
+            return bool(annotated)
+        return obj.activities.filter(
+            action='task_updated',
+            meta__event='external_archive_marked',
+        ).exists()
+
 
 class TaskStatusUpdateSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Task.Status.choices)
@@ -306,9 +310,3 @@ class TaskCustomerHistorySerializer(serializers.ModelSerializer):
             result.append(full_name if full_name else user.username)
         return result
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        if data.get('status') == 'arrived':
-            data['status'] = Task.Status.IN_PROGRESS
-            data['status_display'] = Task.Status.IN_PROGRESS.label
-        return data
