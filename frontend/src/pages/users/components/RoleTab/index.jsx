@@ -36,6 +36,14 @@ const TASK_PERMISSION_GROUPS = [
     },
 ];
 
+const TASK_STATUS_OPTIONS = [
+    { value: 'todo', label: 'Todo' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'done', label: 'Done' },
+    { value: 'rejected', label: 'Rejected' },
+];
+
 const ROLE_PERMISSION_GROUPS = [
     {
         title: 'Tapşırıq modulu',
@@ -114,14 +122,6 @@ const ROLE_PERMISSION_GROUPS = [
             </>
         ),
     },
-];
-
-const TASK_STATUS_OPTIONS = [
-    { value: 'todo', label: 'Todo' },
-    { value: 'in_progress', label: 'In Progress' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'done', label: 'Done' },
-    { value: 'rejected', label: 'Rejected' },
 ];
 
 const RoleTab = ({ isActive }) => {
