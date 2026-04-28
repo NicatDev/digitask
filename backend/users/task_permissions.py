@@ -129,11 +129,7 @@ def get_task_status_visibility_for_user(user) -> Dict[str, List[str]]:
     role = _role_or_none(user)
 
     parsed = parse_role_description(getattr(role, "description", "") if role else "")
-    configured = _coerce_status_list((parsed.get("task_status_visibility") or {}).get("visible_statuses"))
-    if configured:
-        return {"visible_statuses": configured}
-
-    # Backward compatibility for roles without dynamic status config.
-    if role and (getattr(role, "is_task_reader", False) or getattr(role, "is_task_writer", False)):
-        return {"visible_statuses": ["todo", "in_progress", "pending"]}
+    visibility_cfg = parsed.get("task_status_visibility") or {}
+    if isinstance(visibility_cfg, dict) and "visible_statuses" in visibility_cfg:
+        return {"visible_statuses": _coerce_status_list(visibility_cfg.get("visible_statuses"))}
     return {"visible_statuses": []}
