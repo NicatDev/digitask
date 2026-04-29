@@ -20,6 +20,9 @@ class Role(models.Model):
     is_admin = models.BooleanField(default=False)
     is_super_admin = models.BooleanField(default=False)
 
+    class Meta:
+        ordering = ['name', 'id']
+
     def __str__(self):
         return self.name
 

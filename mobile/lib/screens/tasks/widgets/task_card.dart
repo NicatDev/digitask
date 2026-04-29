@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
@@ -213,26 +214,6 @@ class TaskCard extends StatelessWidget {
                   ),
                 ),
                 InkWell(
-                  onTap: () => _launchCaller(task['customer_phone'] ?? ''),
-                  borderRadius: BorderRadius.circular(12),
-                  child: const Padding(
-                    padding: EdgeInsets.all(4.0),
-                    child: Icon(Icons.phone_forwarded, color: Colors.green, size: 20),
-                  ),
-                ),
-                InkWell(
-                  onTap: () => _launchMaps(
-                      context, 
-                      task['customer_coordinates'], 
-                      task['customer_address'] ?? '',
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  child: const Padding(
-                    padding: EdgeInsets.all(4.0),
-                    child: Icon(Icons.location_on, color: Colors.red, size: 20),
-                  ),
-                ),
-                InkWell(
                   onTap: () => _openCustomerAddressEditor(
                     context: context,
                   ),
@@ -255,44 +236,6 @@ class TaskCard extends StatelessWidget {
                       task['group_name'],
                       style: const TextStyle(color: Colors.black54, fontSize: 12),
                     ),
-                  ],
-                ),
-              ),
-
-              if (task['customer_register_number'] != null || task['customer_phone'] != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
-                child: Row(
-                  children: [
-                    if (task['customer_register_number'] != null) ...[
-                      const Icon(Icons.numbers, size: 14, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Text(
-                        task['customer_register_number'],
-                        style: const TextStyle(color: Colors.black54, fontSize: 11),
-                      ),
-                      const SizedBox(width: 12),
-                    ],
-                    if (task['customer_phone'] != null) ...[
-                      InkWell(
-                        onTap: () => _launchCaller(task['customer_phone']),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.phone, size: 14, color: Colors.blue),
-                            const SizedBox(width: 4),
-                            Text(
-                              task['customer_phone'],
-                              style: const TextStyle(
-                                color: Colors.blue, 
-                                fontSize: 11, 
-                                fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -451,6 +394,7 @@ class TaskCard extends StatelessWidget {
                 }),
               ],
             ),
+            ..._buildCustomerContactActions(context),
           ],
         ),
     );
@@ -478,6 +422,130 @@ class TaskCard extends StatelessWidget {
       ),
       child: cardInner,
     );
+  }
+
+  List<Widget> _buildCustomerContactActions(BuildContext context) {
+    final phone = (task['customer_phone'] ?? '').toString().trim();
+    final reg = (task['customer_register_number'] ?? '').toString().trim();
+    final address = (task['customer_address'] ?? '').toString();
+    final rawCoords = task['customer_coordinates'];
+    Map<String, dynamic>? coords;
+    if (rawCoords is Map) {
+      coords = Map<String, dynamic>.from(rawCoords);
+    }
+    final canMaps = (coords != null && coords['lat'] != null && coords['lng'] != null) ||
+        address.isNotEmpty;
+
+    if (phone.isEmpty && reg.isEmpty && !canMaps) {
+      return const [];
+    }
+
+    final topRowChildren = <Widget>[];
+    if (phone.isNotEmpty) {
+      topRowChildren.add(
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () => _launchCaller(phone),
+            icon: const Icon(Icons.phone, size: 20),
+            label: Text(
+              phone,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.green.shade800,
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+          ),
+        ),
+      );
+    } else if (reg.isNotEmpty) {
+      topRowChildren.add(
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () => _openRegisterNumberLink(context, reg),
+            icon: const Icon(Icons.numbers, size: 20),
+            label: Text(
+              'Qeydiyyat: $reg',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            style: OutlinedButton.styleFrom(
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+          ),
+        ),
+      );
+    } else if (canMaps) {
+      topRowChildren.add(const Spacer());
+    }
+
+    if (canMaps) {
+      if (topRowChildren.isNotEmpty) {
+        topRowChildren.add(const SizedBox(width: 8));
+      }
+      topRowChildren.add(
+        IconButton(
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.red.shade50,
+            foregroundColor: Colors.red,
+            padding: const EdgeInsets.all(12),
+          ),
+          icon: const Icon(Icons.location_on),
+          onPressed: () => _launchMaps(context, coords, address),
+        ),
+      );
+    }
+
+    final out = <Widget>[
+      const SizedBox(height: 8),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: topRowChildren,
+      ),
+    ];
+
+    if (phone.isNotEmpty && reg.isNotEmpty) {
+      out.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _openRegisterNumberLink(context, reg),
+              icon: const Icon(Icons.numbers, size: 20),
+              label: Text(
+                'Qeydiyyat: $reg',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              style: OutlinedButton.styleFrom(
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return out;
+  }
+
+  Future<void> _openRegisterNumberLink(BuildContext context, String registerNumber) async {
+    final clean = registerNumber.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (clean.length >= 7) {
+      await _launchCaller(clean);
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: registerNumber));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Qeydiyyat nömrəsi kopyalandı')),
+      );
+    }
   }
 
   void _openAssigneeModal(BuildContext context, List<dynamic> assigneeIds, List<dynamic> assigneeNames, bool isCurrentUserAssignee) {
