@@ -232,9 +232,12 @@ const RoleTab = ({ isActive }) => {
         }
     };
 
-    const onFinish = async (values) => {
+    const onFinish = async () => {
         try {
+            const values = form.getFieldsValue(true);
             const rawTaskPermissions = values.task_permissions || {};
+            const existingStatusScopes = editingItem?.task_status_visibility?.status_scopes || {};
+            const existingStatusPermissions = editingItem?.task_status_permissions || {};
             const taskPermissions = Object.fromEntries(
                 TASK_PERMISSION_KEYS.map((key) => [key, rawTaskPermissions[key] === true])
             );
@@ -246,15 +249,17 @@ const RoleTab = ({ isActive }) => {
                     status_scopes: Object.fromEntries(
                         TASK_STATUS_OPTIONS.map((status) => [
                             status.value,
-                            (values?.task_status_enabled?.[status.value] === true
-                                ? values?.task_status_scope?.[status.value]
-                                : null) || 'mine',
+                            values?.task_status_scope?.[status.value] ||
+                                existingStatusScopes?.[status.value] ||
+                                'mine',
                         ])
                     ),
                 },
                 task_status_permissions: Object.fromEntries(
                     TASK_STATUS_OPTIONS.map((status) => {
-                        const row = values?.task_status_permissions?.[status.value] || {};
+                        const row = values?.task_status_permissions?.[status.value] ||
+                            existingStatusPermissions?.[status.value] ||
+                            {};
                         return [
                             status.value,
                             Object.fromEntries(
@@ -291,10 +296,10 @@ const RoleTab = ({ isActive }) => {
                 await createRole(payload);
                 message.success('Rol yaradıldı');
             }
+            await fetchData();
             setIsModalOpen(false);
             form.resetFields();
             setEditingItem(null);
-            fetchData();
         } catch (error) {
             handleApiError(error, 'Əməliyyat uğursuz oldu');
         }

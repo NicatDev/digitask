@@ -275,17 +275,19 @@ class _RoleFormSheet extends StatefulWidget {
 }
 
 class _RoleFormSheetState extends State<_RoleFormSheet> {
-  static const List<Map<String, dynamic>> _taskPermissionGroups = [
+  static const List<Map<String, dynamic>> _taskGlobalPermissionGroups = [
     {
       'title': 'Giriş və görünüş',
       'options': [
         {'key': 'view_module', 'label': 'Task modulu görünüşü'},
+        {'key': 'create', 'label': 'Tapşırıq yarat'},
       ],
     },
+  ];
+  static const List<Map<String, dynamic>> _taskStatusPermissionGroups = [
     {
       'title': 'Yaratma və redaktə',
       'options': [
-        {'key': 'create', 'label': 'Tapşırıq yarat'},
         {'key': 'edit_general', 'label': 'Ümumi düzəliş'},
         {'key': 'delete', 'label': 'Tapşırıq sil'},
         {'key': 'toggle_active', 'label': 'Aktiv/deaktiv dəyiş'},
@@ -370,7 +372,7 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
     _description = TextEditingController(text: e?['description']?.toString() ?? '');
     final rawTaskPermissions = (e?['task_permissions'] is Map) ? (e!['task_permissions'] as Map) : const {};
     _taskPermissions = {
-      for (final group in _taskPermissionGroups)
+      for (final group in _taskGlobalPermissionGroups)
         for (final option in (group['options'] as List))
           option['key'].toString(): rawTaskPermissions[option['key']] == true,
     };
@@ -441,7 +443,7 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
         _taskPermissions['edit_customer_address'] == true;
 
     final normalizedTaskPermissions = <String, bool>{};
-    for (final group in _taskPermissionGroups) {
+    for (final group in _taskGlobalPermissionGroups) {
       for (final option in (group['options'] as List)) {
         final key = option['key'].toString();
         normalizedTaskPermissions[key] = _taskPermissions[key] == true;
@@ -456,16 +458,14 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
         'visible_statuses': _taskStatusOptions.where((s) => _statusEnabled[s] == true).toList(),
         'status_scopes': {
           for (final status in _taskStatusOptions)
-            status: _statusEnabled[status] == true ? (_statusScopes[status] ?? 'mine') : 'mine',
+            status: _statusScopes[status] ?? 'mine',
         },
       },
       'task_status_permissions': {
         for (final status in _taskStatusOptions)
           status: {
             for (final key in _taskStatusActionKeys)
-              key: _statusEnabled[status] == true
-                  ? (_taskStatusPermissions[status]?[key] == true)
-                  : false,
+              key: _taskStatusPermissions[status]?[key] == true,
           },
       },
       // Backward-compatible role flags
@@ -537,7 +537,7 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
               initiallyExpanded: true,
               title: const Text('Tapşırıq modulu', style: TextStyle(fontWeight: FontWeight.w700)),
               children: [
-                ..._taskPermissionGroups.expand((group) {
+                ..._taskGlobalPermissionGroups.expand((group) {
                   final groupTitle = group['title'].toString();
                   final options = (group['options'] as List);
                   return [
@@ -600,22 +600,32 @@ class _RoleFormSheetState extends State<_RoleFormSheet> {
                               : null,
                         ),
                       ),
-                      ..._taskStatusActionKeys
-                        .map(
-                          (actionKey) => SwitchListTile(
-                            title: Text(_taskPermissionGroups
-                                .expand((g) => (g['options'] as List))
-                                .firstWhere((o) => o['key'] == actionKey)['label']
-                                .toString()),
-                            value: _taskStatusPermissions[status]?[actionKey] == true,
-                            onChanged: _statusEnabled[status] == true
-                                ? (v) => setState(() {
-                                      _taskStatusPermissions[status]![actionKey] = v;
-                                    })
-                                : null,
+                      ..._taskStatusPermissionGroups.expand((group) {
+                        final groupTitle = group['title'].toString();
+                        final options = (group['options'] as List);
+                        return [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(groupTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ),
                           ),
-                        )
-                        .toList(),
+                          ...options.map((raw) {
+                            final actionKey = raw['key'].toString();
+                            final label = raw['label'].toString();
+                            return SwitchListTile(
+                              title: Text(label),
+                              value: _taskStatusPermissions[status]?[actionKey] == true,
+                              onChanged: _statusEnabled[status] == true
+                                  ? (v) => setState(() {
+                                        _taskStatusPermissions[status]![actionKey] = v;
+                                      })
+                                  : null,
+                            );
+                          }),
+                        ];
+                      }),
                     ],
                   ),
                 ),
