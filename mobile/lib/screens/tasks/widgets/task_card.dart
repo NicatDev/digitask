@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
@@ -440,41 +439,41 @@ class TaskCard extends StatelessWidget {
       return const [];
     }
 
-    final topRowChildren = <Widget>[];
+    final callColumnChildren = <Widget>[];
     if (phone.isNotEmpty) {
-      topRowChildren.add(
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => _launchCaller(phone),
-            icon: const Icon(Icons.phone, size: 20),
-            label: Text(
-              phone,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.green.shade800,
-              alignment: Alignment.centerLeft,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            ),
-          ),
+      callColumnChildren.add(
+        _customerDialButton(
+          context: context,
+          backgroundColor: Colors.green.shade600,
+          icon: Icons.phone,
+          label: phone,
+          dialValue: phone,
         ),
       );
-    } else if (reg.isNotEmpty) {
+    }
+    if (reg.isNotEmpty) {
+      if (callColumnChildren.isNotEmpty) {
+        callColumnChildren.add(const SizedBox(height: 8));
+      }
+      callColumnChildren.add(
+        _customerDialButton(
+          context: context,
+          backgroundColor: Colors.blue.shade700,
+          icon: Icons.numbers,
+          label: 'Qeydiyyat: $reg',
+          dialValue: reg,
+        ),
+      );
+    }
+
+    final topRowChildren = <Widget>[];
+    if (callColumnChildren.isNotEmpty) {
       topRowChildren.add(
         Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => _openRegisterNumberLink(context, reg),
-            icon: const Icon(Icons.numbers, size: 20),
-            label: Text(
-              'Qeydiyyat: $reg',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            style: OutlinedButton.styleFrom(
-              alignment: Alignment.centerLeft,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: callColumnChildren,
           ),
         ),
       );
@@ -499,53 +498,42 @@ class TaskCard extends StatelessWidget {
       );
     }
 
-    final out = <Widget>[
+    return [
       const SizedBox(height: 8),
       Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: topRowChildren,
       ),
     ];
-
-    if (phone.isNotEmpty && reg.isNotEmpty) {
-      out.add(
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _openRegisterNumberLink(context, reg),
-              icon: const Icon(Icons.numbers, size: 20),
-              label: Text(
-                'Qeydiyyat: $reg',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              style: OutlinedButton.styleFrom(
-                alignment: Alignment.centerLeft,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return out;
   }
 
-  Future<void> _openRegisterNumberLink(BuildContext context, String registerNumber) async {
-    final clean = registerNumber.replaceAll(RegExp(r'[^0-9+]'), '');
-    if (clean.length >= 7) {
-      await _launchCaller(clean);
-      return;
-    }
-    await Clipboard.setData(ClipboardData(text: registerNumber));
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Qeydiyyat nömrəsi kopyalandı')),
-      );
-    }
+  Widget _customerDialButton({
+    required BuildContext context,
+    required Color backgroundColor,
+    required IconData icon,
+    required String label,
+    required String dialValue,
+  }) {
+    return FilledButton.icon(
+      onPressed: () => _launchCaller(dialValue, context),
+      icon: Icon(icon, color: Colors.white, size: 20),
+      label: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      style: FilledButton.styleFrom(
+        backgroundColor: backgroundColor,
+        foregroundColor: Colors.white,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
   }
 
   void _openAssigneeModal(BuildContext context, List<dynamic> assigneeIds, List<dynamic> assigneeNames, bool isCurrentUserAssignee) {
@@ -657,10 +645,17 @@ class TaskCard extends StatelessWidget {
     }
   }
 
-  Future<void> _launchCaller(String phoneNumber) async {
+  Future<void> _launchCaller(String phoneNumber, [BuildContext? context]) async {
     final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
-    if (cleanPhone.isEmpty) return;
-    
+    if (cleanPhone.isEmpty) {
+      if (context != null && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Zəng üçün etibarlı nömrə yoxdur')),
+        );
+      }
+      return;
+    }
+
     final Uri url = Uri.parse('tel:$cleanPhone');
     try {
       if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
