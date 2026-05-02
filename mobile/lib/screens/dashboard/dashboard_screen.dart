@@ -28,6 +28,40 @@ List<String> eventImageUrls(dynamic event) {
   return [];
 }
 
+Future<void> showEventImagePreview(BuildContext context, List<String> urls, int initialIndex) async {
+  if (urls.isEmpty) return;
+  final safeIndex = initialIndex.clamp(0, urls.length - 1);
+  final controller = PageController(initialPage: safeIndex);
+  await Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (ctx) {
+        return Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            title: const Text('Önizləmə'),
+          ),
+          body: PageView.builder(
+            controller: controller,
+            itemCount: urls.length,
+            itemBuilder: (_, idx) => InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4,
+              child: Center(
+                child: Image.network(urls[idx], fit: BoxFit.contain),
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+  controller.dispose();
+}
+
 class _DashboardScreenState extends State<DashboardScreen> {
   List<dynamic> _events = [];
   List<dynamic> _topUsers = [];
@@ -168,7 +202,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 150,
+                  height: 220,
                   child: _isLoadingEvents
                       ? const Center(child: CircularProgressIndicator())
                       : PageView.builder(
@@ -304,6 +338,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       onTap: _showAddEventDialog,
       child: Container(
         width: double.infinity,
+        height: 220,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -491,7 +526,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         width: double.infinity,
-        height: 200, // Fixed height for background image cards
+        height: 220, // Event + “əlavə et” kartları ilə eyni hündürlük
         padding: const EdgeInsets.all(4), // Padding creates the "border" effect
         decoration: BoxDecoration(
           color: Colors.white,
@@ -638,11 +673,11 @@ class _EventImageCollageCard extends StatelessWidget {
       return Image.network(urls[0], fit: BoxFit.cover, width: double.infinity, height: double.infinity);
     }
     if (urls.length == 2) {
-      return Row(
+      return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _cell(urls[0]),
-          const SizedBox(width: 2),
+          const SizedBox(height: 2),
           _cell(urls[1]),
         ],
       );
@@ -651,18 +686,11 @@ class _EventImageCollageCard extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _cell(urls[0]),
-                const SizedBox(width: 2),
-                _cell(urls[1]),
-              ],
-            ),
-          ),
+          _cell(urls[0]),
           const SizedBox(height: 2),
-          Expanded(child: _cell(urls[2])),
+          _cell(urls[1]),
+          const SizedBox(height: 2),
+          _cell(urls[2]),
         ],
       );
     }
@@ -670,27 +698,13 @@ class _EventImageCollageCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _cell(urls[0]),
-              const SizedBox(width: 2),
-              _cell(urls[1]),
-            ],
-          ),
-        ),
+        _cell(urls[0]),
         const SizedBox(height: 2),
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _cell(urls[2]),
-              const SizedBox(width: 2),
-              _cell(urls[3], overlay: more),
-            ],
-          ),
-        ),
+        _cell(urls[1]),
+        const SizedBox(height: 2),
+        _cell(urls[2]),
+        const SizedBox(height: 2),
+        _cell(urls[3], overlay: more),
       ],
     );
   }
@@ -700,53 +714,93 @@ class _EventImageCollageDetail extends StatelessWidget {
   const _EventImageCollageDetail({required this.urls});
   final List<String> urls;
 
+  Widget _tapCell(BuildContext context, int index, {String? overlay}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: () => showEventImagePreview(context, urls, index),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.network(urls[index], fit: BoxFit.cover),
+              if (overlay != null)
+                IgnorePointer(
+                  child: Container(
+                    color: Colors.black54,
+                    alignment: Alignment.center,
+                    child: Text(
+                      overlay,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (urls.isEmpty) return const SizedBox.shrink();
     if (urls.length == 1) {
-      return Center(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.network(
-            urls[0],
-            width: MediaQuery.of(context).size.width * 0.85,
-            fit: BoxFit.contain,
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: InkWell(
+            onTap: () => showEventImagePreview(context, urls, 0),
+            child: Image.network(urls[0], fit: BoxFit.cover, width: double.infinity),
           ),
         ),
       );
     }
-    final n = urls.length > 4 ? 4 : urls.length;
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      mainAxisSpacing: 6,
-      crossAxisSpacing: 6,
-      childAspectRatio: 1,
-      children: List.generate(n, (i) {
-        if (i == 3 && urls.length > 4) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.network(urls[3], fit: BoxFit.cover),
-                Container(
-                  color: Colors.black54,
-                  alignment: Alignment.center,
-                  child: Text(
-                    '+${urls.length - 4}',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(urls[i], fit: BoxFit.cover),
-        );
-      }),
+    if (urls.length == 2) {
+      return SizedBox(
+        height: 220,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: _tapCell(context, 0)),
+            const SizedBox(height: 6),
+            Expanded(child: _tapCell(context, 1)),
+          ],
+        ),
+      );
+    }
+    if (urls.length == 3) {
+      return SizedBox(
+        height: 280,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: _tapCell(context, 0)),
+            const SizedBox(height: 6),
+            Expanded(child: _tapCell(context, 1)),
+            const SizedBox(height: 6),
+            Expanded(child: _tapCell(context, 2)),
+          ],
+        ),
+      );
+    }
+    final more = urls.length > 4 ? '+${urls.length - 4}' : null;
+    return SizedBox(
+      height: 360,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _tapCell(context, 0)),
+          const SizedBox(height: 6),
+          Expanded(child: _tapCell(context, 1)),
+          const SizedBox(height: 6),
+          Expanded(child: _tapCell(context, 2)),
+          const SizedBox(height: 6),
+          Expanded(child: _tapCell(context, 3, overlay: more)),
+        ],
+      ),
     );
   }
 }

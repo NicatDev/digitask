@@ -12,6 +12,16 @@ import 'package:mobile/screens/tasks/widgets/assignee_modal.dart';
 import 'package:mobile/screens/tasks/widgets/customer_address_edit_modal.dart';
 import 'package:mobile/screens/tasks/widgets/task_display_helpers.dart';
 
+String _digitsOnlyForCompare(String s) => s.replaceAll(RegExp(r'\D'), '');
+
+bool _phoneAndRegisterAreSame(String phone, String reg) {
+  if (phone.isEmpty || reg.isEmpty) return false;
+  final a = _digitsOnlyForCompare(phone);
+  final b = _digitsOnlyForCompare(reg);
+  if (a.isEmpty || b.isEmpty) return false;
+  return a == b;
+}
+
 class TaskCard extends StatelessWidget {
   final Map<String, dynamic> task;
   final List<dynamic> allServices;
@@ -440,7 +450,9 @@ class TaskCard extends StatelessWidget {
     }
 
     final callColumnChildren = <Widget>[];
-    if (phone.isNotEmpty) {
+    final sameDial = _phoneAndRegisterAreSame(phone, reg);
+
+    if (sameDial) {
       callColumnChildren.add(
         _customerDialButton(
           context: context,
@@ -450,20 +462,32 @@ class TaskCard extends StatelessWidget {
           dialValue: phone,
         ),
       );
-    }
-    if (reg.isNotEmpty) {
-      if (callColumnChildren.isNotEmpty) {
-        callColumnChildren.add(const SizedBox(height: 8));
+    } else {
+      if (phone.isNotEmpty) {
+        callColumnChildren.add(
+          _customerDialButton(
+            context: context,
+            backgroundColor: Colors.green.shade600,
+            icon: Icons.phone,
+            label: phone,
+            dialValue: phone,
+          ),
+        );
       }
-      callColumnChildren.add(
-        _customerDialButton(
-          context: context,
-          backgroundColor: Colors.blue.shade700,
-          icon: Icons.numbers,
-          label: 'Qeydiyyat: $reg',
-          dialValue: reg,
-        ),
-      );
+      if (reg.isNotEmpty) {
+        if (callColumnChildren.isNotEmpty) {
+          callColumnChildren.add(const SizedBox(height: 8));
+        }
+        callColumnChildren.add(
+          _customerDialButton(
+            context: context,
+            backgroundColor: Colors.blue.shade700,
+            icon: Icons.phone,
+            label: 'Qeydiyyat: $reg',
+            dialValue: reg,
+          ),
+        );
+      }
     }
 
     final topRowChildren = <Widget>[];

@@ -18,7 +18,7 @@ import {
 import dayjs from 'dayjs';
 import { TASK_STATUSES } from '../../constants';
 import { useAuth } from '../../../../../../context/AuthContext';
-import { defaultColumnVisibility, sumVisibleTableWidth } from '../../taskTableColumnPrefs';
+import { defaultColumnVisibility, sumVisibleTableWidth, TASK_TABLE_COLUMN_WIDTHS as W } from '../../taskTableColumnPrefs';
 import styles from '../../style.module.scss';
 
 // Helper to get status label
@@ -145,7 +145,7 @@ const TaskTable = ({
             title: 'ID',
             dataIndex: 'id',
             key: 'id',
-            width: 87,
+            width: W.id,
             sorter: serverSideSorter,
             sortOrder: idSortOrder,
             sortDirections: ['ascend', 'descend'],
@@ -216,7 +216,7 @@ const TaskTable = ({
             title: 'Başlıq',
             dataIndex: 'title',
             key: 'title',
-            width: 220,
+            width: W.title,
             render: (text, record) => (
                 <a onClick={() => onViewDetail(record)}>{text}</a>
             )
@@ -225,15 +225,15 @@ const TaskTable = ({
             title: 'Növ',
             dataIndex: 'task_type_details',
             key: 'task_type',
-            width: 140,
+            width: W.task_type,
             render: (type, record) => type ? (
                 <span style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
+                    gap: '5px',
                     backgroundColor: type.color,
-                    padding: '4px 12px',
-                    borderRadius: '6px',
+                    padding: '3px 10px',
+                    borderRadius: '5px',
                     color: '#fff',
                     boxShadow: `0 4px 10px ${type.color}66`,
                     fontWeight: 500,
@@ -244,13 +244,13 @@ const TaskTable = ({
                 </span>
             ) : '-'
         },
-        { title: 'Müştəri', dataIndex: 'customer_name', key: 'customer_name', width: 200 },
-        { title: 'Əlaqə No', dataIndex: 'customer_phone', key: 'customer_phone', width: 150 },
+        { title: 'Müştəri', dataIndex: 'customer_name', key: 'customer_name', width: W.customer_name },
+        { title: 'Əlaqə No', dataIndex: 'customer_phone', key: 'customer_phone', width: W.customer_phone },
         {
             title: 'Qeydiyyat No',
             dataIndex: 'customer_register_number',
             key: 'customer_register_number',
-            width: 170,
+            width: W.customer_register_number,
             sorter: serverSideSorter,
             sortOrder: registerSortOrder,
             sortDirections: ['ascend', 'descend'],
@@ -301,12 +301,12 @@ const TaskTable = ({
                 </div>
             ),
         },
-        { title: 'Qrup', dataIndex: 'group_name', key: 'group_name', width: 150 },
+        { title: 'Qrup', dataIndex: 'group_name', key: 'group_name', width: W.group_name },
         {
             title: 'Servislər',
             dataIndex: 'services',
             key: 'services',
-            width: 190,
+            width: W.services,
             render: (serviceIds, record) => {
                 const colors = [
                     { bg: '#e6f7ff', text: '#0958d9' },
@@ -323,16 +323,16 @@ const TaskTable = ({
                 ).filter(Boolean) : [];
 
                 return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         {taskServices.map((svc, idx) => (
                             <span
                                 key={svc.id}
                                 style={{
                                     background: colors[idx % colors.length].bg,
                                     color: colors[idx % colors.length].text,
-                                    padding: '2px 8px',
-                                    borderRadius: '4px',
-                                    fontSize: '12px',
+                                    padding: '1px 7px',
+                                    borderRadius: '3px',
+                                    fontSize: '11px',
                                     whiteSpace: 'nowrap',
                                     fontWeight: 500
                                 }}
@@ -348,7 +348,7 @@ const TaskTable = ({
             title: 'İcraçılar',
             dataIndex: 'assigned_to_names',
             key: 'assigned_to_names',
-            width: 200,
+            width: W.assigned_to_names,
             render: (names, record) => {
                 const assigneeIds = record.assigned_to || [];
                 const assigneeNames = names || [];
@@ -395,7 +395,7 @@ const TaskTable = ({
         {
             title: 'Ünvan',
             key: 'location',
-            width: 80,
+            width: W.location,
             align: 'center',
             render: (_, record) => {
                 const coords = record.customer_coordinates;
@@ -404,7 +404,7 @@ const TaskTable = ({
                     <Tooltip title={hasLocation ? 'Google Maps-da aç' : 'Koordinat yoxdur'}>
                         <EnvironmentOutlined
                             style={{
-                                fontSize: 18,
+                                fontSize: 16,
                                 cursor: hasLocation ? 'pointer' : 'default',
                                 color: hasLocation ? '#52c41a' : '#ccc'
                             }}
@@ -423,7 +423,7 @@ const TaskTable = ({
         {
             title: 'Status',
             dataIndex: 'status',
-            width: 125,
+            width: W.status,
             key: 'status',
             render: (status, record) => (
                 <div>
@@ -431,7 +431,7 @@ const TaskTable = ({
                         {getStatusLabel(status)}
                     </span>
                     {status === 'pending' && record.rescheduled_date && (
-                        <div style={{ marginTop: 4, fontSize: 11, color: '#cf1322', lineHeight: 1.35 }}>
+                        <div style={{ marginTop: 3, fontSize: 10, color: '#cf1322', lineHeight: 1.35 }}>
                             {record.rescheduled_date} tarixinə qədər təxirə salınıb
                             {record.pending_note ? <div>Qeyd: {record.pending_note}</div> : null}
                         </div>
@@ -443,7 +443,7 @@ const TaskTable = ({
             title: 'Yaradılıb',
             dataIndex: 'created_at',
             key: 'created_at',
-            width: 168,
+            width: W.created_at,
             render: (v) => formatAzDateTime(v),
         },
         // {
@@ -457,14 +457,14 @@ const TaskTable = ({
             title: 'Təxirə tarixi',
             dataIndex: 'rescheduled_date',
             key: 'rescheduled_date',
-            width: 148,
+            width: W.rescheduled_date,
             render: (v) => formatAzDate(v),
         },
         {
             title: 'Aktiv',
             dataIndex: 'is_active',
             key: 'is_active',
-            width: 90,
+            width: W.is_active,
             render: (active, record) => (
                 <Switch
                     checked={active}
@@ -476,9 +476,9 @@ const TaskTable = ({
         {
             title: 'Əməliyyat',
             key: 'action',
-            width: 420,
+            width: W.action,
             render: (_, record) => {
-                const btnStyle = { height: 'auto', fontSize: 12, padding: '5px 8px', lineHeight: 1.35 };
+                const btnStyle = { height: 'auto', fontSize: 11, padding: '4px 7px', lineHeight: 1.3 };
                 const cells = [
                     <Button
                         key="edit"
@@ -596,9 +596,9 @@ const TaskTable = ({
                                 style={{
                                     display: 'grid',
                                     gridTemplateColumns: `repeat(${ACTION_ROW_COLS}, minmax(0, 1fr))`,
-                                    columnGap: 8,
-                                    rowGap: 8,
-                                    padding: '8px 10px',
+                                    columnGap: 6,
+                                    rowGap: 6,
+                                    padding: '6px 8px',
                                     borderBottom: idx < rows.length - 1 ? '1px solid #e8e8e8' : 'none',
                                     alignItems: 'stretch',
                                 }}
@@ -620,6 +620,7 @@ const TaskTable = ({
 
     return (
         <Table
+            className={styles.taskTableCompact}
             columns={visibleColumns}
             dataSource={data}
             rowKey="id"

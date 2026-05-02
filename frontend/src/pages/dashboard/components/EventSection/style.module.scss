@@ -24,7 +24,8 @@
     // Overriding Antd Card for the 'Add' button look
     width: 300px;
     min-width: 300px;
-    height: 200px; // Fixed height for consistency
+    height: 220px;
+    max-height: 220px;
     border: 2px dashed #d9d9d9 !important;
     background: #fafafa !important;
     display: flex;
@@ -66,14 +67,17 @@
 .eventCard {
     width: 400px;
     min-width: 400px;
-    min-height: 200px;
+    max-height: 220px;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     border: 1px solid #f0f0f0;
+    overflow: hidden;
 
     :global(.ant-card-body) {
         padding: 0 !important;
         flex: 1;
+        min-height: 0;
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -85,6 +89,7 @@
     flex-direction: row;
     height: 100%;
     flex: 1;
+    min-height: 0;
 }
 
 .cardLeftContent {
@@ -99,13 +104,15 @@
     width: 140px;
     min-width: 140px;
     align-self: stretch;
+    display: flex;
+    flex-direction: column;
     min-height: 120px;
 }
 
 .imageCollageSingle {
+    flex: 1;
     width: 100%;
-    height: 100%;
-    min-height: 120px;
+    min-height: 0;
 
     img {
         width: 100%;
@@ -115,22 +122,29 @@
     }
 }
 
+/* Çox şəkil: yuxarıdan aşağı şaquli kolaj (sütun bir, bir neçə sətir) */
 .imageCollageGrid {
     display: grid;
+    flex: 1;
     width: 100%;
-    height: 100%;
-    min-height: 120px;
+    min-height: 0;
     gap: 2px;
     background: #f0f0f0;
+    grid-auto-flow: row;
 
     &[data-count='2'] {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
     }
 
-    &[data-count='3'],
+    &[data-count='3'] {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr 1fr;
+    }
+
     &[data-count='4'] {
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: 1fr 1fr;
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr 1fr 1fr;
     }
 }
 
@@ -138,6 +152,8 @@
     position: relative;
     min-height: 0;
     min-width: 0;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
     background: #fafafa;
 
@@ -159,6 +175,7 @@
     color: #fff;
     font-weight: 700;
     font-size: 16px;
+    pointer-events: none;
 }
 
 .cardHeader {

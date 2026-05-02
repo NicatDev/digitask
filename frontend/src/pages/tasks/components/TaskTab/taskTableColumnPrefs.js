@@ -1,22 +1,28 @@
 /** Cədvəl sütun ardıcıllığı sabit qalır; görünürlük User.task_table_column_visibility-də saxlanılır. */
 
+/** Sütun enləri (~10% kompakt; horizontal scroll üçün ümumi qənaət). */
 export const TASK_TABLE_COLUMN_META = [
-    { key: 'id', title: 'ID', width: 87 },
-    { key: 'title', title: 'Başlıq', width: 220 },
-    { key: 'task_type', title: 'Növ', width: 140 },
-    { key: 'customer_name', title: 'Müştəri', width: 200 },
-    { key: 'customer_phone', title: 'Əlaqə No', width: 150 },
-    { key: 'customer_register_number', title: 'Qeydiyyat No', width: 170 },
-    { key: 'group_name', title: 'Qrup', width: 150 },
-    { key: 'services', title: 'Servislər', width: 190 },
-    { key: 'assigned_to_names', title: 'İcraçılar', width: 200 },
-    { key: 'location', title: 'Ünvan', width: 80 },
-    { key: 'status', title: 'Status', width: 125 },
-    { key: 'created_at', title: 'Yaradılıb', width: 168 },
-    { key: 'rescheduled_date', title: 'Təxirə tarixi', width: 148 },
-    { key: 'is_active', title: 'Aktiv', width: 90 },
-    { key: 'action', title: 'Əməliyyat', width: 420 },
+    { key: 'id', title: 'ID', width: 78 },
+    { key: 'title', title: 'Başlıq', width: 198 },
+    { key: 'task_type', title: 'Növ', width: 126 },
+    { key: 'customer_name', title: 'Müştəri', width: 180 },
+    { key: 'customer_phone', title: 'Əlaqə No', width: 135 },
+    { key: 'customer_register_number', title: 'Qeydiyyat No', width: 153 },
+    { key: 'group_name', title: 'Qrup', width: 135 },
+    { key: 'services', title: 'Servislər', width: 171 },
+    { key: 'assigned_to_names', title: 'İcraçılar', width: 180 },
+    { key: 'location', title: 'Ünvan', width: 72 },
+    { key: 'status', title: 'Status', width: 112 },
+    { key: 'created_at', title: 'Yaradılıb', width: 151 },
+    { key: 'rescheduled_date', title: 'Təxirə tarixi', width: 133 },
+    { key: 'is_active', title: 'Aktiv', width: 81 },
+    { key: 'action', title: 'Əməliyyat', width: 378 },
 ];
+
+/** `TaskTable` sütun təyini üçün tək mənbə */
+export const TASK_TABLE_COLUMN_WIDTHS = Object.fromEntries(
+    TASK_TABLE_COLUMN_META.map((c) => [c.key, c.width]),
+);
 
 /** Defolt: bütün sütunlar görünür. */
 export const TASK_TABLE_KEYS_DEFAULT_HIDDEN = new Set();
@@ -69,5 +75,5 @@ export function sumVisibleTableWidth(visibility) {
             sum += col.width;
         }
     }
-    return Math.max(sum, 800);
+    return Math.max(sum, 720);
 }

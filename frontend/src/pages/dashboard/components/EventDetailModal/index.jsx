@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Button, Tag, message, Typography } from 'antd';
+import { Modal, Button, Tag, message, Typography, Image } from 'antd';
 import { CalendarOutlined, ClockCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { deleteEvent } from '../../../../axios/api/dashboard';
 import { getEventImageUrls } from '../../eventImages';
@@ -101,23 +101,32 @@ const EventDetailModal = ({ open, onCancel, event, onSuccess }) => {
                 )}
                 {imgUrls.length > 0 && (
                     <div className={styles.detailRow} style={{ marginTop: 16 }}>
-                        <div
-                            className={
-                                imgUrls.length === 1
-                                    ? styles.detailCollageSingle
-                                    : styles.detailCollageGrid
-                            }
-                            data-count={Math.min(imgUrls.length, 4)}
-                        >
-                            {imgUrls.slice(0, 4).map((src, idx) => (
-                                <div key={idx} className={styles.detailCollageCell}>
-                                    <img alt="" src={src} />
-                                    {idx === 3 && imgUrls.length > 4 && (
-                                        <span className={styles.detailCollageMore}>+{imgUrls.length - 4}</span>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
+                        <Image.PreviewGroup items={imgUrls}>
+                            <div
+                                className={
+                                    imgUrls.length === 1
+                                        ? styles.detailCollageSingle
+                                        : styles.detailCollageGrid
+                                }
+                                data-count={Math.min(imgUrls.length, 4)}
+                            >
+                                {imgUrls.slice(0, 4).map((src, idx) => (
+                                    <div key={idx} className={styles.detailCollageCell}>
+                                        <Image
+                                            alt=""
+                                            src={src}
+                                            preview={{ mask: 'Önizləmə' }}
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                        />
+                                        {idx === 3 && imgUrls.length > 4 && (
+                                            <span className={styles.detailCollageMore}>
+                                                +{imgUrls.length - 4}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </Image.PreviewGroup>
                     </div>
                 )}
             </div>
