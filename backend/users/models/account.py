@@ -33,6 +33,8 @@ class User(AbstractUser):
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     address = models.CharField(max_length=255, blank=True, null=True)
     address_coordinates = models.JSONField(blank=True, null=True)
+    # Tapşırıq cədvəli: sütun açarı → görünür (true/false). Migration sizin tərəfinizdən.
+    task_table_column_visibility = models.JSONField(default=dict, blank=True)
     # Soft delete for User is usually handled by is_active=False
 
 

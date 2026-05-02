@@ -93,6 +93,7 @@ class UserSerializer(serializers.ModelSerializer):
             'is_task_reader', 'is_task_writer', 'is_task_view_all', 'is_warehouse_reader', 'is_warehouse_writer',
             'is_document_reader', 'is_document_writer', 'is_admin', 'is_super_admin',
             'task_permissions', 'task_status_visibility', 'task_status_permissions',
+            'task_table_column_visibility',
             'is_online', 'last_seen'
         ]
         extra_kwargs = {'password': {'write_only': True, 'required': False}}
@@ -116,6 +117,13 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_task_status_permissions(self, obj):
         return get_task_status_permissions_for_user(obj)
+
+    def validate_task_table_column_visibility(self, value):
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            raise serializers.ValidationError('Obyekt olmalıdır.')
+        return {str(k): bool(v) for k, v in value.items()}
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)

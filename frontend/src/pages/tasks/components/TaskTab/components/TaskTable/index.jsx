@@ -3,15 +3,69 @@ import React from 'react';
 /** Serverdə ordering; cədvəl mövcud səhifəni yenidən qarışdırmır */
 const serverSideSorter = { compare: () => 0 };
 import { Table, Button, Switch, Tooltip, Popconfirm, message, Space, Tag, Input } from 'antd';
-import { EnvironmentOutlined, FileAddOutlined, UserAddOutlined, TeamOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import {
+    EnvironmentOutlined,
+    FileAddOutlined,
+    UserAddOutlined,
+    TeamOutlined,
+    CheckCircleOutlined,
+    EditOutlined,
+    SyncOutlined,
+    FormOutlined,
+    ShoppingOutlined,
+    DeleteOutlined,
+} from '@ant-design/icons';
+import dayjs from 'dayjs';
 import { TASK_STATUSES } from '../../constants';
 import { useAuth } from '../../../../../../context/AuthContext';
+import { defaultColumnVisibility, sumVisibleTableWidth } from '../../taskTableColumnPrefs';
 import styles from '../../style.module.scss';
 
 // Helper to get status label
 const getStatusLabel = (status) => {
     const found = TASK_STATUSES.find(s => s.value === status);
     return found ? found.label : status;
+};
+
+const AZ_MONTHS = [
+    'yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun',
+    'iyul', 'avqust', 'sentyabr', 'oktyabr', 'noyabr', 'dekabr',
+];
+
+/** İl üçün sıra şəkilçisi: 2023-cü, 2025-ci il və s. */
+const azYearSuffix = (year) => {
+    const d = year % 10;
+    const map = { 0: 'cu', 1: 'ci', 2: 'ci', 3: 'cü', 4: 'cü', 5: 'ci', 6: 'cı', 7: 'ci', 8: 'ci', 9: 'cu' };
+    return map[d] ?? 'cü';
+};
+
+const formatAzDateTime = (v) => {
+    const d = dayjs(v);
+    if (!v || !d.isValid()) return '—';
+    const day = d.date();
+    const mon = AZ_MONTHS[d.month()];
+    const y = d.year();
+    return `${day} ${mon} ${y}-${azYearSuffix(y)} il, ${d.format('HH:mm')}`;
+};
+
+const formatAzDate = (v) => {
+    const d = dayjs(v);
+    if (!v || !d.isValid()) return '—';
+    const day = d.date();
+    const mon = AZ_MONTHS[d.month()];
+    const y = d.year();
+    return `${day} ${mon} ${y}-${azYearSuffix(y)} il`;
+};
+
+const ACTION_ROW_COLS = 3;
+
+/** Əməliyyat düymələrini sətirlərə bölür (sətirdə ən çox ACTION_ROW_COLS). */
+const chunkActionRows = (items, cols = ACTION_ROW_COLS) => {
+    const rows = [];
+    for (let i = 0; i < items.length; i += cols) {
+        rows.push(items.slice(i, i + cols));
+    }
+    return rows;
 };
 
 /** Siz icraçısınız, təxirə salınıb və tarix qeyd olunub — cizgi + ID-də ! */
@@ -71,6 +125,7 @@ const TaskTable = ({
     disableJoinTask = false,
     disableActiveToggle = false,
     canForTask,
+    columnVisibility = defaultColumnVisibility(),
 }) => {
     const { user } = useAuth();
 
@@ -82,6 +137,8 @@ const TaskTable = ({
             : tableOrdering === '-register_number'
               ? 'descend'
               : null;
+
+    const isTaskColVisible = (key) => key === 'action' || columnVisibility[key] !== false;
 
     const tableColumns = [
         {
@@ -383,6 +440,27 @@ const TaskTable = ({
             )
         },
         {
+            title: 'Yaradılıb',
+            dataIndex: 'created_at',
+            key: 'created_at',
+            width: 168,
+            render: (v) => formatAzDateTime(v),
+        },
+        // {
+        //     title: 'Yenilənib',
+        //     dataIndex: 'updated_at',
+        //     key: 'updated_at',
+        //     width: 168,
+        //     render: (v) => formatAzDateTime(v),
+        // },
+        {
+            title: 'Təxirə tarixi',
+            dataIndex: 'rescheduled_date',
+            key: 'rescheduled_date',
+            width: 148,
+            render: (v) => formatAzDate(v),
+        },
+        {
             title: 'Aktiv',
             dataIndex: 'is_active',
             key: 'is_active',
@@ -399,54 +477,154 @@ const TaskTable = ({
             title: 'Əməliyyat',
             key: 'action',
             width: 420,
-            render: (_, record) => (
-                <Space size={[6, 6]} wrap>
-                    <Button type="link" size="small" onClick={() => onEdit(record)} disabled={disableEdit || !canForTask?.('edit_general', record)}>Düzəliş</Button>
-                    <Button type="link" size="small" onClick={() => onStatusChange(record)} disabled={disableStatus || !canForTask?.('change_status', record)}>Status</Button>
-                    <Button type="link" size="small" onClick={() => onQuestionnaire(record)} disabled={disableQuestionnaire || !canForTask?.('manage_surveys', record)}>Anket</Button>
-                    <Button type="link" size="small" onClick={() => onProductSelect(record)} disabled={disableProducts || !canForTask?.('manage_products', record)}>
+            render: (_, record) => {
+                const btnStyle = { height: 'auto', fontSize: 12, padding: '5px 8px', lineHeight: 1.35 };
+                const cells = [
+                    <Button
+                        key="edit"
+                        type="primary"
+                        size="small"
+                        block
+                        icon={<EditOutlined />}
+                        style={btnStyle}
+                        onClick={() => onEdit(record)}
+                        disabled={disableEdit || !canForTask?.('edit_general', record)}
+                    >
+                        Düzəliş
+                    </Button>,
+                    <Button
+                        key="status"
+                        type="primary"
+                        size="small"
+                        block
+                        icon={<SyncOutlined />}
+                        style={btnStyle}
+                        onClick={() => onStatusChange(record)}
+                        disabled={disableStatus || !canForTask?.('change_status', record)}
+                    >
+                        Status
+                    </Button>,
+                    <Button
+                        key="q"
+                        type="primary"
+                        size="small"
+                        block
+                        icon={<FormOutlined />}
+                        style={btnStyle}
+                        onClick={() => onQuestionnaire(record)}
+                        disabled={disableQuestionnaire || !canForTask?.('manage_surveys', record)}
+                    >
+                        Anket
+                    </Button>,
+                    <Button
+                        key="prod"
+                        type="primary"
+                        size="small"
+                        block
+                        icon={<ShoppingOutlined />}
+                        style={btnStyle}
+                        onClick={() => onProductSelect(record)}
+                        disabled={disableProducts || !canForTask?.('manage_products', record)}
+                    >
                         Məhsul ({record.task_products?.length || 0})
-                    </Button>
-                    <Button type="link" size="small" onClick={() => onDocumentAdd(record)} disabled={disableDocuments || !canForTask?.('manage_documents', record)}>
-                        <FileAddOutlined /> ({record.task_documents?.length || 0})
-                    </Button>
-                    {record.is_externally_archived ? (
+                    </Button>,
+                    <Button
+                        key="doc"
+                        type="primary"
+                        size="small"
+                        block
+                        icon={<FileAddOutlined />}
+                        style={btnStyle}
+                        onClick={() => onDocumentAdd(record)}
+                        disabled={disableDocuments || !canForTask?.('manage_documents', record)}
+                    >
+                        Sənəd ({record.task_documents?.length || 0})
+                    </Button>,
+                    record.is_externally_archived ? (
                         <Button
-                            type="text"
+                            key="arch"
+                            type="primary"
                             size="small"
-                            icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+                            block
+                            icon={<CheckCircleOutlined />}
+                            style={{ ...btnStyle, opacity: 0.85 }}
                             disabled
                         >
                             Arxivdədir
                         </Button>
                     ) : (
                         <Button
+                            key="arch"
                             type="primary"
                             size="small"
+                            block
                             icon={<CheckCircleOutlined />}
+                            style={btnStyle}
                             onClick={() => onMarkExternalArchived?.(record)}
                             disabled={!canForTask?.('mark_external_archived', record)}
                         >
                             Arxivə köçür
                         </Button>
-                    )}
-                    {!disableDelete && (
-                        <Popconfirm title="Silmək istədiyinizə əminsiniz?" onConfirm={() => onDelete(record.id)}>
-                            <Button type="link" size="small" danger>Sil</Button>
-                        </Popconfirm>
-                    )}
-                </Space>
-            ),
+                    ),
+                    ...(!disableDelete
+                        ? [
+                              <Popconfirm
+                                  key="del"
+                                  title="Silmək istədiyinizə əminsiniz?"
+                                  onConfirm={() => onDelete(record.id)}
+                              >
+                                  <Button type="primary" danger size="small" block icon={<DeleteOutlined />} style={btnStyle}>
+                                      Sil
+                                  </Button>
+                              </Popconfirm>,
+                          ]
+                        : []),
+                ];
+                const rows = chunkActionRows(cells);
+                return (
+                    <div
+                        style={{
+                            border: '1px solid #f0f0f0',
+                            borderRadius: 8,
+                            background: '#fff',
+                            overflow: 'hidden',
+                        }}
+                    >
+                        {rows.map((row, idx) => (
+                            <div
+                                key={idx}
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: `repeat(${ACTION_ROW_COLS}, minmax(0, 1fr))`,
+                                    columnGap: 8,
+                                    rowGap: 8,
+                                    padding: '8px 10px',
+                                    borderBottom: idx < rows.length - 1 ? '1px solid #e8e8e8' : 'none',
+                                    alignItems: 'stretch',
+                                }}
+                            >
+                                {row.map((cell, j) => (
+                                    <div key={j} style={{ minWidth: 0 }}>
+                                        {cell}
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                );
+            },
         },
     ];
 
+    const visibleColumns = tableColumns.filter((col) => isTaskColVisible(col.key));
+
     return (
         <Table
-            columns={tableColumns}
+            columns={visibleColumns}
             dataSource={data}
             rowKey="id"
             loading={loading}
-            scroll={{ x: 2115 }}
+            scroll={{ x: sumVisibleTableWidth(columnVisibility) }}
             pagination={pagination}
             onChange={(pag, filters, sorter, extra) => onChange?.(pag, filters, sorter, extra)}
         />

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Input, Button, Select, Grid, DatePicker, Spin } from 'antd';
-import { FilterOutlined } from '@ant-design/icons';
+import { FilterOutlined, InsertRowAboveOutlined } from '@ant-design/icons';
 import { TASK_STATUSES } from '../../constants';
 import { getCustomer, getCustomerOptions } from '../../../../../../axios/api/tasks';
 
@@ -125,6 +125,7 @@ const TaskToolbar = ({
     groups = [],
     users,
     onNewTask,
+    onOpenColumnSettings = () => {},
     disableCreate = false
 }) => {
     const screens = Grid.useBreakpoint();
@@ -172,17 +173,35 @@ const TaskToolbar = ({
                     {screens.md ? 'Filtrlər' : 'Filter'}
                 </Button>
 
-                <Button
-                    type="primary"
-                    onClick={onNewTask}
-                    disabled={disableCreate}
+                <div
                     style={{
                         marginLeft: screens.md ? 'auto' : 0,
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 8,
                         flex: screens.md ? 'none' : '1 1 100%',
                     }}
                 >
-                    Yeni Tapşırıq
-                </Button>
+                    <Button
+                        icon={<InsertRowAboveOutlined />}
+                        onClick={onOpenColumnSettings}
+                        style={{
+                            flex: screens.md ? 'none' : '1 1 calc(50% - 4px)',
+                        }}
+                    >
+                        Sütunlar
+                    </Button>
+                    <Button
+                        type="primary"
+                        onClick={onNewTask}
+                        disabled={disableCreate}
+                        style={{
+                            flex: screens.md ? 'none' : '1 1 calc(50% - 4px)',
+                        }}
+                    >
+                        Yeni Tapşırıq
+                    </Button>
+                </div>
             </div>
 
             {/* Expanded Filters */}

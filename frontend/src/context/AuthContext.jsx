@@ -47,9 +47,7 @@ export const AuthProvider = ({ children }) => {
         navigate('/login');
     };
 
-    const refetchUser = () => {
-        fetchUser();
-    };
+    const refetchUser = () => fetchUser();
 
     return (
         <AuthContext.Provider value={{ user, loading, login, logout, refetchUser }}>

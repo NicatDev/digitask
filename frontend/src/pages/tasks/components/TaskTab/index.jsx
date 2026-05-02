@@ -4,7 +4,7 @@ import dayjs from 'dayjs';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getTasks, createTask, updateTask, deleteTask, updateTaskStatus, getServices, getColumns, getTaskTypes, addTaskAssignee, joinTask, markTaskExternalArchived } from '../../../../axios/api/tasks';
-import { getGroups, getUsers } from '../../../../axios/api/account';
+import { getGroups, getUsers, updateMyProfile } from '../../../../axios/api/account';
 import { handleApiError } from '../../../../utils/errorHandler';
 import { useAuth } from '../../../../context/AuthContext';
 import { hasTaskActionPermission, TASK_ACTIONS } from '../../../../utils/permissions';
@@ -14,6 +14,14 @@ import TaskModal from './TaskModal';
 import QuestionnaireModal from './QuestionnaireModal/index';
 import TaskToolbar from './components/TaskToolbar';
 import TaskTable from './components/TaskTable';
+import TaskColumnSettingsModal from './components/TaskColumnSettingsModal';
+import {
+    mergeColumnVisibilityFromUser,
+    serializeColumnVisibilityForApi,
+    defaultColumnVisibility,
+    TASK_TABLE_COLUMN_META,
+    TASK_TABLE_FIXED_KEYS,
+} from './taskTableColumnPrefs';
 import StatusModal from './components/StatusModal';
 import MapModal from './components/MapModal';
 import ProductSelectionModal from './components/ProductSelectionModal';
@@ -47,7 +55,7 @@ const TaskTab = ({ isActive }) => {
     });
 
     const [loading, setLoading] = useState(false);
-    const { user } = useAuth();
+    const { user, refetchUser } = useAuth();
 
     // Filter States
     const [searchText, setSearchText] = useState('');
@@ -59,6 +67,14 @@ const TaskTab = ({ isActive }) => {
     const [dateRange, setDateRange] = useState(null);
     const [isActiveFilter, setIsActiveFilter] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
+
+    const [columnVisibility, setColumnVisibility] = useState(() => defaultColumnVisibility());
+    const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
+    const [columnSettingsKey, setColumnSettingsKey] = useState(0);
+
+    useEffect(() => {
+        setColumnVisibility(mergeColumnVisibilityFromUser(user));
+    }, [user]);
 
     /** Cədvəl: backend sıralama (null = standart status ardıcıllığı) */
     const [tableOrdering, setTableOrdering] = useState(null);
@@ -514,6 +530,31 @@ const TaskTab = ({ isActive }) => {
         setIsAddressEditOpen(true);
     };
 
+    const handleColumnSettingsConfirm = async (draft) => {
+        const hasAny = TASK_TABLE_COLUMN_META.some(
+            (c) => !TASK_TABLE_FIXED_KEYS.has(c.key) && draft[c.key]
+        );
+        if (!hasAny) {
+            message.warning('Ən azı bir sütun göstərilməlidir.');
+            return;
+        }
+        if (!user?.id) {
+            message.warning('Daxil olun.');
+            return;
+        }
+        try {
+            await updateMyProfile({
+                task_table_column_visibility: serializeColumnVisibilityForApi(draft),
+            });
+            setColumnVisibility({ ...draft });
+            await refetchUser();
+            message.success('Sütun ayarları saxlanıldı');
+            setColumnSettingsOpen(false);
+        } catch (e) {
+            handleApiError(e, 'Sütun ayarları saxlanılmadı');
+        }
+    };
+
     return (
         <div>
             <TaskToolbar
@@ -536,6 +577,10 @@ const TaskTab = ({ isActive }) => {
                 groups={groups}
                 users={users}
                 onNewTask={handleNewTask}
+                onOpenColumnSettings={() => {
+                    setColumnSettingsKey((k) => k + 1);
+                    setColumnSettingsOpen(true);
+                }}
                 disableCreate={!taskCaps.canCreate}
             />
 
@@ -583,6 +628,15 @@ const TaskTab = ({ isActive }) => {
                 onAddAssignee={handleOpenAssigneeModal}
                 onJoinTask={handleJoinTask}
                 onMarkExternalArchived={handleMarkExternalArchived}
+                columnVisibility={columnVisibility}
+            />
+
+            <TaskColumnSettingsModal
+                key={columnSettingsKey}
+                open={columnSettingsOpen}
+                onCancel={() => setColumnSettingsOpen(false)}
+                onConfirm={handleColumnSettingsConfirm}
+                initialVisibility={columnVisibility}
             />
 
             <TaskModal

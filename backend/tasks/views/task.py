@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from decimal import Decimal
-from ..models import Task, TaskService, TaskProduct, TaskActivity, Customer
+from ..models import Task, TaskService, TaskProduct, TaskActivity, Customer, Service
 from ..serializers import (
     TaskSerializer,
     TaskServiceSerializer,
@@ -43,6 +43,30 @@ from users.task_permissions import (
 
 User = get_user_model()
 TaskAssigneeThrough = Task.assigned_to.through
+
+
+def _assignee_diff_message(added_ids, removed_ids):
+    parts = []
+    if added_ids:
+        qs = User.objects.filter(pk__in=added_ids).only('first_name', 'last_name', 'username')
+        names = [(u.get_full_name() or '').strip() or u.username for u in qs]
+        parts.append(f"Əlavə: {', '.join(names)}")
+    if removed_ids:
+        qs = User.objects.filter(pk__in=removed_ids).only('first_name', 'last_name', 'username')
+        names = [(u.get_full_name() or '').strip() or u.username for u in qs]
+        parts.append(f"Çıxarıldı: {', '.join(names)}")
+    return ' · '.join(parts)
+
+
+def _service_diff_message(added_ids, removed_ids):
+    parts = []
+    if added_ids:
+        names = list(Service.objects.filter(pk__in=added_ids).values_list('name', flat=True))
+        parts.append(f"Əlavə: {', '.join(names)}")
+    if removed_ids:
+        names = list(Service.objects.filter(pk__in=removed_ids).values_list('name', flat=True))
+        parts.append(f"Çıxarıldı: {', '.join(names)}")
+    return ' · '.join(parts)
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -279,21 +303,135 @@ class TaskViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied("Task active toggle permission denied")
         elif not can_task_action_for_task(self.request.user, 'edit_general', instance):
             raise PermissionDenied("Task edit permission denied")
+
         old_title = instance.title
         old_note = instance.note
+        old_status = instance.status
+        old_is_active = instance.is_active
+        old_group_id = instance.group_id
+        old_customer_id = instance.customer_id
+        old_task_type_id = instance.task_type_id
+        old_rescheduled_date = instance.rescheduled_date
+        old_assigned_ids = set(instance.assigned_to.values_list('pk', flat=True))
+        old_service_ids = set(instance.services.values_list('pk', flat=True))
+
         task = serializer.save()
-        changed = []
-        if task.title != old_title:
-            changed.append('başlıq')
-        if task.note != old_note:
-            changed.append('qeyd')
-        if changed:
+        user = self.request.user
+
+        new_assigned_ids = set(task.assigned_to.values_list('pk', flat=True))
+        new_service_ids = set(task.services.values_list('pk', flat=True))
+
+        if task.status != old_status:
+            log_meta = {'from': old_status, 'to': task.status}
+            if task.rescheduled_date:
+                log_meta['rescheduled_date'] = str(task.rescheduled_date)
+            status_msg = (
+                f"{task_status_label(old_status)} → {task_status_label(task.status)}"
+                + (f" (tarix: {task.rescheduled_date})" if task.rescheduled_date else '')
+            )
             log_task_activity(
                 task,
-                self.request.user,
-                TaskActivity.Action.TASK_UPDATED,
-                message=', '.join(changed) + ' yeniləndi',
+                user,
+                TaskActivity.Action.STATUS_CHANGE,
+                message=status_msg,
+                meta=log_meta,
             )
+
+        if task.is_active != old_is_active:
+            log_task_activity(
+                task,
+                user,
+                TaskActivity.Action.TASK_UPDATED,
+                message='Aktivlik: Aktiv' if task.is_active else 'Aktivlik: Deaktiv',
+                meta={'event': 'is_active', 'is_active': task.is_active},
+            )
+
+        detail_changed = []
+        if task.title != old_title:
+            detail_changed.append('başlıq')
+        if task.note != old_note:
+            detail_changed.append('qeyd')
+        if detail_changed:
+            log_task_activity(
+                task,
+                user,
+                TaskActivity.Action.TASK_UPDATED,
+                message=', '.join(detail_changed) + ' yeniləndi',
+            )
+
+        if task.group_id != old_group_id:
+            log_task_activity(
+                task,
+                user,
+                TaskActivity.Action.TASK_UPDATED,
+                message='Qrup dəyişdi',
+                meta={'old_group_id': old_group_id, 'new_group_id': task.group_id},
+            )
+
+        if task.customer_id != old_customer_id:
+            log_task_activity(
+                task,
+                user,
+                TaskActivity.Action.TASK_UPDATED,
+                message='Müştəri dəyişdi',
+                meta={'old_customer_id': old_customer_id, 'new_customer_id': task.customer_id},
+            )
+
+        if task.task_type_id != old_task_type_id:
+            log_task_activity(
+                task,
+                user,
+                TaskActivity.Action.TASK_UPDATED,
+                message='Tapşırıq növü dəyişdi',
+                meta={'old_task_type_id': old_task_type_id, 'new_task_type_id': task.task_type_id},
+            )
+
+        if (
+            task.status == old_status
+            and task.rescheduled_date != old_rescheduled_date
+            and (task.rescheduled_date or old_rescheduled_date)
+        ):
+            log_task_activity(
+                task,
+                user,
+                TaskActivity.Action.TASK_UPDATED,
+                message=(
+                    f"Təxirə tarixi: {old_rescheduled_date or '—'} → {task.rescheduled_date or '—'}"
+                ),
+                meta={'event': 'rescheduled_date'},
+            )
+
+        if new_assigned_ids != old_assigned_ids:
+            diff_msg = _assignee_diff_message(
+                new_assigned_ids - old_assigned_ids,
+                old_assigned_ids - new_assigned_ids,
+            )
+            if diff_msg:
+                log_task_activity(
+                    task,
+                    user,
+                    TaskActivity.Action.TASK_UPDATED,
+                    message=f"İcraçılar — {diff_msg}",
+                    meta={
+                        'event': 'assignees_updated',
+                        'added': list(new_assigned_ids - old_assigned_ids),
+                        'removed': list(old_assigned_ids - new_assigned_ids),
+                    },
+                )
+
+        if new_service_ids != old_service_ids:
+            diff_msg = _service_diff_message(
+                new_service_ids - old_service_ids,
+                old_service_ids - new_service_ids,
+            )
+            if diff_msg:
+                log_task_activity(
+                    task,
+                    user,
+                    TaskActivity.Action.TASK_UPDATED,
+                    message=f"Servislər — {diff_msg}",
+                    meta={'event': 'services_updated'},
+                )
     
     def destroy(self, request, *args, **kwargs):
         """Soft delete - set is_active to False. Only privileged users can delete."""
@@ -305,6 +443,13 @@ class TaskViewSet(viewsets.ModelViewSet):
             )
         instance.is_active = False
         instance.save()
+        log_task_activity(
+            instance,
+            request.user,
+            TaskActivity.Action.TASK_UPDATED,
+            message='Tapşırıq silindi (deaktiv edildi)',
+            meta={'event': 'soft_delete'},
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
     
     @action(detail=True, methods=['get', 'post'])
