@@ -18,8 +18,10 @@ const EventModal = ({ open, onCancel, onSuccess }) => {
             submitData.append('is_active', 'true');
             if (values.date) submitData.append('date', values.date.toISOString());
 
-            if (values.image && values.image.fileList.length > 0) {
-                submitData.append('image', values.image.fileList[0].originFileObj);
+            if (values.image?.fileList?.length) {
+                values.image.fileList.forEach((f) => {
+                    if (f.originFileObj) submitData.append('images', f.originFileObj);
+                });
             }
 
             await createEvent(submitData);
@@ -68,15 +70,16 @@ const EventModal = ({ open, onCancel, onSuccess }) => {
                 <Form.Item name="date" label="Tarix" rules={[{ required: true }]}>
                     <DatePicker showTime />
                 </Form.Item>
-                <Form.Item name="image" label="Şəkil">
+                <Form.Item name="image" label="Şəkillər (bir neçə)">
                     <Upload
                         beforeUpload={() => false}
-                        maxCount={1}
+                        maxCount={12}
+                        multiple
                         listType="picture-card"
                     >
                         <div>
                             <PlusOutlined />
-                            <div style={{ marginTop: 8 }}>Yüklə</div>
+                            <div style={{ marginTop: 8 }}>Əlavə et</div>
                         </div>
                     </Upload>
                 </Form.Item>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Button, Tag, message, Typography } from 'antd';
 import { CalendarOutlined, ClockCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { deleteEvent } from '../../../../axios/api/dashboard';
+import { getEventImageUrls } from '../../eventImages';
 import styles from './style.module.scss';
 import dayjs from 'dayjs';
 
@@ -45,6 +46,8 @@ const EventDetailModal = ({ open, onCancel, event, onSuccess }) => {
             default: return 'Digər';
         }
     };
+
+    const imgUrls = getEventImageUrls(event);
 
     return (
         <Modal
@@ -96,13 +99,25 @@ const EventDetailModal = ({ open, onCancel, event, onSuccess }) => {
                         </div>
                     </div>
                 )}
-                {event.image && (
+                {imgUrls.length > 0 && (
                     <div className={styles.detailRow} style={{ marginTop: 16 }}>
-                        <img
-                            alt={event.title}
-                            src={event.image}
-                            style={{ width: '100%', borderRadius: 8 }}
-                        />
+                        <div
+                            className={
+                                imgUrls.length === 1
+                                    ? styles.detailCollageSingle
+                                    : styles.detailCollageGrid
+                            }
+                            data-count={Math.min(imgUrls.length, 4)}
+                        >
+                            {imgUrls.slice(0, 4).map((src, idx) => (
+                                <div key={idx} className={styles.detailCollageCell}>
+                                    <img alt="" src={src} />
+                                    {idx === 3 && imgUrls.length > 4 && (
+                                        <span className={styles.detailCollageMore}>+{imgUrls.length - 4}</span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>

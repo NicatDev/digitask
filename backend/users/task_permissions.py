@@ -169,7 +169,7 @@ def can_task_action_for_task(user, action: str, task) -> bool:
     if action in ("view_module", "create"):
         return global_map.get(action, False)
 
-    # Task-dependent actions are allowed only if that status is visible and explicitly enabled for that status.
+    # Task-dependent actions: status bu rol üçün görünən olmalıdır.
     if task is None:
         return False
 
@@ -178,8 +178,19 @@ def can_task_action_for_task(user, action: str, task) -> bool:
     if status not in visible_statuses:
         return False
 
+    # Tapşırıq sənədləri: yalnız həmin status üçün `task_status_permissions` — qlobal sənəd yazıcı / task_permissions yox.
+    if action == "manage_documents":
+        status_map = get_task_status_permissions_for_user(user)
+        entry = status_map.get(status) or {}
+        return bool(entry.get("manage_documents", False))
+
     status_map = get_task_status_permissions_for_user(user)
-    return bool((status_map.get(status) or {}).get(action, False))
+    status_entry = status_map.get(status)
+    if isinstance(status_entry, dict) and action in status_entry:
+        return bool(status_entry[action])
+
+    # Köhnə / sadə rollar: JSON-da status üzrə açar yoxdursa, ümumi task_permissions istifadə olunur.
+    return bool(global_map.get(action, False))
 
 
 def get_task_status_visibility_for_user(user) -> Dict[str, Any]:

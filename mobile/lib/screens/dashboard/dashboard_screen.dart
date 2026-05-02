@@ -13,6 +13,21 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
+List<String> eventImageUrls(dynamic event) {
+  final imgs = event['images'];
+  if (imgs is List && imgs.isNotEmpty) {
+    final out = <String>[];
+    for (final e in imgs) {
+      if (e is Map && e['image'] != null) {
+        out.add(e['image'].toString());
+      }
+    }
+    if (out.isNotEmpty) return out;
+  }
+  if (event['image'] != null) return [event['image'].toString()];
+  return [];
+}
+
 class _DashboardScreenState extends State<DashboardScreen> {
   List<dynamic> _events = [];
   List<dynamic> _topUsers = [];
@@ -61,17 +76,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _createEvent(dynamic data) async {
     try {
       dynamic payload;
-      if (data is Map<String, dynamic> && data.containsKey('image') && data['image'] != null) {
-        XFile imageFile = data['image'];
-        MultipartFile multipartFile;
-        
+      final images = data is Map<String, dynamic> ? data['images'] as List<XFile>? : null;
+      if (images != null && images.isNotEmpty) {
+        final formData = FormData.fromMap({
+          'title': data['title'],
+          'description': data['description'],
+          'event_type': data['event_type'],
+          'date': data['date'],
+          'is_active': data['is_active'],
+        });
+        for (final x in images) {
+          final MultipartFile mf;
+          if (kIsWeb) {
+            final bytes = await x.readAsBytes();
+            mf = MultipartFile.fromBytes(bytes, filename: x.name);
+          } else {
+            mf = await MultipartFile.fromFile(x.path, filename: x.name);
+          }
+          formData.files.add(MapEntry('images', mf));
+        }
+        payload = formData;
+      } else if (data is Map<String, dynamic> && data.containsKey('image') && data['image'] != null) {
+        final XFile imageFile = data['image'];
+        final MultipartFile multipartFile;
         if (kIsWeb) {
           final bytes = await imageFile.readAsBytes();
           multipartFile = MultipartFile.fromBytes(bytes, filename: imageFile.name);
         } else {
           multipartFile = await MultipartFile.fromFile(imageFile.path, filename: imageFile.name);
         }
-
         payload = FormData.fromMap({
           'title': data['title'],
           'description': data['description'],
@@ -435,17 +468,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: const TextStyle(fontSize: 16, height: 1.5, color: Colors.black87),
               ),
               const SizedBox(height: 32),
-              if (event['image'] != null) ...[
-                Center(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      event['image'],
-                      width: MediaQuery.of(context).size.width * 0.7, // 70% of screen width
-                      fit: BoxFit.contain, // Maintain aspect ratio without cropping
-                    ),
-                  ),
-                ),
+              if (eventImageUrls(event).isNotEmpty) ...[
+                _EventImageCollageDetail(urls: eventImageUrls(event)),
                 const SizedBox(height: 32),
               ],
             ],
@@ -460,6 +484,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final String month = DateFormat('MMM').format(date);
     final String day = DateFormat('d').format(date);
     final String time = DateFormat('HH:mm').format(date);
+    final urls = eventImageUrls(event);
 
     return InkWell(
       onTap: () => _showEventDetailModal(event),
@@ -484,11 +509,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              if (event['image'] != null)
-                Image.network(
-                  event['image'],
-                  fit: BoxFit.cover,
-                )
+              if (urls.isNotEmpty)
+                _EventImageCollageCard(urls: urls)
               else
                 Container(
                   color: Colors.grey[100],
@@ -586,6 +608,149 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
+class _EventImageCollageCard extends StatelessWidget {
+  const _EventImageCollageCard({required this.urls});
+  final List<String> urls;
+
+  static Widget _cell(String url, {String? overlay}) {
+    return Expanded(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.network(url, fit: BoxFit.cover),
+          if (overlay != null)
+            Container(
+              color: Colors.black54,
+              alignment: Alignment.center,
+              child: Text(
+                overlay,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (urls.length == 1) {
+      return Image.network(urls[0], fit: BoxFit.cover, width: double.infinity, height: double.infinity);
+    }
+    if (urls.length == 2) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _cell(urls[0]),
+          const SizedBox(width: 2),
+          _cell(urls[1]),
+        ],
+      );
+    }
+    if (urls.length == 3) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _cell(urls[0]),
+                const SizedBox(width: 2),
+                _cell(urls[1]),
+              ],
+            ),
+          ),
+          const SizedBox(height: 2),
+          Expanded(child: _cell(urls[2])),
+        ],
+      );
+    }
+    final more = urls.length > 4 ? '+${urls.length - 4}' : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _cell(urls[0]),
+              const SizedBox(width: 2),
+              _cell(urls[1]),
+            ],
+          ),
+        ),
+        const SizedBox(height: 2),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _cell(urls[2]),
+              const SizedBox(width: 2),
+              _cell(urls[3], overlay: more),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EventImageCollageDetail extends StatelessWidget {
+  const _EventImageCollageDetail({required this.urls});
+  final List<String> urls;
+
+  @override
+  Widget build(BuildContext context) {
+    if (urls.length == 1) {
+      return Center(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            urls[0],
+            width: MediaQuery.of(context).size.width * 0.85,
+            fit: BoxFit.contain,
+          ),
+        ),
+      );
+    }
+    final n = urls.length > 4 ? 4 : urls.length;
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      mainAxisSpacing: 6,
+      crossAxisSpacing: 6,
+      childAspectRatio: 1,
+      children: List.generate(n, (i) {
+        if (i == 3 && urls.length > 4) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.network(urls[3], fit: BoxFit.cover),
+                Container(
+                  color: Colors.black54,
+                  alignment: Alignment.center,
+                  child: Text(
+                    '+${urls.length - 4}',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(urls[i], fit: BoxFit.cover),
+        );
+      }),
+    );
+  }
+}
+
 class AddEventForm extends StatefulWidget {
   const AddEventForm({super.key});
 
@@ -600,16 +765,49 @@ class _AddEventFormState extends State<AddEventForm> {
   String _eventType = 'meeting'; // Default
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
-  XFile? _selectedImage;
-  
-  Future<void> _pickImage() async {
+  final List<XFile> _selectedImages = [];
+
+  Future<void> _pickSourceSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Qalereya (bir neçə)'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickGalleryMultiple();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Kamera'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickCamera();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickGalleryMultiple() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = pickedFile;
-      });
+    final list = await picker.pickMultiImage(imageQuality: 85);
+    if (list.isNotEmpty) {
+      setState(() => _selectedImages.addAll(list));
     }
+  }
+
+  Future<void> _pickCamera() async {
+    final picker = ImagePicker();
+    final x = await picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+    if (x != null) setState(() => _selectedImages.add(x));
   }
 
   @override
@@ -643,32 +841,56 @@ class _AddEventFormState extends State<AddEventForm> {
                 maxLines: 3,
               ),
               const SizedBox(height: 16),
-              GestureDetector(
-                onTap: _pickImage,
-                child: Container(
-                  width: double.infinity,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: _selectedImage != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: kIsWeb
-                              ? Image.network(_selectedImage!.path, fit: BoxFit.cover)
-                              : Image.file(File(_selectedImage!.path), fit: BoxFit.cover),
-                        )
-                      : const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.add_photo_alternate, size: 40, color: Colors.grey),
-                            SizedBox(height: 8),
-                            Text('Tədbir şəkli əlavə et (İstəyə bağlı)', style: TextStyle(color: Colors.grey)),
-                          ],
-                        ),
-                ),
+              OutlinedButton.icon(
+                onPressed: _pickSourceSheet,
+                icon: const Icon(Icons.add_photo_alternate_outlined),
+                label: const Text('Şəkil əlavə et (qalereya / kamera)'),
               ),
+              if (_selectedImages.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 88,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _selectedImages.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, i) {
+                      final x = _selectedImages[i];
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: SizedBox(
+                              width: 88,
+                              height: 88,
+                              child: kIsWeb
+                                  ? Image.network(x.path, fit: BoxFit.cover)
+                                  : Image.file(File(x.path), fit: BoxFit.cover),
+                            ),
+                          ),
+                          Positioned(
+                            top: -4,
+                            right: -4,
+                            child: Material(
+                              color: Colors.red,
+                              shape: const CircleBorder(),
+                              child: InkWell(
+                                customBorder: const CircleBorder(),
+                                onTap: () => setState(() => _selectedImages.removeAt(i)),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4),
+                                  child: Icon(Icons.close, size: 16, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _eventType,
@@ -740,7 +962,7 @@ class _AddEventFormState extends State<AddEventForm> {
                         'event_type': _eventType,
                         'date': dt.toIso8601String(),
                         'is_active': true,
-                        if (_selectedImage != null) 'image': _selectedImage,
+                        if (_selectedImages.isNotEmpty) 'images': List<XFile>.from(_selectedImages),
                       });
                     }
                   },

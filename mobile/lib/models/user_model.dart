@@ -91,10 +91,17 @@ class User {
     if (action == 'create' || action == 'view_module') {
       return taskPermissions[action] == true;
     }
-    if (status == null || status.isEmpty) return false;
     final visibleStatuses =
         (taskStatusVisibility['visible_statuses'] as List?)?.cast<dynamic>() ?? const [];
+    if (status == null || status.isEmpty) return false;
     if (!visibleStatuses.contains(status)) return false;
-    return taskStatusPermissions[status]?[action] == true;
+
+    // Tapşırıq sənədləri: yalnız status üzrə icazə; qlobal sənəd yazıcı / task_permissions yox.
+    if (action == 'manage_documents') {
+      return taskStatusPermissions[status]?['manage_documents'] == true;
+    }
+
+    if (taskStatusPermissions[status]?[action] == true) return true;
+    return taskPermissions[action] == true;
   }
 }

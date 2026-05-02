@@ -42,11 +42,25 @@ export const hasTaskActionPermission = (user, action, taskStatus = null) => {
         return user.task_permissions?.[action] === true;
     }
     const visibleStatuses = user.task_status_visibility?.visible_statuses || [];
+
+    // Tapşırıq sənədləri: yalnız status üzrə `manage_documents` (qlobal `is_document_writer` / task_permissions yox).
+    if (action === 'manage_documents') {
+        if (!taskStatus) {
+            return visibleStatuses.some(
+                (s) => user.task_status_permissions?.[s]?.manage_documents === true,
+            );
+        }
+        if (!visibleStatuses.includes(taskStatus)) return false;
+        return user.task_status_permissions?.[taskStatus]?.manage_documents === true;
+    }
+
     if (!taskStatus) {
         return visibleStatuses.some((status) => user.task_status_permissions?.[status]?.[action] === true);
     }
     if (!visibleStatuses.includes(taskStatus)) return false;
-    return user.task_status_permissions?.[taskStatus]?.[action] === true;
+    const perStatus = user.task_status_permissions?.[taskStatus]?.[action] === true;
+    if (perStatus) return true;
+    return user.task_permissions?.[action] === true;
 };
 
 // Permission Constants

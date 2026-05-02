@@ -31,8 +31,8 @@ class TaskDocument(models.Model):
         null=True,
         blank=True
     )
-    title = models.CharField(max_length=200)
-    file = models.FileField(upload_to='task_documents/')
+    title = models.CharField(max_length=200, blank=True)
+    file = models.FileField(upload_to='task_documents/', blank=True, null=True)
     confirmed = models.BooleanField(default=False)
     confirmed_by = models.ForeignKey(
         User,
@@ -55,4 +55,5 @@ class TaskDocument(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.title} - {self.task.title if self.task else 'No Task'}"
+        label = self.title.strip() if self.title else '—'
+        return f"{label} - {self.task.title if self.task else 'No Task'}"

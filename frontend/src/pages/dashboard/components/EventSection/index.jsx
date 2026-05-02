@@ -3,6 +3,7 @@ import { Card, Tag, Tooltip } from 'antd';
 import { CalendarOutlined, PlusOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import styles from './style.module.scss';
 import { getEvents } from '../../../../axios/api/dashboard';
+import { getEventImageUrls } from '../../eventImages';
 import EventDetailModal from '../EventDetailModal';
 import EventModal from '../EventModal';
 
@@ -126,6 +127,7 @@ const EventSection = () => {
                 {/* Event Cards */}
                 {events.map((event) => {
                     const colorType = getTypeColor(event.event_type);
+                    const imgUrls = getEventImageUrls(event);
 
                     return (
                         <Card
@@ -159,12 +161,27 @@ const EventSection = () => {
                                         </Tooltip>
                                     </div>
                                 </div>
-                                {event.image && (
+                                {imgUrls.length > 0 && (
                                     <div className={styles.cardRightImage}>
-                                        <img
-                                            alt={event.title}
-                                            src={event.image}
-                                        />
+                                        <div
+                                            className={
+                                                imgUrls.length === 1
+                                                    ? styles.imageCollageSingle
+                                                    : styles.imageCollageGrid
+                                            }
+                                            data-count={Math.min(imgUrls.length, 4)}
+                                        >
+                                            {imgUrls.slice(0, 4).map((src, idx) => (
+                                                <div key={idx} className={styles.imageCollageCell}>
+                                                    <img alt="" src={src} />
+                                                    {idx === 3 && imgUrls.length > 4 && (
+                                                        <span className={styles.imageCollageMore}>
+                                                            +{imgUrls.length - 4}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </div>

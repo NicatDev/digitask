@@ -23,4 +23,20 @@ class Event(models.Model):
         return self.title
 
     class Meta:
-        ordering = ['-date']
+        # Əvvəlcə yeni əlavə olunan tədbirlər, sonra köhnələr
+        ordering = ['-created_at']
+
+
+class EventImage(models.Model):
+    """Tədbirə bir neçə şəkil (köhnə tək `Event.image` sahəsi hələ oxuna bilər)."""
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='event_images')
+    image = models.ImageField(upload_to='events/images/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['event', '-created_at'])]
+
+    def __str__(self):
+        return f'{self.event_id} #{self.pk}'

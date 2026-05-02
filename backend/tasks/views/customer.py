@@ -24,14 +24,6 @@ class CustomerViewSet(viewsets.ModelViewSet):
     pagination_class = CustomerPagination
     permission_classes = [IsAuthenticated]
 
-    def _is_admin_like(self, user):
-        role = getattr(user, "role", None)
-        return bool(
-            user.is_superuser
-            or (role and role.is_admin)
-            or (role and role.is_super_admin)
-        )
-
     def get_queryset(self):
         queryset = Customer.objects.select_related(
             'region', 'equipment', 'optic_box'
@@ -100,12 +92,6 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="import/start")
     def import_start(self, request):
-        if not self._is_admin_like(request.user):
-            return Response(
-                {"detail": "Bu əməliyyat üçün icazəniz yoxdur."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
         active_job = CustomerImportJob.objects.filter(
             status__in=[CustomerImportJob.Status.PENDING, CustomerImportJob.Status.RUNNING]
         ).first()
@@ -127,11 +113,6 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path=r"import/(?P<job_id>[^/.]+)")
     def import_status(self, request, job_id=None):
-        if not self._is_admin_like(request.user):
-            return Response(
-                {"detail": "Bu əməliyyat üçün icazəniz yoxdur."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
         job = CustomerImportJob.objects.filter(pk=job_id).first()
         if not job:
             return Response({"detail": "Job tapılmadı."}, status=status.HTTP_404_NOT_FOUND)

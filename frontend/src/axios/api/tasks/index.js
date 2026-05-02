@@ -91,8 +91,8 @@ export const deleteTaskProduct = (id) => axiosInstance.delete(`/tasks/task-produ
 export const getTaskDocuments = (params) => axiosInstance.get('/documents/documents/', { params });
 export const createTaskDocument = (data) => {
     const formData = new FormData();
-    formData.append('title', data.title);
-    formData.append('file', data.file);
+    if (data.title != null) formData.append('title', data.title);
+    if (data.file != null && data.file !== '') formData.append('file', data.file);
     if (data.task) formData.append('task', data.task);
     if (data.action) formData.append('action', data.action);
     if (data.stock_movement) formData.append('stock_movement', data.stock_movement);

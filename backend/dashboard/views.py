@@ -10,18 +10,16 @@ from django.db.models import Count, Q
 from datetime import timedelta
 
 class EventViewSet(viewsets.ModelViewSet):
-    queryset = Event.objects.all().order_by('-date')
+    queryset = Event.objects.all().order_by('-created_at')
     serializer_class = EventSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        # Clean up very old events option or filter by active
+        qs = super().get_queryset().prefetch_related('event_images')
         active_only = self.request.query_params.get('active_only')
         if active_only == 'true':
-            # Show events that are active and date is >= today (including passed hours today)
             now = timezone.now()
-            qs = qs.filter(is_active=True, date__date__gte=now.date()).order_by('date')
+            qs = qs.filter(is_active=True, date__date__gte=now.date()).order_by('-created_at')
         return qs
 
     def perform_create(self, serializer):

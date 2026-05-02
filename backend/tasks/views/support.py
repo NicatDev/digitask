@@ -10,15 +10,6 @@ from ..models import SupportComment, SupportRequest
 from ..serializers import SupportCommentSerializer, SupportRequestSerializer
 
 
-def _is_support_admin(user):
-    role = getattr(user, "role", None)
-    return bool(
-        user.is_superuser
-        or (role and getattr(role, "is_admin", False))
-        or (role and getattr(role, "is_super_admin", False))
-    )
-
-
 class SupportRequestViewSet(viewsets.ModelViewSet):
     queryset = SupportRequest.objects.all()
     serializer_class = SupportRequestSerializer
@@ -31,9 +22,6 @@ class SupportRequestViewSet(viewsets.ModelViewSet):
             "comments",
             "comments__user",
         )
-
-        if not _is_support_admin(user):
-            queryset = queryset.filter(created_by=user)
 
         status_param = (self.request.query_params.get("status") or "").strip()
         if status_param:
@@ -81,26 +69,10 @@ class SupportRequestViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
-    def partial_update(self, request, *args, **kwargs):
-        support = self.get_object()
-        if not _is_support_admin(request.user):
-            return Response(
-                {"detail": "Yalnız admin və super admin support statusunu dəyişə bilər."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        return super().partial_update(request, *args, **kwargs)
-
     @action(detail=True, methods=["post"])
     def comment(self, request, pk=None):
         support = self.get_object()
         user = request.user
-        can_comment = _is_support_admin(user) or support.created_by_id == user.id
-        if not can_comment:
-            return Response(
-                {"detail": "Yalnız müraciəti açan və adminlər şərh yaza bilər."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
 
         body = (request.data.get("body") or "").strip()
         if not body:
@@ -117,11 +89,6 @@ class SupportRequestViewSet(viewsets.ModelViewSet):
     def set_status(self, request, pk=None):
         support = self.get_object()
         user = request.user
-        if not _is_support_admin(user):
-            return Response(
-                {"detail": "Yalnız admin və super admin status dəyişə bilər."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
 
         new_status = (request.data.get("status") or "").strip()
         reject_note = (request.data.get("reject_note") or "").strip()

@@ -1,14 +1,12 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from django.utils import timezone
 from ..models import TaskDocument
 from ..serializers import TaskDocumentSerializer
-from users.task_permissions import can_task_action_for_task
 
 
 class DocumentPagination(PageNumberPagination):
@@ -69,8 +67,6 @@ class TaskDocumentViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         """Soft delete - set is_active to False."""
         instance = self.get_object()
-        if not can_task_action_for_task(request.user, 'manage_documents', instance.task):
-            return Response({'error': 'You do not have permission to delete task documents.'}, status=status.HTTP_403_FORBIDDEN)
         instance.is_active = False
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -79,8 +75,6 @@ class TaskDocumentViewSet(viewsets.ModelViewSet):
     def archive(self, request, pk=None):
         """Sənədi arxivə keçir - confirmed=True, shelf seçilir"""
         document = self.get_object()
-        if not can_task_action_for_task(request.user, 'manage_documents', document.task):
-            return Response({'error': 'You do not have permission to archive task documents.'}, status=status.HTTP_403_FORBIDDEN)
         shelf_id = request.data.get('shelf')
         
         if not shelf_id:
@@ -99,9 +93,7 @@ class TaskDocumentViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def perform_create(self, serializer):
-        target_task = serializer.validated_data.get('task')
-        if not can_task_action_for_task(self.request.user, 'manage_documents', target_task):
-            raise PermissionDenied("Task document create permission denied")
+        # Rol icazələri yalnız frontend-də; API tərəfi: IsAuthenticated.
         from tasks.models import TaskActivity
         from tasks.services.task_activity import log_task_activity
 
@@ -129,6 +121,4 @@ class TaskDocumentViewSet(viewsets.ModelViewSet):
             )
 
     def perform_update(self, serializer):
-        if not can_task_action_for_task(self.request.user, 'manage_documents', serializer.instance.task):
-            raise PermissionDenied("Task document update permission denied")
         serializer.save()
