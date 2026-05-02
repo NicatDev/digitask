@@ -1,22 +1,26 @@
 /** Cədvəl sütun ardıcıllığı sabit qalır; görünürlük User.task_table_column_visibility-də saxlanılır. */
 
-/** Sütun enləri (~10% kompakt; horizontal scroll üçün ümumi qənaət). */
+/**
+ * Sütun enləri (px) — `TaskTable` yalnız buradan oxuyur.
+ * Heç bir sütun 140px-dən böyük deyil (yığcam cədvəl).
+ */
 export const TASK_TABLE_COLUMN_META = [
-    { key: 'id', title: 'ID', width: 78 },
-    { key: 'title', title: 'Başlıq', width: 198 },
-    { key: 'task_type', title: 'Növ', width: 126 },
-    { key: 'customer_name', title: 'Müştəri', width: 180 },
-    { key: 'customer_phone', title: 'Əlaqə No', width: 135 },
-    { key: 'customer_register_number', title: 'Qeydiyyat No', width: 153 },
-    { key: 'group_name', title: 'Qrup', width: 135 },
-    { key: 'services', title: 'Servislər', width: 171 },
-    { key: 'assigned_to_names', title: 'İcraçılar', width: 180 },
-    { key: 'location', title: 'Ünvan', width: 72 },
-    { key: 'status', title: 'Status', width: 112 },
-    { key: 'created_at', title: 'Yaradılıb', width: 151 },
-    { key: 'rescheduled_date', title: 'Təxirə tarixi', width: 133 },
-    { key: 'is_active', title: 'Aktiv', width: 81 },
-    { key: 'action', title: 'Əməliyyat', width: 378 },
+    { key: 'id', title: 'ID', width: 84 },
+    { key: 'title', title: 'Başlıq', width: 140 },
+    { key: 'task_type', title: 'Növ', width: 118 },
+    { key: 'customer_name', title: 'Müştəri', width: 140 },
+    { key: 'customer_phone', title: 'Əlaqə No', width: 124 },
+    { key: 'customer_register_number', title: 'Qeydiyyat No', width: 136 },
+    { key: 'group_name', title: 'Qrup', width: 116 },
+    { key: 'services', title: 'Servislər', width: 140 },
+    { key: 'assigned_to_names', title: 'İcraçılar', width: 140 },
+    { key: 'location', title: 'Ünvan', width: 86 },
+    { key: 'status', title: 'Status', width: 120 },
+    { key: 'created_at', title: 'Yaradılıb', width: 132 },
+    { key: 'rescheduled_date', title: 'Təxirə tarixi', width: 116 },
+    // GERİ QAYTAR: Aktiv sütunu — bu sətri aç + TaskTable-da "Aktiv" sütun blokunun şərhini aç.
+    // { key: 'is_active', title: 'Aktiv', width: 72 },
+    { key: 'action', title: 'Əməliyyat', width: 140 },
 ];
 
 /** `TaskTable` sütun təyini üçün tək mənbə */
@@ -75,5 +79,5 @@ export function sumVisibleTableWidth(visibility) {
             sum += col.width;
         }
     }
-    return Math.max(sum, 720);
+    return Math.max(sum, 600);
 }

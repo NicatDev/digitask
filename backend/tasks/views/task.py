@@ -84,6 +84,7 @@ class TaskViewSet(viewsets.ModelViewSet):
             'group',
             'group__region',
             'reporter',
+            'task_type',
         ).prefetch_related(
             'assigned_to',
             'task_services', 'task_services__service', 'task_services__values',
@@ -162,6 +163,8 @@ class TaskViewSet(viewsets.ModelViewSet):
         search = (self.request.query_params.get('search') or '').strip()
         id_search = (self.request.query_params.get('id_search') or '').strip()
         register_number_search = (self.request.query_params.get('register_number_search') or '').strip()
+        task_type_fk = (self.request.query_params.get('task_type') or '').strip()
+        task_type_search = (self.request.query_params.get('task_type_search') or '').strip()
 
         # ID sütunu: yalnız rəqəmsə dəqiq pk, əks halda mətn üzrə icontains
         id_search_non_digit = bool(id_search) and not id_search.isdigit()
@@ -186,6 +189,14 @@ class TaskViewSet(viewsets.ModelViewSet):
         if register_number_search:
             queryset = queryset.filter(customer__register_number__icontains=register_number_search)
 
+        if task_type_fk and task_type_fk.isdigit():
+            queryset = queryset.filter(task_type_id=int(task_type_fk))
+        elif task_type_search:
+            if task_type_search.isdigit():
+                queryset = queryset.filter(task_type_id=int(task_type_search))
+            else:
+                queryset = queryset.filter(task_type__name__icontains=task_type_search)
+
         queryset = queryset.distinct()
 
         # Cədvəl sırası: ordering verilərsə həmin sütun (whitelist), yoxsa status ardıcıllığı
@@ -195,6 +206,8 @@ class TaskViewSet(viewsets.ModelViewSet):
             '-id': ('-id', '-created_at'),
             'register_number': ('customer__register_number', 'id', '-created_at'),
             '-register_number': ('-customer__register_number', 'id', '-created_at'),
+            'task_type_name': ('task_type__name', 'id', '-created_at'),
+            '-task_type_name': ('-task_type__name', 'id', '-created_at'),
         }
 
         if ordering in ordering_whitelist:

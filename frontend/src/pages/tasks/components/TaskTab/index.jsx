@@ -80,12 +80,15 @@ const TaskTab = ({ isActive }) => {
     const [tableOrdering, setTableOrdering] = useState(null);
     const [columnIdSearch, setColumnIdSearch] = useState('');
     const [columnRegisterSearch, setColumnRegisterSearch] = useState('');
+    const [columnTaskTypeSearch, setColumnTaskTypeSearch] = useState('');
 
     const tableOrderingRef = useRef(null);
     const columnRegisterSearchRef = useRef('');
     const columnIdSearchRef = useRef('');
+    const columnTaskTypeSearchRef = useRef('');
     const idSearchDebounceRef = useRef(null);
     const regSearchDebounceRef = useRef(null);
+    const taskTypeSearchDebounceRef = useRef(null);
 
     useEffect(() => {
         tableOrderingRef.current = tableOrdering;
@@ -96,6 +99,9 @@ const TaskTab = ({ isActive }) => {
     useEffect(() => {
         columnIdSearchRef.current = columnIdSearch;
     }, [columnIdSearch]);
+    useEffect(() => {
+        columnTaskTypeSearchRef.current = columnTaskTypeSearch;
+    }, [columnTaskTypeSearch]);
 
     // Modal States
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -185,6 +191,12 @@ const TaskTab = ({ isActive }) => {
                 queryParams.register_number_search = String(regCol).trim();
             }
 
+            const taskTypeCol =
+                params.task_type !== undefined ? params.task_type : columnTaskTypeSearch;
+            if (taskTypeCol !== undefined && taskTypeCol !== null && String(taskTypeCol).trim() !== '') {
+                queryParams.task_type = String(taskTypeCol).trim();
+            }
+
             const [tasksRes, groupsRes, usersRes, servicesRes, columnsRes, taskTypesRes] = await Promise.all([
                 getTasks(queryParams),
                 getGroups(),
@@ -244,6 +256,10 @@ const TaskTab = ({ isActive }) => {
             clearTimeout(regSearchDebounceRef.current);
             regSearchDebounceRef.current = null;
         }
+        if (taskTypeSearchDebounceRef.current) {
+            clearTimeout(taskTypeSearchDebounceRef.current);
+            taskTypeSearchDebounceRef.current = null;
+        }
     };
 
     const scheduleColumnIdSearch = (raw) => {
@@ -256,6 +272,7 @@ const TaskTab = ({ isActive }) => {
                 page: 1,
                 id_search: v,
                 register_number_search: columnRegisterSearchRef.current,
+                task_type: columnTaskTypeSearchRef.current,
                 ordering: tableOrderingRef.current,
             });
         }, 400);
@@ -272,6 +289,7 @@ const TaskTab = ({ isActive }) => {
             page: 1,
             id_search: v,
             register_number_search: columnRegisterSearchRef.current,
+            task_type: columnTaskTypeSearchRef.current,
             ordering: tableOrderingRef.current,
         });
     };
@@ -286,6 +304,7 @@ const TaskTab = ({ isActive }) => {
                 page: 1,
                 register_number_search: v,
                 id_search: columnIdSearchRef.current,
+                task_type: columnTaskTypeSearchRef.current,
                 ordering: tableOrderingRef.current,
             });
         }, 400);
@@ -302,6 +321,39 @@ const TaskTab = ({ isActive }) => {
             page: 1,
             register_number_search: v,
             id_search: columnIdSearchRef.current,
+            task_type: columnTaskTypeSearchRef.current,
+            ordering: tableOrderingRef.current,
+        });
+    };
+
+    const scheduleColumnTaskTypeSearch = (raw) => {
+        const v = raw != null ? String(raw).trim() : '';
+        if (taskTypeSearchDebounceRef.current) clearTimeout(taskTypeSearchDebounceRef.current);
+        taskTypeSearchDebounceRef.current = setTimeout(() => {
+            taskTypeSearchDebounceRef.current = null;
+            setColumnTaskTypeSearch(v);
+            fetchData({
+                page: 1,
+                task_type: v,
+                id_search: columnIdSearchRef.current,
+                register_number_search: columnRegisterSearchRef.current,
+                ordering: tableOrderingRef.current,
+            });
+        }, 400);
+    };
+
+    const flushColumnTaskTypeSearch = (raw) => {
+        if (taskTypeSearchDebounceRef.current) {
+            clearTimeout(taskTypeSearchDebounceRef.current);
+            taskTypeSearchDebounceRef.current = null;
+        }
+        const v = raw != null ? String(raw).trim() : '';
+        setColumnTaskTypeSearch(v);
+        fetchData({
+            page: 1,
+            task_type: v,
+            id_search: columnIdSearchRef.current,
+            register_number_search: columnRegisterSearchRef.current,
             ordering: tableOrderingRef.current,
         });
     };
@@ -322,6 +374,8 @@ const TaskTab = ({ isActive }) => {
                     nextOrdering = ord === 'ascend' ? 'id' : '-id';
                 } else if (colKey === 'customer_register_number') {
                     nextOrdering = ord === 'ascend' ? 'register_number' : '-register_number';
+                } else if (colKey === 'task_type') {
+                    nextOrdering = ord === 'ascend' ? 'task_type_name' : '-task_type_name';
                 }
             }
             setTableOrdering(nextOrdering);
@@ -340,6 +394,8 @@ const TaskTab = ({ isActive }) => {
                 nextOrdering = ord === 'ascend' ? 'id' : '-id';
             } else if (colKey === 'customer_register_number') {
                 nextOrdering = ord === 'ascend' ? 'register_number' : '-register_number';
+            } else if (colKey === 'task_type') {
+                nextOrdering = ord === 'ascend' ? 'task_type_name' : '-task_type_name';
             }
         } else if (colKey && !ord) {
             nextOrdering = null;
@@ -598,6 +654,11 @@ const TaskTab = ({ isActive }) => {
                 onColumnRegisterInputChange={scheduleColumnRegisterSearch}
                 onColumnRegisterFilterClear={flushColumnRegisterSearch}
                 onColumnRegisterFilterFlush={flushColumnRegisterSearch}
+                columnTaskTypeSearch={columnTaskTypeSearch}
+                onColumnTaskTypeInputChange={scheduleColumnTaskTypeSearch}
+                onColumnTaskTypeFilterClear={flushColumnTaskTypeSearch}
+                onColumnTaskTypeFilterFlush={flushColumnTaskTypeSearch}
+                taskTypes={taskTypes}
                 services={services}
                 onEdit={openEditModal}
                 disableEdit={!taskCaps.canEditGeneral}

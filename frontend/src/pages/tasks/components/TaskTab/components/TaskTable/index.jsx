@@ -2,7 +2,7 @@ import React from 'react';
 
 /** Serverdə ordering; cədvəl mövcud səhifəni yenidən qarışdırmır */
 const serverSideSorter = { compare: () => 0 };
-import { Table, Button, Switch, Tooltip, Popconfirm, message, Space, Tag, Input } from 'antd';
+import { Table, Button, Switch, Tooltip, Popconfirm, message, Space, Tag, Input, Select } from 'antd';
 import {
     EnvironmentOutlined,
     FileAddOutlined,
@@ -91,6 +91,7 @@ const TaskTable = ({
     data,
     loading,
     services,
+    taskTypes = [],
     onEdit,
     onStatusChange,
     onToggleActive,
@@ -109,12 +110,16 @@ const TaskTable = ({
     tableOrdering = null,
     columnIdSearch = '',
     columnRegisterSearch = '',
+    columnTaskTypeSearch = '',
     onColumnIdInputChange,
     onColumnIdFilterClear,
     onColumnIdFilterFlush,
     onColumnRegisterInputChange,
     onColumnRegisterFilterClear,
     onColumnRegisterFilterFlush,
+    onColumnTaskTypeInputChange,
+    onColumnTaskTypeFilterClear,
+    onColumnTaskTypeFilterFlush,
     disableEdit = false,
     disableDelete = false,
     disableStatus = false,
@@ -135,6 +140,12 @@ const TaskTable = ({
         tableOrdering === 'register_number'
             ? 'ascend'
             : tableOrdering === '-register_number'
+              ? 'descend'
+              : null;
+    const taskTypeSortOrder =
+        tableOrdering === 'task_type_name'
+            ? 'ascend'
+            : tableOrdering === '-task_type_name'
               ? 'descend'
               : null;
 
@@ -226,6 +237,60 @@ const TaskTable = ({
             dataIndex: 'task_type_details',
             key: 'task_type',
             width: W.task_type,
+            sorter: serverSideSorter,
+            sortOrder: taskTypeSortOrder,
+            sortDirections: ['ascend', 'descend'],
+            showSorterTooltip: false,
+            filteredValue: columnTaskTypeSearch ? [columnTaskTypeSearch] : null,
+            filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => {
+                const typeOptions = [...(taskTypes || [])]
+                    .sort((a, b) =>
+                        String(a?.name ?? '').localeCompare(String(b?.name ?? ''), 'az', {
+                            sensitivity: 'base',
+                        }),
+                    )
+                    .map((t) => ({
+                        value: String(t.id),
+                        label: t?.name ? String(t.name) : `#${t.id}`,
+                    }));
+                return (
+                    <div style={{ padding: 8, minWidth: 220 }} onKeyDown={(e) => e.stopPropagation()}>
+                        <Select
+                            showSearch
+                            allowClear
+                            placeholder="Növ seçin"
+                            style={{ width: '100%' }}
+                            value={selectedKeys[0] || undefined}
+                            options={typeOptions}
+                            optionFilterProp="label"
+                            popupMatchSelectWidth={false}
+                            onChange={(v) => {
+                                const val = v != null && v !== '' ? String(v) : '';
+                                setSelectedKeys(val ? [val] : []);
+                                if (val) {
+                                    onColumnTaskTypeFilterFlush?.(val);
+                                } else {
+                                    onColumnTaskTypeFilterClear?.('');
+                                }
+                                confirm();
+                            }}
+                        />
+                        <Space style={{ marginTop: 8 }}>
+                            <Button
+                                onClick={() => {
+                                    setSelectedKeys([]);
+                                    clearFilters?.();
+                                    confirm();
+                                    onColumnTaskTypeFilterClear?.('');
+                                }}
+                                size="small"
+                            >
+                                Sıfırla
+                            </Button>
+                        </Space>
+                    </div>
+                );
+            },
             render: (type, record) => type ? (
                 <span style={{
                     display: 'flex',
@@ -460,19 +525,20 @@ const TaskTable = ({
             width: W.rescheduled_date,
             render: (v) => formatAzDate(v),
         },
-        {
-            title: 'Aktiv',
-            dataIndex: 'is_active',
-            key: 'is_active',
-            width: W.is_active,
-            render: (active, record) => (
-                <Switch
-                    checked={active}
-                    onChange={(checked) => onToggleActive(record.id, checked)}
-                    disabled={disableActiveToggle || !canForTask?.('toggle_active', record)}
-                />
-            )
-        },
+        // GERİ QAYTAR: Aktiv sütunu — taskTableColumnPrefs.js-də is_active sətirinin şərhini də aç.
+        // {
+        //     title: 'Aktiv',
+        //     dataIndex: 'is_active',
+        //     key: 'is_active',
+        //     width: W.is_active,
+        //     render: (active, record) => (
+        //         <Switch
+        //             checked={active}
+        //             onChange={(checked) => onToggleActive(record.id, checked)}
+        //             disabled={disableActiveToggle || !canForTask?.('toggle_active', record)}
+        //         />
+        //     )
+        // },
         {
             title: 'Əməliyyat',
             key: 'action',
