@@ -14,11 +14,17 @@ import {
     FormOutlined,
     ShoppingOutlined,
     DeleteOutlined,
+    MessageOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { TASK_STATUSES } from '../../constants';
 import { useAuth } from '../../../../../../context/AuthContext';
-import { defaultColumnVisibility, sumVisibleTableWidth, TASK_TABLE_COLUMN_WIDTHS as W } from '../../taskTableColumnPrefs';
+import {
+    defaultColumnVisibility,
+    sumVisibleTableWidth,
+    TASK_TABLE_FIXED_KEYS,
+    TASK_TABLE_COLUMN_WIDTHS as W,
+} from '../../taskTableColumnPrefs';
 import styles from '../../style.module.scss';
 
 // Helper to get status label
@@ -105,6 +111,7 @@ const TaskTable = ({
     onAddAssignee,
     onJoinTask,
     onMarkExternalArchived,
+    onSendToChat,
     pagination,
     onChange,
     tableOrdering = null,
@@ -149,7 +156,7 @@ const TaskTable = ({
               ? 'descend'
               : null;
 
-    const isTaskColVisible = (key) => key === 'action' || columnVisibility[key] !== false;
+    const isTaskColVisible = (key) => TASK_TABLE_FIXED_KEYS.has(key) || columnVisibility[key] !== false;
 
     const tableColumns = [
         {
@@ -518,13 +525,14 @@ const TaskTable = ({
         //     width: 168,
         //     render: (v) => formatAzDateTime(v),
         // },
-        {
-            title: 'Təxirə tarixi',
-            dataIndex: 'rescheduled_date',
-            key: 'rescheduled_date',
-            width: W.rescheduled_date,
-            render: (v) => formatAzDate(v),
-        },
+        // GERİ QAYTAR: Təxirə salınma tarixi sütunu — taskTableColumnPrefs.js-də rescheduled_date sətirinin şərhini də aç.
+        // {
+        //     title: 'Təxirə salınma tarixi',
+        //     dataIndex: 'rescheduled_date',
+        //     key: 'rescheduled_date',
+        //     width: W.rescheduled_date,
+        //     render: (v) => formatAzDate(v),
+        // },
         // GERİ QAYTAR: Aktiv sütunu — taskTableColumnPrefs.js-də is_active sətirinin şərhini də aç.
         // {
         //     title: 'Aktiv',
@@ -544,15 +552,15 @@ const TaskTable = ({
             key: 'action',
             width: W.action,
             render: (_, record) => {
-                const btnStyle = { height: 'auto', fontSize: 11, padding: '4px 7px', lineHeight: 1.3 };
+                const btnClassName = styles.actionTextButton;
                 const cells = [
                     <Button
                         key="edit"
-                        type="primary"
+                        type="text"
                         size="small"
                         block
                         icon={<EditOutlined />}
-                        style={btnStyle}
+                        className={btnClassName}
                         onClick={() => onEdit(record)}
                         disabled={disableEdit || !canForTask?.('edit_general', record)}
                     >
@@ -560,11 +568,11 @@ const TaskTable = ({
                     </Button>,
                     <Button
                         key="status"
-                        type="primary"
+                        type="text"
                         size="small"
                         block
                         icon={<SyncOutlined />}
-                        style={btnStyle}
+                        className={btnClassName}
                         onClick={() => onStatusChange(record)}
                         disabled={disableStatus || !canForTask?.('change_status', record)}
                     >
@@ -572,11 +580,11 @@ const TaskTable = ({
                     </Button>,
                     <Button
                         key="q"
-                        type="primary"
+                        type="text"
                         size="small"
                         block
                         icon={<FormOutlined />}
-                        style={btnStyle}
+                        className={btnClassName}
                         onClick={() => onQuestionnaire(record)}
                         disabled={disableQuestionnaire || !canForTask?.('manage_surveys', record)}
                     >
@@ -584,23 +592,34 @@ const TaskTable = ({
                     </Button>,
                     <Button
                         key="prod"
-                        type="primary"
+                        type="text"
                         size="small"
                         block
                         icon={<ShoppingOutlined />}
-                        style={btnStyle}
+                        className={btnClassName}
                         onClick={() => onProductSelect(record)}
                         disabled={disableProducts || !canForTask?.('manage_products', record)}
                     >
                         Məhsul ({record.task_products?.length || 0})
                     </Button>,
                     <Button
+                        key="chat"
+                        type="text"
+                        size="small"
+                        block
+                        icon={<MessageOutlined />}
+                        className={btnClassName}
+                        onClick={() => onSendToChat?.(record)}
+                    >
+                        Chata göndər
+                    </Button>,
+                    <Button
                         key="doc"
-                        type="primary"
+                        type="text"
                         size="small"
                         block
                         icon={<FileAddOutlined />}
-                        style={btnStyle}
+                        className={btnClassName}
                         onClick={() => onDocumentAdd(record)}
                         disabled={disableDocuments || !canForTask?.('manage_documents', record)}
                     >
@@ -609,11 +628,11 @@ const TaskTable = ({
                     record.is_externally_archived ? (
                         <Button
                             key="arch"
-                            type="primary"
+                            type="text"
                             size="small"
                             block
                             icon={<CheckCircleOutlined />}
-                            style={{ ...btnStyle, opacity: 0.85 }}
+                            className={btnClassName}
                             disabled
                         >
                             Arxivdədir
@@ -621,11 +640,11 @@ const TaskTable = ({
                     ) : (
                         <Button
                             key="arch"
-                            type="primary"
+                            type="text"
                             size="small"
                             block
                             icon={<CheckCircleOutlined />}
-                            style={btnStyle}
+                            className={btnClassName}
                             onClick={() => onMarkExternalArchived?.(record)}
                             disabled={!canForTask?.('mark_external_archived', record)}
                         >
@@ -639,7 +658,7 @@ const TaskTable = ({
                                   title="Silmək istədiyinizə əminsiniz?"
                                   onConfirm={() => onDelete(record.id)}
                               >
-                                  <Button type="primary" danger size="small" block icon={<DeleteOutlined />} style={btnStyle}>
+                                  <Button type="text" danger size="small" block icon={<DeleteOutlined />} className={btnClassName}>
                                       Sil
                                   </Button>
                               </Popconfirm>,
@@ -648,29 +667,14 @@ const TaskTable = ({
                 ];
                 const rows = chunkActionRows(cells);
                 return (
-                    <div
-                        style={{
-                            border: '1px solid #f0f0f0',
-                            borderRadius: 8,
-                            background: '#fff',
-                            overflow: 'hidden',
-                        }}
-                    >
+                    <div className={styles.actionButtonsPanel}>
                         {rows.map((row, idx) => (
                             <div
                                 key={idx}
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: `repeat(${ACTION_ROW_COLS}, minmax(0, 1fr))`,
-                                    columnGap: 6,
-                                    rowGap: 6,
-                                    padding: '6px 8px',
-                                    borderBottom: idx < rows.length - 1 ? '1px solid #e8e8e8' : 'none',
-                                    alignItems: 'stretch',
-                                }}
+                                className={styles.actionButtonsRow}
                             >
                                 {row.map((cell, j) => (
-                                    <div key={j} style={{ minWidth: 0 }}>
+                                    <div key={j} className={styles.actionButtonCell}>
                                         {cell}
                                     </div>
                                 ))}

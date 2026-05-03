@@ -139,6 +139,14 @@ class ChatService {
       print('WebSocket not connected for this group');
     }
   }
+
+  Future<void> sendMessageByApi(int groupId, String content) async {
+    await ApiClient().dio.post('/chat/messages/', data: {
+      'group': groupId,
+      'content': content,
+    });
+    await fetchGroups();
+  }
   
   Future<void> createGroup(String name) async {
       try {

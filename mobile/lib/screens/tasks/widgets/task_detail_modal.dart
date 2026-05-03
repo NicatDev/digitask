@@ -3,15 +3,33 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/core/constants.dart';
+import 'package:mobile/core/services/chat_service.dart';
+import 'package:mobile/screens/tasks/widgets/assignee_modal.dart';
 import 'package:mobile/screens/tasks/widgets/task_display_helpers.dart';
 import 'package:mobile/screens/tasks/widgets/customer_tasks_history_modal.dart';
+import 'package:mobile/screens/chat/task_message_codec.dart';
+import 'package:mobile/screens/tasks/widgets/files_modal.dart';
+import 'package:mobile/screens/tasks/widgets/interaction_modals.dart' hide SurveyModal, FilesModal, ProductsModal;
+import 'package:mobile/screens/tasks/widgets/products_modal.dart';
+import 'package:mobile/screens/tasks/widgets/survey_modal.dart';
 
 final _imageUrlRe = RegExp(r'\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$', caseSensitive: false);
 
 class TaskDetailModal extends StatefulWidget {
   final Map<String, dynamic> task;
   final List<dynamic> allServices;
+  final List<dynamic> allUsers;
+  final VoidCallback? onEdit;
+  final VoidCallback? onRefresh;
   final VoidCallback? onArchivedMarked;
+  final bool canEditGeneral;
+  final bool canDelete;
+  final bool canChangeStatus;
+  final bool canManageProducts;
+  final bool canManageDocuments;
+  final bool canManageSurveys;
+  final bool canManageAssignees;
+  final bool canJoinTask;
   final bool canMarkExternalArchived;
   final bool canCommentActivity;
 
@@ -19,7 +37,18 @@ class TaskDetailModal extends StatefulWidget {
     super.key,
     required this.task,
     this.allServices = const [],
+    this.allUsers = const [],
+    this.onEdit,
+    this.onRefresh,
     this.onArchivedMarked,
+    this.canEditGeneral = false,
+    this.canDelete = false,
+    this.canChangeStatus = false,
+    this.canManageProducts = false,
+    this.canManageDocuments = false,
+    this.canManageSurveys = false,
+    this.canManageAssignees = false,
+    this.canJoinTask = false,
     this.canMarkExternalArchived = false,
     this.canCommentActivity = false,
   });
@@ -296,13 +325,16 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
               const Divider(),
               Expanded(
                 child: DefaultTabController(
-                  length: 3,
+                  length: 4,
                   child: Column(
                     children: [
                       const TabBar(
+                        isScrollable: true,
+                        tabAlignment: TabAlignment.start,
                         tabs: [
                           Tab(text: 'Tapşırıq'),
                           Tab(text: 'Müştəri'),
+                          Tab(text: 'Əməliyyatlar'),
                           Tab(text: 'Aktivlik'),
                         ],
                       ),
@@ -311,9 +343,7 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
                           children: [
                             LayoutBuilder(
                               builder: (context, constraints) {
-                                final wide = constraints.maxWidth >= 600;
                                 final mediaWidgets = _buildMediaSection(task);
-                                final archived = task['is_externally_archived'] == true;
                                 return ListView(
                                   controller: scrollController,
                                   keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -342,50 +372,6 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
                                     ),
                                     const SizedBox(height: 16),
                                     _taskInfoColumn(context, task, createdAt, updatedAt),
-                                    const SizedBox(height: 8),
-                                    if (archived)
-                                      Container(
-                                        width: double.infinity,
-                                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green.withOpacity(0.08),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: Colors.green.withOpacity(0.35)),
-                                        ),
-                                        child: const Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(Icons.check_circle, color: Colors.green),
-                                            SizedBox(width: 8),
-                                            Text(
-                                              'Arxivdədir',
-                                              style: TextStyle(
-                                                color: Colors.green,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      )
-                                    else
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: ElevatedButton.icon(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.blue,
-                                            foregroundColor: Colors.white,
-                                          ),
-                                          onPressed: widget.canMarkExternalArchived ? _markExternalArchived : null,
-                                          icon: const Icon(Icons.inventory_2),
-                                          label: const Text('Arxivə köçür'),
-                                        ),
-                                      ),
-                                    const SizedBox(height: 12),
-                                    TextButton.icon(
-                                      onPressed: _openCustomerHistory,
-                                      icon: const Icon(Icons.history, size: 18),
-                                      label: const Text('Tapşırıq tarixçəsinə bax (müştəri üzrə)'),
-                                    ),
                                     const SizedBox(height: 16),
                                     _sectionTitle('Xidmətlər'),
                                     if (hasTaskServices) ..._buildServicesList(taskServicesList!),
@@ -421,6 +407,14 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
                               padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + keyboardInset),
                               children: [
                                 _customerColumn(context, task),
+                              ],
+                            ),
+                            ListView(
+                              controller: scrollController,
+                              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                              padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + keyboardInset),
+                              children: [
+                                _actionsColumn(context, task),
                               ],
                             ),
                             ListView(
@@ -553,8 +547,299 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
         _infoRow(context, 'Qeydiyyat №', task['customer_register_number'] ?? '-'),
         _infoRow(context, 'Avadanlıq', task['customer_equipment_name'] ?? '-'),
         _infoRow(context, 'Optik qutu', task['customer_optic_box_name'] ?? '-'),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: TextButton.icon(
+            onPressed: _openCustomerHistory,
+            icon: const Icon(Icons.history, size: 18),
+            label: const Text('Tapşırıq tarixçəsinə bax (müştəri üzrə)'),
+          ),
+        ),
       ],
     );
+  }
+
+  Widget _actionsColumn(BuildContext context, Map<String, dynamic> task) {
+    final List<dynamic> assigneeIds = task['assigned_to'] is List ? task['assigned_to'] : [];
+    final List<dynamic> assigneeNames = task['assigned_to_names'] is List ? task['assigned_to_names'] : [];
+    final currentUser = ChatService().currentUser.value;
+    final isCurrentUserAssignee = currentUser != null && assigneeIds.contains(currentUser.id);
+    final isDoneTask = task['status'] == 'done';
+    final archived = task['is_externally_archived'] == true;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Əməliyyatlar'),
+        _actionButton(
+          icon: isCurrentUserAssignee ? Icons.person_add : Icons.group_add,
+          label: isCurrentUserAssignee ? 'İcraçı əlavə et' : 'İcraya qoşul',
+          onPressed: isDoneTask
+              ? null
+              : () {
+                  if (isCurrentUserAssignee && !widget.canManageAssignees) return;
+                  if (!isCurrentUserAssignee && !widget.canJoinTask) return;
+                  _openAssigneeModal(context, assigneeIds, assigneeNames, isCurrentUserAssignee);
+                },
+        ),
+        const SizedBox(height: 8),
+        _actionButton(
+          icon: Icons.edit,
+          label: 'Düzəliş',
+          onPressed: widget.canEditGeneral
+              ? () {
+                  Navigator.pop(context);
+                  widget.onEdit?.call();
+                }
+              : null,
+        ),
+        const SizedBox(height: 8),
+        _actionButton(
+          icon: Icons.sync_alt,
+          label: 'Status',
+          onPressed: widget.canChangeStatus
+              ? () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    useSafeArea: true,
+                    builder: (_) => StatusModal(task: task, onSuccess: _refreshAfterAction),
+                  );
+                }
+              : null,
+        ),
+        const SizedBox(height: 8),
+        _actionButton(
+          icon: Icons.assignment,
+          label: 'Anket',
+          onPressed: widget.canManageSurveys
+              ? () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    useSafeArea: true,
+                    builder: (_) => SurveyModal(
+                      task: task,
+                      allServices: widget.allServices,
+                      onSuccess: _refreshAfterAction,
+                    ),
+                  );
+                }
+              : null,
+        ),
+        const SizedBox(height: 8),
+        _actionButton(
+          icon: Icons.shopping_bag,
+          label: 'Məhsul (${(task['task_products'] as List?)?.length ?? 0})',
+          onPressed: widget.canManageProducts
+              ? () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (_) => ProductsModal(task: task, onSuccess: _refreshAfterAction),
+                  );
+                }
+              : null,
+        ),
+        const SizedBox(height: 8),
+        _actionButton(
+          icon: Icons.chat_bubble_outline,
+          label: 'Chata göndər',
+          onPressed: () => _openSendToChatDialog(context),
+        ),
+        const SizedBox(height: 8),
+        _actionButton(
+          icon: Icons.attach_file,
+          label: 'Sənəd (${(task['task_documents'] as List?)?.length ?? 0})',
+          onPressed: widget.canManageDocuments
+              ? () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (_) => FilesModal(task: task, onSuccess: _refreshAfterAction),
+                  );
+                }
+              : null,
+        ),
+        const SizedBox(height: 8),
+        if (archived)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.green.withOpacity(0.35)),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.check_circle, color: Colors.green),
+                SizedBox(width: 8),
+                Text(
+                  'Arxivdədir',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: widget.canMarkExternalArchived ? _markExternalArchived : null,
+              icon: const Icon(Icons.inventory_2),
+              label: const Text('Arxivə köçür'),
+            ),
+          ),
+        if (widget.canDelete) ...[
+          const SizedBox(height: 8),
+          _actionButton(
+            icon: Icons.delete,
+            label: 'Sil',
+            foregroundColor: Colors.red,
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) => DeleteTaskDialog(taskId: task['id'], onSuccess: _refreshAfterAction),
+              );
+            },
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _actionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onPressed,
+    Color? foregroundColor,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        label: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(label),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: foregroundColor,
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  void _refreshAfterAction() {
+    widget.onRefresh?.call();
+    _loadActivity();
+  }
+
+  void _openAssigneeModal(
+    BuildContext context,
+    List<dynamic> assigneeIds,
+    List<dynamic> assigneeNames,
+    bool isCurrentUserAssignee,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => AssigneeModal(
+        task: widget.task,
+        allUsers: widget.allUsers,
+        assigneeIds: assigneeIds,
+        assigneeNames: assigneeNames,
+        isCurrentUserAssignee: isCurrentUserAssignee,
+        onRefresh: _refreshAfterAction,
+      ),
+    );
+  }
+
+  Future<void> _openSendToChatDialog(BuildContext context) async {
+    final noteCtrl = TextEditingController();
+    int? selectedGroupId;
+    await ChatService().fetchGroups();
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final groups = ChatService().groups.value;
+            return AlertDialog(
+              title: const Text('Tapşırığı chata göndər'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<int>(
+                    value: selectedGroupId,
+                    decoration: const InputDecoration(labelText: 'Qrup'),
+                    items: groups
+                        .map((g) => DropdownMenuItem<int>(
+                              value: g.id,
+                              child: Text(g.name),
+                            ))
+                        .toList(),
+                    onChanged: (v) => setDialogState(() => selectedGroupId = v),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: noteCtrl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Qeyd',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Ləğv et')),
+                FilledButton(
+                  onPressed: selectedGroupId == null
+                      ? null
+                      : () async {
+                          try {
+                            final payload = buildTaskChatPayload(widget.task, noteCtrl.text);
+                            await ChatService().sendMessageByApi(
+                              selectedGroupId!,
+                              encodeTaskChatMessage(payload),
+                            );
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Tapşırıq chata göndərildi')),
+                              );
+                            }
+                          } catch (_) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Chata göndərilmədi')),
+                              );
+                            }
+                          }
+                        },
+                  child: const Text('Göndər'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    noteCtrl.dispose();
   }
 
   Widget _sectionTitle(String title) {

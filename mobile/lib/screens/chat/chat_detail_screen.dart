@@ -6,6 +6,8 @@ import 'package:mobile/models/chat_model.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/screens/chat/group_settings_modal.dart';
 import 'package:mobile/screens/chat/reply_codec.dart';
+import 'package:mobile/screens/chat/task_message_codec.dart';
+import 'package:mobile/screens/tasks/widgets/task_detail_modal.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final int groupId;
@@ -25,6 +27,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _isLoadingMore = false;
   int? _currentUserId;
   ChatMessage? _replyTo;
+  final List<String> _emojis = const ['😀', '😁', '😂', '😊', '😍', '👍', '🙏', '👏', '🔥', '✅', '⚠️', '❤️'];
 
   @override
   void initState() {
@@ -74,7 +77,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final r = _replyTo;
     if (r != null) {
       final decoded = decodeReply(r.content);
-      final snippet = decoded.body.trim();
+      final snippet = stripTaskChatMessage(decoded.body).trim();
       payload = encodeReply(
         body: text,
         replyId: r.id,
@@ -86,6 +89,58 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _chatService.sendMessage(widget.groupId, payload);
     _controller.clear();
     setState(() => _replyTo = null);
+  }
+
+  Future<void> _openTaskFromChat(dynamic taskId) async {
+    final id = int.tryParse(taskId?.toString() ?? '');
+    if (id == null) return;
+    try {
+      final res = await ApiClient().dio.get('/tasks/tasks/$id/');
+      if (!mounted) return;
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => TaskDetailModal(
+          task: Map<String, dynamic>.from(res.data),
+          canCommentActivity: false,
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tapşırıq açılmadı')));
+      }
+    }
+  }
+
+  void _showEmojiPicker() {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _emojis
+                .map(
+                  (emoji) => InkWell(
+                    onTap: () {
+                      _controller.text = '${_controller.text}$emoji';
+                      _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+                      Navigator.pop(ctx);
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Text(emoji, style: const TextStyle(fontSize: 28)),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      ),
+    );
   }
 
   bool _isSameDay(DateTime a, DateTime b) {
@@ -233,6 +288,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   ),
                 Row(
                   children: [
+                    IconButton(
+                      icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.blueGrey),
+                      onPressed: _showEmojiPicker,
+                    ),
                     Expanded(
                       child: TextField(
                         controller: _controller,
@@ -263,6 +322,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   Widget _buildMessageBubble(ChatMessage message, bool isMe) {
       final decoded = decodeReply(message.content);
+      final taskPayload = decodeTaskChatMessage(decoded.body);
       final maxBubbleWidth = MediaQuery.sizeOf(context).width * 0.82;
       return Align(
           alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -356,11 +416,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           ),
                         ),
                       ],
-                      Text(
-                        decoded.body,
-                        softWrap: true,
-                        style: TextStyle(color: isMe ? Colors.white : Colors.black87),
-                      ),
+                      if (taskPayload != null)
+                        _buildTaskMessageCard(taskPayload, isMe)
+                      else
+                        Text(
+                          decoded.body,
+                          softWrap: true,
+                          style: TextStyle(color: isMe ? Colors.white : Colors.black87),
+                        ),
                       const SizedBox(height: 2),
                       Row(
                         mainAxisSize: MainAxisSize.min,
@@ -391,5 +454,63 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ),
           ),
       );
+  }
+
+  Widget _buildTaskMessageCard(Map<String, dynamic> payload, bool isMe) {
+    final task = payload['task'] is Map ? payload['task'] as Map : const {};
+    final assignees = task['assignees'] is List ? (task['assignees'] as List).join(', ') : '';
+    final note = (payload['note'] ?? '').toString();
+    return InkWell(
+      onTap: () => _openTaskFromChat(task['id']),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isMe ? Colors.white.withOpacity(0.12) : Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: isMe ? Colors.white30 : Colors.blue.shade100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '#${task['id'] ?? ''} ${task['title'] ?? 'Tapşırıq'}',
+              style: TextStyle(fontWeight: FontWeight.bold, color: isMe ? Colors.white : Colors.black87),
+            ),
+            const SizedBox(height: 6),
+            _taskLine('Status', task['status'], isMe),
+            _taskLine('Qeydiyyat', task['register_number'], isMe),
+            _taskLine('Müştəri', task['customer'], isMe),
+            _taskLine('İcraçılar', assignees.isEmpty ? '-' : assignees, isMe),
+            if (note.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(note, style: TextStyle(color: isMe ? Colors.white : Colors.black87)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _taskLine(String label, dynamic value, bool isMe) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 76,
+            child: Text(label, style: TextStyle(fontSize: 12, color: isMe ? Colors.white70 : Colors.black54)),
+          ),
+          Expanded(
+            child: Text(
+              (value == null || value.toString().isEmpty) ? '-' : value.toString(),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isMe ? Colors.white : Colors.black87),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

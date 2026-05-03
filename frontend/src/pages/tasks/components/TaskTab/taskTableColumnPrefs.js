@@ -17,10 +17,11 @@ export const TASK_TABLE_COLUMN_META = [
     { key: 'location', title: 'Ünvan', width: 86 },
     { key: 'status', title: 'Status', width: 120 },
     { key: 'created_at', title: 'Yaradılıb', width: 132 },
-    { key: 'rescheduled_date', title: 'Təxirə tarixi', width: 116 },
+    // GERİ QAYTAR: Təxirə salınma tarixi sütunu — bu sətri aç + TaskTable-da uyğun sütun blokunun şərhini aç.
+    // { key: 'rescheduled_date', title: 'Təxirə salınma tarixi', width: 148 },
     // GERİ QAYTAR: Aktiv sütunu — bu sətri aç + TaskTable-da "Aktiv" sütun blokunun şərhini aç.
     // { key: 'is_active', title: 'Aktiv', width: 72 },
-    { key: 'action', title: 'Əməliyyat', width: 140 },
+    { key: 'action', title: 'Əməliyyat', width: 360 },
 ];
 
 /** `TaskTable` sütun təyini üçün tək mənbə */

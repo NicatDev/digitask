@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Input, Avatar, List, Modal, Form, Select, message as antMessage, Switch } from 'antd';
-import { SendOutlined, SettingOutlined, UserAddOutlined, DeleteOutlined, UserOutlined, ArrowLeftOutlined, RollbackOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Input, Avatar, List, Modal, Form, Select, Switch, Popover } from 'antd';
+import { SendOutlined, SettingOutlined, UserAddOutlined, DeleteOutlined, UserOutlined, ArrowLeftOutlined, RollbackOutlined, CloseOutlined, SmileOutlined } from '@ant-design/icons';
 import styles from '../style.module.scss';
 import { decodeReply, encodeReply } from '../utils/replyCodec';
+import { decodeTaskChatMessage, stripTaskChatMessage } from '../utils/taskMessageCodec';
 
 const { TextArea } = Input;
 
@@ -17,6 +18,7 @@ const ChatArea = ({
     onAddMember,
     onRemoveMember,
     onUpdateGroup,
+    onOpenTask,
     onBack // Prop for back button
 }) => {
     const [inputValue, setInputValue] = useState('');
@@ -26,6 +28,7 @@ const ChatArea = ({
     const [selectedUserToAdd, setSelectedUserToAdd] = useState(null);
     const messagesEndRef = useRef(null);
     const messagesContainerRef = useRef(null);
+    const emojis = ['😀', '😁', '😂', '😊', '😍', '👍', '🙏', '👏', '🔥', '✅', '⚠️', '❤️'];
 
     const isOwner = currentUser && group && group.owner && (
         (typeof group.owner === 'object' ? group.owner.id : group.owner) === currentUser.id
@@ -147,6 +150,7 @@ const ChatArea = ({
                     const prevDate = index > 0 && messages[index - 1]?.created_at ? new Date(messages[index - 1].created_at) : null;
                     const showDateSeparator = index === 0 || !isSameDay(messageDate, prevDate);
                     const { reply, body } = decodeReply(msg.content);
+                    const taskPayload = decodeTaskChatMessage(body);
 
                     return (
                         <React.Fragment key={msg.id || index}>
@@ -165,7 +169,7 @@ const ChatArea = ({
                                         setReplyTo({
                                             id: msg.id,
                                             sender: msg.sender?.first_name || msg.sender?.email || '',
-                                            snippet: (body || '').slice(0, 80),
+                                            snippet: stripTaskChatMessage(body || '').slice(0, 80),
                                         })
                                     }
                                 />
@@ -179,7 +183,25 @@ const ChatArea = ({
                                             <div className={styles.replySnippet}>{reply.snippet || ''}</div>
                                         </div>
                                     ) : null}
-                                    <div className={styles.content}>{body}</div>
+                                    {taskPayload ? (
+                                        <div
+                                            className={styles.taskMessageCard}
+                                            onClick={() => onOpenTask?.(taskPayload.task?.id)}
+                                        >
+                                            <div className={styles.taskMessageTitle}>
+                                                #{taskPayload.task?.id} {taskPayload.task?.title || 'Tapşırıq'}
+                                            </div>
+                                            <div className={styles.taskMessageGrid}>
+                                                <span>Status</span><b>{taskPayload.task?.status || '—'}</b>
+                                                <span>Qeydiyyat</span><b>{taskPayload.task?.register_number || '—'}</b>
+                                                <span>Müştəri</span><b>{taskPayload.task?.customer || '—'}</b>
+                                                <span>İcraçılar</span><b>{taskPayload.task?.assignees?.join(', ') || '—'}</b>
+                                            </div>
+                                            {taskPayload.note ? <div className={styles.taskMessageNote}>{taskPayload.note}</div> : null}
+                                        </div>
+                                    ) : (
+                                        <div className={styles.content}>{body}</div>
+                                    )}
                                     <div className={styles.time}>{formatDate(msg.created_at)}</div>
                                 </div>
                             </div>
@@ -199,6 +221,30 @@ const ChatArea = ({
                     </div>
                 ) : null}
                 <div className={styles.inputRow}>
+                    <Popover
+                        trigger="click"
+                        placement="topLeft"
+                        content={
+                            <div className={styles.emojiGrid}>
+                                {emojis.map((emoji) => (
+                                    <button
+                                        key={emoji}
+                                        type="button"
+                                        onClick={() => setInputValue((prev) => `${prev}${emoji}`)}
+                                    >
+                                        {emoji}
+                                    </button>
+                                ))}
+                            </div>
+                        }
+                    >
+                        <Button
+                            shape="circle"
+                            icon={<SmileOutlined />}
+                            size="large"
+                            disabled={!isOwner && group.only_owner_can_send}
+                        />
+                    </Popover>
                     <TextArea
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}

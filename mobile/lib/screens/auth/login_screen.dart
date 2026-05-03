@@ -5,10 +5,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:mobile/core/services/location_service.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:io';
 import 'package:mobile/core/services/notification_diagnostics_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -26,7 +26,8 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
 
   Future<void> _requestIosPermissionsAfterLogin() async {
-    if (!Platform.isIOS) return;
+    if (kIsWeb) return;
+    if (defaultTargetPlatform != TargetPlatform.iOS) return;
 
     try {
       // Notification permission via FirebaseMessaging is preferred on iOS.
@@ -108,6 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = e.response?.data['detail'] ?? 'Giriş uğursuz oldu';
       });
     } catch (e) {
+       debugPrint('Login unexpected error: $e');
        setState(() {
         _errorMessage = 'Gözlənilməz xəta baş verdi';
       });

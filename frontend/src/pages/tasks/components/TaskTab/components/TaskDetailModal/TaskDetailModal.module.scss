@@ -36,6 +36,17 @@
     margin-top: 8px;
 }
 
+.actionList {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+
+    :global(.ant-btn) {
+        justify-content: flex-start;
+        min-width: 0;
+    }
+}
+
 .activityList {
     display: flex;
     flex-direction: column;

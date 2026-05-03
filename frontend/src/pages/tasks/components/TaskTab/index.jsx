@@ -15,6 +15,7 @@ import QuestionnaireModal from './QuestionnaireModal/index';
 import TaskToolbar from './components/TaskToolbar';
 import TaskTable from './components/TaskTable';
 import TaskColumnSettingsModal from './components/TaskColumnSettingsModal';
+import SendTaskToChatModal from './components/SendTaskToChatModal';
 import {
     mergeColumnVisibilityFromUser,
     serializeColumnVisibilityForApi,
@@ -71,6 +72,7 @@ const TaskTab = ({ isActive }) => {
     const [columnVisibility, setColumnVisibility] = useState(() => defaultColumnVisibility());
     const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
     const [columnSettingsKey, setColumnSettingsKey] = useState(0);
+    const [taskForChat, setTaskForChat] = useState(null);
 
     useEffect(() => {
         setColumnVisibility(mergeColumnVisibilityFromUser(user));
@@ -689,6 +691,7 @@ const TaskTab = ({ isActive }) => {
                 onAddAssignee={handleOpenAssigneeModal}
                 onJoinTask={handleJoinTask}
                 onMarkExternalArchived={handleMarkExternalArchived}
+                onSendToChat={setTaskForChat}
                 columnVisibility={columnVisibility}
             />
 
@@ -766,10 +769,31 @@ const TaskTab = ({ isActive }) => {
                 onCancel={() => setIsDetailModalOpen(false)}
                 task={selectedTaskForDetail}
                 services={services}
-                onRefresh={fetchData}
+                onEdit={openEditModal}
+                onStatusChange={openStatusModal}
+                onQuestionnaire={openQuestionnaireModal}
+                onProductSelect={openProductModal}
+                onDocumentAdd={(record) => {
+                    setCurrentTaskForDocuments(record);
+                    setIsDocumentModalOpen(true);
+                }}
+                onSendToChat={setTaskForChat}
+                onDelete={handleDelete}
                 onMarkExternalArchived={handleMarkExternalArchived}
                 canComment={selectedTaskForDetail ? canForTask(TASK_ACTIONS.COMMENT_ACTIVITY, selectedTaskForDetail) : taskCaps.canCommentActivity}
-                canMarkExternalArchived={selectedTaskForDetail ? canForTask(TASK_ACTIONS.MARK_EXTERNAL_ARCHIVED, selectedTaskForDetail) : taskCaps.canMarkExternalArchived}
+                canForTask={canForTask}
+                disableEdit={!taskCaps.canEditGeneral}
+                disableDelete={!taskCaps.canDelete}
+                disableStatus={!taskCaps.canChangeStatus}
+                disableQuestionnaire={!taskCaps.canManageSurveys}
+                disableProducts={!taskCaps.canManageProducts}
+                disableDocuments={!taskCaps.canManageDocuments}
+            />
+
+            <SendTaskToChatModal
+                open={!!taskForChat}
+                onCancel={() => setTaskForChat(null)}
+                task={taskForChat}
             />
 
             <AssigneeModal

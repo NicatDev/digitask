@@ -1,6 +1,16 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Modal, Button, Input, Spin, Tag, Row, Col, Divider, Tabs, message } from 'antd';
-import { FileOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Modal, Button, Input, Spin, Tag, Row, Col, Divider, Tabs, message, Popconfirm } from 'antd';
+import {
+    CheckCircleOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    FileAddOutlined,
+    FileOutlined,
+    FormOutlined,
+    MessageOutlined,
+    ShoppingOutlined,
+    SyncOutlined,
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { TASK_STATUSES } from '../../constants';
 import {
@@ -43,10 +53,22 @@ const TaskDetailModal = ({
     onCancel,
     task,
     services = [],
-    onRefresh,
+    onEdit,
+    onStatusChange,
+    onQuestionnaire,
+    onProductSelect,
+    onDocumentAdd,
+    onSendToChat,
+    onDelete,
     onMarkExternalArchived,
     canComment = false,
-    canMarkExternalArchived = false,
+    canForTask,
+    disableEdit = false,
+    disableDelete = false,
+    disableStatus = false,
+    disableQuestionnaire = false,
+    disableProducts = false,
+    disableDocuments = false,
 }) => {
     const [activities, setActivities] = useState([]);
     const [actLoading, setActLoading] = useState(false);
@@ -141,6 +163,12 @@ const TaskDetailModal = ({
 
     if (!task) return null;
 
+    const runAction = (handler) => {
+        if (!handler) return;
+        onCancel?.();
+        handler(task);
+    };
+
     return (
         <>
             <Modal
@@ -218,34 +246,6 @@ const TaskDetailModal = ({
                                   })
                                 : '—'}
                         </Field>
-                        <Field label="Xarici sistemə köçürülmə">
-                            {task.is_externally_archived ? (
-                                <Button
-                                    type="text"
-                                    icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                                    disabled
-                                >
-                                    Arxivdədir
-                                </Button>
-                            ) : (
-                                <Button
-                                    icon={<CheckCircleOutlined />}
-                                    type="primary"
-                                    onClick={() => onMarkExternalArchived?.(task)}
-                                    disabled={!canMarkExternalArchived}
-                                >
-                                    Arxivə köçür
-                                </Button>
-                            )}
-                        </Field>
-                        <Button
-                            type="link"
-                            className={styles.historyBtn}
-                            onClick={() => setHistoryOpen(true)}
-                        >
-                            Tapşırıq tarixçəsinə bax (müştəri üzrə)
-                        </Button>
-
                         {(mediaItems.images.length > 0 || mediaItems.files.length > 0) && (
                             <>
                                 <h3 className={styles.sectionTitle}>Şəkillər və fayllar</h3>
@@ -295,6 +295,101 @@ const TaskDetailModal = ({
                                     <Field label="Ünvan">{task.customer_address || '—'}</Field>
                                     <Field label="Avadanlıq">{task.customer_equipment_name || '—'}</Field>
                                     <Field label="Optik qutu">{task.customer_optic_box_name || '—'}</Field>
+                                    <Button
+                                        type="link"
+                                        className={styles.historyBtn}
+                                        onClick={() => setHistoryOpen(true)}
+                                    >
+                                        Tapşırıq tarixçəsinə bax (müştəri üzrə)
+                                    </Button>
+                                </>
+                            ),
+                        },
+                        {
+                            key: 'actions',
+                            label: 'Əməliyyatlar',
+                            children: (
+                                <>
+                                    <h3 className={styles.sectionTitle}>Əməliyyatlar</h3>
+                                    <div className={styles.actionList}>
+                                        <Button
+                                            icon={<EditOutlined />}
+                                            onClick={() => runAction(onEdit)}
+                                            disabled={disableEdit || !canForTask?.('edit_general', task)}
+                                        >
+                                            Düzəliş
+                                        </Button>
+                                        <Button
+                                            icon={<SyncOutlined />}
+                                            onClick={() => runAction(onStatusChange)}
+                                            disabled={disableStatus || !canForTask?.('change_status', task)}
+                                        >
+                                            Status
+                                        </Button>
+                                        <Button
+                                            icon={<FormOutlined />}
+                                            onClick={() => runAction(onQuestionnaire)}
+                                            disabled={disableQuestionnaire || !canForTask?.('manage_surveys', task)}
+                                        >
+                                            Anket
+                                        </Button>
+                                        <Button
+                                            icon={<ShoppingOutlined />}
+                                            onClick={() => runAction(onProductSelect)}
+                                            disabled={disableProducts || !canForTask?.('manage_products', task)}
+                                        >
+                                            Məhsul ({task.task_products?.length || 0})
+                                        </Button>
+                                        <Button
+                                            icon={<MessageOutlined />}
+                                            onClick={() => runAction(onSendToChat)}
+                                            disabled={!onSendToChat}
+                                        >
+                                            Chata göndər
+                                        </Button>
+                                        <Button
+                                            icon={<FileAddOutlined />}
+                                            onClick={() => runAction(onDocumentAdd)}
+                                            disabled={disableDocuments || !canForTask?.('manage_documents', task)}
+                                        >
+                                            Sənəd ({task.task_documents?.length || 0})
+                                        </Button>
+                                        {task.is_externally_archived ? (
+                                            <Button
+                                                type="text"
+                                                icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+                                                disabled
+                                            >
+                                                Arxivdədir
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                icon={<CheckCircleOutlined />}
+                                                type="primary"
+                                                onClick={() => onMarkExternalArchived?.(task)}
+                                                disabled={!canForTask?.('mark_external_archived', task)}
+                                            >
+                                                Arxivə köçür
+                                            </Button>
+                                        )}
+                                        {!disableDelete && (
+                                            <Popconfirm
+                                                title="Silmək istədiyinizə əminsiniz?"
+                                                onConfirm={() => {
+                                                    onDelete?.(task.id);
+                                                    onCancel?.();
+                                                }}
+                                            >
+                                                <Button
+                                                    danger
+                                                    icon={<DeleteOutlined />}
+                                                    disabled={!canForTask?.('delete', task)}
+                                                >
+                                                    Sil
+                                                </Button>
+                                            </Popconfirm>
+                                        )}
+                                    </div>
                                 </>
                             ),
                         },

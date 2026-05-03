@@ -4,6 +4,7 @@ import { PlusOutlined, UsergroupAddOutlined, DeleteOutlined } from '@ant-design/
 import styles from '../style.module.scss';
 import dayjs from 'dayjs';
 import { stripReply } from '../utils/replyCodec';
+import { stripTaskChatMessage } from '../utils/taskMessageCodec';
 
 const GroupList = ({ groups, selectedGroupId, onSelectGroup, onAddGroup, onDeleteGroup }) => {
     const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -51,7 +52,7 @@ const GroupList = ({ groups, selectedGroupId, onSelectGroup, onAddGroup, onDelet
                                     {item.last_message ? (
                                         <>
                                             <strong>{item.last_message.sender}: </strong>
-                                            {stripReply(item.last_message.content)}
+                                            {stripTaskChatMessage(stripReply(item.last_message.content))}
                                         </>
                                     ) : (
                                         <span>Mesaj yoxdur</span>

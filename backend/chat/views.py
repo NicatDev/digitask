@@ -3,6 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q, OuterRef, Subquery
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from .models import ChatGroup, GroupMembership, Message, MessageReadStatus
 from .serializers import (
     ChatGroupListSerializer, ChatGroupDetailSerializer, 
@@ -97,11 +99,25 @@ class MessageViewSet(viewsets.ModelViewSet):
         # Verify membership
         if not GroupMembership.objects.filter(group=group, user=self.request.user).exists():
              raise permissions.PermissionDenied("You are not a member of this group.")
+        if group.only_owner_can_send and group.owner != self.request.user:
+             raise permissions.PermissionDenied("Only owner can send messages in this group.")
         
         message = serializer.save(sender=self.request.user)
         
         # Mark as read for sender
         MessageReadStatus.objects.create(message=message, user=self.request.user, read_at=message.created_at)
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'chat_{group.id}',
+            {
+                'type': 'chat_message',
+                'message': message.content,
+                'sender': self.request.user.get_full_name(),
+                'sender_id': self.request.user.id,
+                'created_at': message.created_at.isoformat(),
+                'msg_id': message.id,
+            },
+        )
 
     @action(detail=False, methods=['post'], url_path='mark-read')
     def mark_read(self, request):

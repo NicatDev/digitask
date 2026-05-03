@@ -11,6 +11,7 @@ import 'package:mobile/screens/tasks/widgets/task_detail_modal.dart';
 import 'package:mobile/screens/tasks/widgets/assignee_modal.dart';
 import 'package:mobile/screens/tasks/widgets/customer_address_edit_modal.dart';
 import 'package:mobile/screens/tasks/widgets/task_display_helpers.dart';
+import 'package:mobile/screens/chat/task_message_codec.dart';
 
 String _digitsOnlyForCompare(String s) => s.replaceAll(RegExp(r'\D'), '');
 
@@ -141,7 +142,18 @@ class TaskCard extends StatelessWidget {
                       builder: (_) => TaskDetailModal(
                         task: task,
                         allServices: allServices,
+                        allUsers: allUsers,
+                        onEdit: onEdit,
+                        onRefresh: onRefresh,
                         onArchivedMarked: onRefresh,
+                        canEditGeneral: canEditGeneral,
+                        canDelete: canDelete,
+                        canChangeStatus: canChangeStatus,
+                        canManageProducts: canManageProducts,
+                        canManageDocuments: canManageDocuments,
+                        canManageSurveys: canManageSurveys,
+                        canManageAssignees: canManageAssignees,
+                        canJoinTask: canJoinTask,
                         canMarkExternalArchived: canMarkExternalArchived,
                         canCommentActivity: canCommentActivity,
                       ),
@@ -323,8 +335,9 @@ class TaskCard extends StatelessWidget {
             const Divider(),
             
             // Actions
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            Wrap(
+              alignment: WrapAlignment.spaceAround,
+              runSpacing: 4,
               children: [
                 // Assignee button: "İcraya qoşul" or "İcraçı əlavə et" 
                 _buildActionBtn(context, 
@@ -382,11 +395,14 @@ class TaskCard extends StatelessWidget {
                    showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => FilesModal(task: task, onSuccess: onRefresh));
                 } : null),
                 // Products
-                 _buildActionBtn(context, Icons.shopping_bag, 
+                _buildActionBtn(context, Icons.shopping_bag, 
                     canManageProducts ? Colors.green : Colors.grey.shade300, 
                     canManageProducts ? () {
                    showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => ProductsModal(task: task, onSuccess: onRefresh));
                 } : null),
+                _buildActionBtn(context, Icons.chat_bubble_outline, Colors.blueGrey, () {
+                  _openSendToChatDialog(context);
+                }),
                 _buildActionBtn(
                   context,
                   isExternallyArchived ? Icons.check_circle : Icons.inventory_2,
@@ -585,6 +601,81 @@ class TaskCard extends StatelessWidget {
         child: Icon(icon, color: color, size: 20),
       ),
     );
+  }
+
+  Future<void> _openSendToChatDialog(BuildContext context) async {
+    final noteCtrl = TextEditingController();
+    int? selectedGroupId;
+    await ChatService().fetchGroups();
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final groups = ChatService().groups.value;
+            return AlertDialog(
+              title: const Text('Tapşırığı chata göndər'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<int>(
+                    value: selectedGroupId,
+                    decoration: const InputDecoration(labelText: 'Qrup'),
+                    items: groups
+                        .map((g) => DropdownMenuItem<int>(
+                              value: g.id,
+                              child: Text(g.name),
+                            ))
+                        .toList(),
+                    onChanged: (v) => setDialogState(() => selectedGroupId = v),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: noteCtrl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Qeyd',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Ləğv et')),
+                FilledButton(
+                  onPressed: selectedGroupId == null
+                      ? null
+                      : () async {
+                          try {
+                            final payload = buildTaskChatPayload(task, noteCtrl.text);
+                            await ChatService().sendMessageByApi(
+                              selectedGroupId!,
+                              encodeTaskChatMessage(payload),
+                            );
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Tapşırıq chata göndərildi')),
+                              );
+                            }
+                          } catch (_) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Chata göndərilmədi')),
+                              );
+                            }
+                          }
+                        },
+                  child: const Text('Göndər'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    noteCtrl.dispose();
   }
 
   Future<void> _openCustomerAddressEditor({

@@ -7,6 +7,17 @@ from notifications.models import Notification
 from notifications.services import send_notification
 
 
+TASK_PREFIX = '[[DIGITASK_TASK_V1:'
+TASK_SUFFIX = ']]'
+
+
+def chat_message_preview(content):
+    text = (content or '').strip()
+    if text.startswith(TASK_PREFIX) and text.endswith(TASK_SUFFIX):
+        return 'Tapşırıq göndərildi'
+    return text
+
+
 @receiver(post_save, sender=Message)
 def message_post_save(sender, instance, created, **kwargs):
     if created:
@@ -25,7 +36,7 @@ def message_post_save(sender, instance, created, **kwargs):
                     'type': 'notification_message',  # Reusing the handler in NotificationConsumer
                     'chat_notification': {
                         'group_id': group.id,
-                        'message_content': instance.content,
+                        'message_content': chat_message_preview(instance.content),
                         'sender_name': sender_user.get_full_name(),
                         'created_at': instance.created_at.isoformat(),
                     },
@@ -38,7 +49,7 @@ def message_post_save(sender, instance, created, **kwargs):
                 sender_user.username or 'İstifadəçi'
             )
             title = f"{group.name}: {sender_name}"[:255]
-            body = (instance.content or '').strip()
+            body = chat_message_preview(instance.content)
             if len(body) > 500:
                 body = body[:497] + '...'
             send_notification(

@@ -4,8 +4,10 @@ import GroupList from './components/GroupList';
 import ChatArea from './components/ChatArea';
 import { getChatGroups, createChatGroup, getChatGroupDetails, getGroupMessages, addGroupMember, removeGroupMember, markMessagesRead, deleteChatGroup } from '../../axios/api/chat';
 import { getMe } from '../../axios/api/account';
+import { getServices, getTask } from '../../axios/api/tasks';
 import { message } from 'antd';
 import { useNotifications } from '../../context/NotificationContext';
+import TaskDetailModal from '../tasks/components/TaskTab/components/TaskDetailModal';
 
 const ChatPage = () => {
     const [groups, setGroups] = useState([]);
@@ -17,6 +19,9 @@ const ChatPage = () => {
     const [selectedGroupDetails, setSelectedGroupDetails] = useState(null);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    const [taskModalOpen, setTaskModalOpen] = useState(false);
+    const [selectedTask, setSelectedTask] = useState(null);
+    const [services, setServices] = useState([]);
 
     // WebSocket
     const ws = useRef(null);
@@ -55,6 +60,7 @@ const ChatPage = () => {
     useEffect(() => {
         fetchProfile();
         fetchGroups();
+        getServices().then((res) => setServices(res.data.results || res.data || [])).catch(() => {});
     }, []);
 
     useEffect(() => {
@@ -100,7 +106,7 @@ const ChatPage = () => {
         try {
             const res = await getChatGroups();
             setGroups(res.data.results || res.data);
-        } catch (e) {
+        } catch {
             message.error("Qrupları yükləmək mümkün olmadı");
         }
     };
@@ -250,12 +256,23 @@ const ChatPage = () => {
         }
     };
 
+    const handleOpenTask = async (taskId) => {
+        if (!taskId) return;
+        try {
+            const res = await getTask(taskId);
+            setSelectedTask(res.data);
+            setTaskModalOpen(true);
+        } catch {
+            message.error('Tapşırıq açılmadı');
+        }
+    };
+
     const handleAddGroup = async (values) => {
         try {
             await createChatGroup(values);
             fetchGroups();
             message.success("Qrup yaradıldı");
-        } catch (e) {
+        } catch {
             message.error("Qrup yaratmaq mümkün olmadı");
         }
     };
@@ -274,7 +291,7 @@ const ChatPage = () => {
         try {
             await removeGroupMember(groupId, userId);
             loadGroupDetails(groupId); // Refresh details
-        } catch (e) {
+        } catch {
             message.error("Xəta");
         }
     };
@@ -298,8 +315,6 @@ const ChatPage = () => {
         }
     };
 
-    const selectedGroup = groups.find(g => g.id === selectedGroupId);
-
     return (
         <div className={styles.container}>
             {!selectedGroupId ? (
@@ -319,6 +334,7 @@ const ChatPage = () => {
                         messages={messages}
                         currentUser={currentUser}
                         onSendMessage={handleSendMessage}
+                        onOpenTask={handleOpenTask}
                         loading={loadingMessages}
                         onLoadMore={handleLoadMore}
                         hasMore={hasMore}
@@ -335,10 +351,24 @@ const ChatPage = () => {
                                 await updateChatGroup(id, data);
                                 loadGroupDetails(id);
                                 message.success("Tənzimləmə yeniləndi");
-                            } catch (e) {
+                            } catch {
                                 message.error("Xəta");
                             }
                         }}
+                    />
+                    <TaskDetailModal
+                        open={taskModalOpen}
+                        onCancel={() => setTaskModalOpen(false)}
+                        task={selectedTask}
+                        services={services}
+                        canForTask={() => false}
+                        canComment={false}
+                        disableEdit
+                        disableDelete
+                        disableStatus
+                        disableQuestionnaire
+                        disableProducts
+                        disableDocuments
                     />
                 </div>
             )}
