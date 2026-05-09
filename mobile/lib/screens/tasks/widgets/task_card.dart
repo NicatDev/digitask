@@ -352,10 +352,12 @@ class TaskCard extends StatelessWidget {
             const Divider(),
             
             // Actions
-            Wrap(
-              alignment: WrapAlignment.spaceAround,
-              runSpacing: 4,
-              children: [
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.spaceAround,
+                runSpacing: 4,
+                children: [
                 // Assignee button: "İcraya qoşul" or "İcraçı əlavə et" 
                 _buildActionBtn(context, 
                   isCurrentUserAssignee ? Icons.person_add : Icons.group_add, 
@@ -431,7 +433,8 @@ class TaskCard extends StatelessWidget {
                  _buildActionBtn(context, Icons.delete, Colors.red, () {
                    showDialog(context: context, builder: (_) => DeleteTaskDialog(taskId: task['id'], onSuccess: onRefresh));
                 }),
-              ],
+                ],
+              ),
             ),
             ..._buildCustomerContactActions(context),
           ],
