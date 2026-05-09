@@ -648,7 +648,7 @@ const TaskTable = ({
                             onClick={() => onMarkExternalArchived?.(record)}
                             disabled={!canForTask?.('mark_external_archived', record)}
                         >
-                            Arxivə köçür
+                            Xidməti aktiv et
                         </Button>
                     ),
                     ...(!disableDelete

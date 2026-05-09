@@ -38,22 +38,36 @@ Future<void> showEventImagePreview(BuildContext context, List<String> urls, int 
       builder: (ctx) {
         return Scaffold(
           backgroundColor: Colors.black,
-          appBar: AppBar(
-            backgroundColor: Colors.black,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            title: const Text('Önizləmə'),
-          ),
-          body: PageView.builder(
-            controller: controller,
-            itemCount: urls.length,
-            itemBuilder: (_, idx) => InteractiveViewer(
-              minScale: 0.5,
-              maxScale: 4,
-              child: Center(
-                child: Image.network(urls[idx], fit: BoxFit.contain),
+          body: Stack(
+            children: [
+              PageView.builder(
+                controller: controller,
+                itemCount: urls.length,
+                itemBuilder: (_, idx) => InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 4,
+                  child: Center(
+                    child: Image.network(urls[idx], fit: BoxFit.contain),
+                  ),
+                ),
               ),
-            ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: SafeArea(
+                  child: Material(
+                    color: Colors.black.withOpacity(0.65),
+                    shape: const CircleBorder(),
+                    clipBehavior: Clip.antiAlias,
+                    child: IconButton(
+                      tooltip: 'Bağla',
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },

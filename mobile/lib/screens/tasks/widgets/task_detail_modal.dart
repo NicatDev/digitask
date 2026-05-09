@@ -696,7 +696,7 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
               ),
               onPressed: widget.canMarkExternalArchived ? _markExternalArchived : null,
               icon: const Icon(Icons.inventory_2),
-              label: const Text('Arxivə köçür'),
+              label: const Text('Xidməti aktiv et'),
             ),
           ),
         if (widget.canDelete) ...[

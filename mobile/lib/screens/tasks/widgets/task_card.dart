@@ -66,9 +66,11 @@ class TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Format Date
-    final dateStr = task['created_at'] != null 
-        ? DateFormat('dd MMM yyyy').format(DateTime.parse(task['created_at']))
-        : '';
+    final createdAt = task['created_at'] != null
+        ? DateTime.tryParse(task['created_at'].toString())
+        : null;
+    final dateStr = createdAt != null ? DateFormat('dd MMM yyyy').format(createdAt) : '';
+    final timeStr = createdAt != null ? DateFormat('HH:mm').format(createdAt) : '';
     
     // Status Color & English labels
     Color statusColor = Colors.grey;
@@ -244,6 +246,14 @@ class TaskCard extends StatelessWidget {
                     child: Icon(Icons.edit_location_alt, color: Colors.orange, size: 20),
                   ),
                 ),
+                InkWell(
+                  onTap: () => _openSendToChatDialog(context),
+                  borderRadius: BorderRadius.circular(12),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4.0),
+                    child: Icon(Icons.share, color: Colors.blueGrey, size: 20),
+                  ),
+                ),
               ],
             ),
             if (task['group_name'] != null)
@@ -274,6 +284,13 @@ class TaskCard extends StatelessWidget {
                       dateStr,
                       style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
+                    if (timeStr.isNotEmpty) ...[
+                      const SizedBox(width: 10),
+                      Text(
+                        timeStr,
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ],
                   ],
                 ),
                 // Assignees avatars - tap to open assignee modal
@@ -400,9 +417,6 @@ class TaskCard extends StatelessWidget {
                     canManageProducts ? () {
                    showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => ProductsModal(task: task, onSuccess: onRefresh));
                 } : null),
-                _buildActionBtn(context, Icons.chat_bubble_outline, Colors.blueGrey, () {
-                  _openSendToChatDialog(context);
-                }),
                 _buildActionBtn(
                   context,
                   isExternallyArchived ? Icons.check_circle : Icons.inventory_2,
@@ -475,6 +489,7 @@ class TaskCard extends StatelessWidget {
           backgroundColor: Colors.green.shade600,
           icon: Icons.phone,
           label: phone,
+          suffixLabel: ' (Əlaqə nömrəsi)',
           dialValue: phone,
         ),
       );
@@ -486,6 +501,7 @@ class TaskCard extends StatelessWidget {
             backgroundColor: Colors.green.shade600,
             icon: Icons.phone,
             label: phone,
+            suffixLabel: ' (Əlaqə nömrəsi)',
             dialValue: phone,
           ),
         );
@@ -499,7 +515,8 @@ class TaskCard extends StatelessWidget {
             context: context,
             backgroundColor: Colors.blue.shade700,
             icon: Icons.phone,
-            label: 'Qeydiyyat: $reg',
+            label: reg,
+            suffixLabel: ' (Qeydiyyat nömrəsi)',
             dialValue: reg,
           ),
         );
@@ -552,13 +569,26 @@ class TaskCard extends StatelessWidget {
     required Color backgroundColor,
     required IconData icon,
     required String label,
+    String? suffixLabel,
     required String dialValue,
   }) {
     return FilledButton.icon(
       onPressed: () => _launchCaller(dialValue, context),
       icon: Icon(icon, color: Colors.white, size: 20),
-      label: Text(
-        label,
+      label: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: label),
+            if (suffixLabel != null)
+              TextSpan(
+                text: suffixLabel,
+                style: TextStyle(
+                  color: Colors.grey.shade300,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+          ],
+        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(

@@ -369,7 +369,7 @@ const TaskDetailModal = ({
                                                 onClick={() => onMarkExternalArchived?.(task)}
                                                 disabled={!canForTask?.('mark_external_archived', task)}
                                             >
-                                                Arxivə köçür
+                                                Xidməti aktiv et
                                             </Button>
                                         )}
                                         {!disableDelete && (
