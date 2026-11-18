@@ -163,3 +163,28 @@
         padding-bottom: 0 !important;
     }
 }
+
+/* Cədvəl üstündə tapşırıq sayı: "Bu səhifədə 67 / 100 · Cəmi 67 tapşırıq" */
+.taskCountBar {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 10px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: #f5f7fa;
+    color: #595959;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+
+    b {
+        color: #1f1f1f;
+        font-weight: 600;
+    }
+}
+
+.taskCountDivider {
+    width: 1px;
+    height: 14px;
+    background: #d9d9d9;
+}

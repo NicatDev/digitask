@@ -5,6 +5,7 @@
  * Heç bir sütun 140px-dən böyük deyil (yığcam cədvəl).
  */
 export const TASK_TABLE_COLUMN_META = [
+    { key: 'row_number', title: '№', width: 56 },
     { key: 'id', title: 'ID', width: 84 },
     { key: 'title', title: 'Başlıq', width: 140 },
     { key: 'task_type', title: 'Növ', width: 118 },
@@ -32,8 +33,8 @@ export const TASK_TABLE_COLUMN_WIDTHS = Object.fromEntries(
 /** Defolt: bütün sütunlar görünür. */
 export const TASK_TABLE_KEYS_DEFAULT_HIDDEN = new Set();
 
-/** Həmişə görünən (modalda dəyişməz) */
-export const TASK_TABLE_FIXED_KEYS = new Set(['action']);
+/** Həmişə görünən (modalda dəyişməz): sıra № və əməliyyat */
+export const TASK_TABLE_FIXED_KEYS = new Set(['row_number', 'action']);
 
 const TOGGLE_KEYS = TASK_TABLE_COLUMN_META.filter((c) => !TASK_TABLE_FIXED_KEYS.has(c.key)).map((c) => c.key);
 

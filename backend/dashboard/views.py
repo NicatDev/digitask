@@ -47,8 +47,16 @@ class DashboardStatsView(views.APIView):
         # By Type
         type_stats = Task.objects.values('task_type__name', 'task_type__color').annotate(count=Count('id'))
 
-        # By User (Top 5) - All Time
-        user_stats = Task.objects.filter(assigned_to__isnull=False).values(
+        # By User (Top 5). period=month -> current month only (same rule as
+        # performance view: DONE tasks updated this month + currently active tasks).
+        user_tasks = Task.objects.filter(assigned_to__isnull=False)
+        if request.query_params.get('period') == 'month':
+            now = timezone.now()
+            user_tasks = user_tasks.filter(
+                Q(status='done', updated_at__year=now.year, updated_at__month=now.month)
+                | Q(status__in=['todo', 'in_progress'])
+            )
+        user_stats = user_tasks.values(
             'assigned_to__username', 
             'assigned_to__first_name', 
             'assigned_to__last_name',

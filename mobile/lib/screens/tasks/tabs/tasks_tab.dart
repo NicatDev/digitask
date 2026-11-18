@@ -32,6 +32,11 @@ class _TasksTabState extends State<TasksTab> {
   // Pagination State
   int _currentPage = 1;
   bool _hasNextPage = true;
+  int _totalCount = 0;
+
+  /// Səhifədə tapşırıq sayı (backend max_page_size = 1000)
+  static const List<int> _pageSizeOptions = [5, 10, 20, 50, 100, 1000];
+  int _pageSize = 5;
   bool _isFirstLoadRunning = true;
 
   // Filters
@@ -111,13 +116,16 @@ class _TasksTabState extends State<TasksTab> {
         final data = response.data;
         List<dynamic> incoming = [];
         bool next = false;
+        int total = 0;
 
         if (data is Map && data.containsKey('results')) {
           incoming = data['results'];
           next = data['next'] != null;
+          total = data['count'] is int ? data['count'] as int : incoming.length;
         } else if (data is List) {
           incoming = data;
           next = false;
+          total = incoming.length;
         }
 
         setState(() {
@@ -127,6 +135,7 @@ class _TasksTabState extends State<TasksTab> {
             _tasks.addAll(incoming);
           }
           _hasNextPage = next;
+          _totalCount = total;
           _isFirstLoadRunning = false;
         });
       }
@@ -146,6 +155,91 @@ class _TasksTabState extends State<TasksTab> {
     await _fetchTasks();
   }
 
+  Future<void> _changePageSize(int size) async {
+    if (size == _pageSize) return;
+    setState(() => _pageSize = size);
+    await _fetchTasks(refresh: true);
+  }
+
+  int get _totalPages => _totalCount == 0 ? 1 : ((_totalCount + _pageSize - 1) ~/ _pageSize);
+
+  /// Siyahının üstündə: "Bu səhifədə 67 / 100 · Cəmi 67" + səhifə ölçüsü seçimi
+  Widget _buildCountBar() {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F7FA),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text.rich(
+                TextSpan(
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                  children: [
+                    const TextSpan(text: 'Bu səhifədə '),
+                    TextSpan(
+                      text: _isFirstLoadRunning ? '—' : '${_tasks.length} / $_pageSize',
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                    ),
+                    const TextSpan(text: '   ·   Cəmi '),
+                    TextSpan(
+                      text: _isFirstLoadRunning ? '—' : '$_totalCount',
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                    ),
+                  ],
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          PopupMenuButton<int>(
+            tooltip: 'Səhifədə neçə tapşırıq',
+            initialValue: _pageSize,
+            onSelected: _changePageSize,
+            itemBuilder: (_) => _pageSizeOptions
+                .map((n) => PopupMenuItem<int>(
+                      value: n,
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            child: n == _pageSize
+                                ? Icon(Icons.check, size: 18, color: theme.colorScheme.primary)
+                                : null,
+                          ),
+                          Text('$n / səhifə'),
+                        ],
+                      ),
+                    ))
+                .toList(),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('$_pageSize / səhifə', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                  const Icon(Icons.arrow_drop_down, size: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _acceptTask(int taskId) async {
     try {
       final client = ApiClient().dio;
@@ -162,6 +256,7 @@ class _TasksTabState extends State<TasksTab> {
     final params = <String, dynamic>{
       'search': _searchQuery,
       'page': _currentPage,
+      'page_size': _pageSize,
     };
     if (_statusFilter != null) params['status'] = _statusFilter;
     if (_customerFilter != null) params['customer'] = _customerFilter;
@@ -316,6 +411,8 @@ class _TasksTabState extends State<TasksTab> {
           ),
         ),
         
+        _buildCountBar(),
+
         Expanded(
           child: _isFirstLoadRunning
               ? const Center(child: CircularProgressIndicator())
@@ -382,7 +479,7 @@ class _TasksTabState extends State<TasksTab> {
                                 ],
                               ),
                             ),
-                            Text('Page $_currentPage', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text('Səhifə $_currentPage / $_totalPages', style: const TextStyle(fontWeight: FontWeight.bold)),
                             ElevatedButton(
                               onPressed: _hasNextPage ? () => _changePage(_currentPage + 1) : null,
                               style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.blue),

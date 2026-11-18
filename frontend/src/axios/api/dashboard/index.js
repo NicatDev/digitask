@@ -11,4 +11,4 @@ export const updateEvent = (id, data) => axiosInstance.patch(`/dashboard/events/
 export const deleteEvent = (id) => axiosInstance.delete(`/dashboard/events/${id}/`);
 
 // Stats API
-export const getDashboardStats = () => axiosInstance.get('/dashboard/stats/');
+export const getDashboardStats = (params) => axiosInstance.get('/dashboard/stats/', { params });

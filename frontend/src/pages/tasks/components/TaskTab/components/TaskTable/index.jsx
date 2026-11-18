@@ -65,6 +65,9 @@ const formatAzDate = (v) => {
 
 const ACTION_ROW_COLS = 3;
 
+/** Səhifədə göstəriləcək tapşırıq sayı seçimləri (backend max_page_size = 1000) */
+const TASK_PAGE_SIZE_OPTIONS = ['5', '10', '20', '50', '100', '1000'];
+
 /** Əməliyyat düymələrini sətirlərə bölür (sətirdə ən çox ACTION_ROW_COLS). */
 const chunkActionRows = (items, cols = ACTION_ROW_COLS) => {
     const rows = [];
@@ -158,7 +161,24 @@ const TaskTable = ({
 
     const isTaskColVisible = (key) => TASK_TABLE_FIXED_KEYS.has(key) || columnVisibility[key] !== false;
 
+    const pageCurrent = pagination?.current || 1;
+    const pageSize = pagination?.pageSize || (data?.length ?? 0);
+    const totalCount = pagination?.total ?? (data?.length ?? 0);
+    const rowsOnPage = data?.length ?? 0;
+    const rowOffset = (pageCurrent - 1) * pageSize;
+
     const tableColumns = [
+        {
+            title: '№',
+            key: 'row_number',
+            width: W.row_number,
+            align: 'center',
+            render: (_v, _record, index) => (
+                <span style={{ color: '#8c8c8c', fontVariantNumeric: 'tabular-nums' }}>
+                    {rowOffset + index + 1}
+                </span>
+            ),
+        },
         {
             title: 'ID',
             dataIndex: 'id',
@@ -688,17 +708,41 @@ const TaskTable = ({
 
     const visibleColumns = tableColumns.filter((col) => isTaskColVisible(col.key));
 
+    const paginationConfig =
+        pagination === false
+            ? false
+            : {
+                  ...pagination,
+                  showSizeChanger: true,
+                  pageSizeOptions: TASK_PAGE_SIZE_OPTIONS,
+                  locale: { items_per_page: '/ səhifə' },
+              };
+
     return (
-        <Table
-            className={styles.taskTableCompact}
-            columns={visibleColumns}
-            dataSource={data}
-            rowKey="id"
-            loading={loading}
-            scroll={{ x: sumVisibleTableWidth(columnVisibility) }}
-            pagination={pagination}
-            onChange={(pag, filters, sorter, extra) => onChange?.(pag, filters, sorter, extra)}
-        />
+        <>
+            <div className={styles.taskCountBar}>
+                <span>
+                    Bu səhifədə{' '}
+                    <b>
+                        {rowsOnPage} / {pageSize}
+                    </b>
+                </span>
+                <span className={styles.taskCountDivider} />
+                <span>
+                    Cəmi <b>{totalCount}</b> tapşırıq
+                </span>
+            </div>
+            <Table
+                className={styles.taskTableCompact}
+                columns={visibleColumns}
+                dataSource={data}
+                rowKey="id"
+                loading={loading}
+                scroll={{ x: sumVisibleTableWidth(columnVisibility) }}
+                pagination={paginationConfig}
+                onChange={(pag, filters, sorter, extra) => onChange?.(pag, filters, sorter, extra)}
+            />
+        </>
     );
 };
 

@@ -108,7 +108,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _fetchStats() async {
     setState(() => _isLoadingStats = true);
     try {
-      final response = await ApiClient().dio.get('/dashboard/stats/');
+      final response = await ApiClient().dio.get(
+        '/dashboard/stats/',
+        queryParameters: {'period': 'month'},
+      );
       if (response.statusCode == 200) {
         setState(() {
           _topUsers = response.data['tasks']['by_user'];
@@ -234,7 +237,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 32),
                 const Text(
-                  'Ən yaxşı nəticə göstərənlər',
+                  'Ayın Top 5 İstifadəçisi',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),

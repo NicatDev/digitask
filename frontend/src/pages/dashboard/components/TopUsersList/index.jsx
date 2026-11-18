@@ -15,7 +15,7 @@ const TopUsersList = () => {
 
     const fetchStats = async () => {
         try {
-            const res = await getDashboardStats();
+            const res = await getDashboardStats({ period: 'month' });
             // The backend returns user stats in res.data.tasks.by_user
             setUsers(res.data.tasks.by_user || []);
         } catch (error) {
