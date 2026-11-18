@@ -15,6 +15,7 @@ import {
     ShoppingOutlined,
     DeleteOutlined,
     MessageOutlined,
+    FormOutlined as EditLocationIcon,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { TASK_STATUSES } from '../../constants';
@@ -108,6 +109,7 @@ const TaskTable = ({
     onDelete,
     onAccept,
     onViewLocation,
+    onEditCustomerAddress,
     onViewDetail,
     onProductSelect,
     onDocumentAdd,
@@ -492,23 +494,36 @@ const TaskTable = ({
             render: (_, record) => {
                 const coords = record.customer_coordinates;
                 const hasLocation = coords && coords.lat && coords.lng;
+                const canEditAddress = Boolean(
+                    onEditCustomerAddress && record.customer && canForTask?.('edit_customer_address', record)
+                );
                 return (
-                    <Tooltip title={hasLocation ? 'Google Maps-da aç' : 'Koordinat yoxdur'}>
-                        <EnvironmentOutlined
-                            style={{
-                                fontSize: 16,
-                                cursor: hasLocation ? 'pointer' : 'default',
-                                color: hasLocation ? '#52c41a' : '#ccc'
-                            }}
-                            onClick={() => {
-                                if (hasLocation) {
-                                    window.open(`https://www.google.com/maps?q=${coords.lat},${coords.lng}`, '_blank');
-                                } else {
-                                    message.info('Bu müştəri üçün koordinat qeyd olunmayıb');
-                                }
-                            }}
-                        />
-                    </Tooltip>
+                    <Space size={10}>
+                        <Tooltip title={hasLocation ? 'Google Maps-da aç' : 'Koordinat yoxdur'}>
+                            <EnvironmentOutlined
+                                style={{
+                                    fontSize: 16,
+                                    cursor: hasLocation ? 'pointer' : 'default',
+                                    color: hasLocation ? '#52c41a' : '#ccc'
+                                }}
+                                onClick={() => {
+                                    if (hasLocation) {
+                                        window.open(`https://www.google.com/maps?q=${coords.lat},${coords.lng}`, '_blank');
+                                    } else {
+                                        message.info('Bu müştəri üçün koordinat qeyd olunmayıb');
+                                    }
+                                }}
+                            />
+                        </Tooltip>
+                        {canEditAddress && (
+                            <Tooltip title={hasLocation ? 'Müştəri ünvanını redaktə et' : 'Müştəri ünvanını əlavə et'}>
+                                <EditLocationIcon
+                                    style={{ fontSize: 16, color: '#fa8c16', cursor: 'pointer' }}
+                                    onClick={() => onEditCustomerAddress(record)}
+                                />
+                            </Tooltip>
+                        )}
+                    </Space>
                 );
             }
         },

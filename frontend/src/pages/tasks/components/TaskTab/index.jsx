@@ -30,6 +30,11 @@ import DocumentModal from './components/DocumentModal';
 import TaskDetailModal from './components/TaskDetailModal';
 import AssigneeModal from './components/AssigneeModal';
 import TaskAddressEditModal from './components/TaskAddressEditModal';
+import {
+    isBlockedDoneWithoutAddress,
+    isCustomerAddressRequiredError,
+    showCustomerAddressRequiredModal,
+} from '../../../../utils/customerAddressGuard';
 
 // Styles
 import styles from './style.module.scss'; // Kept primarily for Status Badge styles used in Table
@@ -433,6 +438,14 @@ const TaskTab = ({ isActive }) => {
             message.warning('Zəhmət olmasa bir neçə saniyə gözləyin.');
             return;
         }
+        if (
+            editingItem &&
+            (values.customer === undefined || values.customer === editingItem.customer) &&
+            isBlockedDoneWithoutAddress(editingItem, values.status)
+        ) {
+            showCustomerAddressRequiredModal();
+            return;
+        }
         try {
             setIsSubmittingTaskForm(true);
             const submitData = { ...values };
@@ -456,7 +469,10 @@ const TaskTab = ({ isActive }) => {
             setEditingItem(null);
             fetchData();
         } catch (error) {
-            console.log(error,'---------------------------')
+            if (isCustomerAddressRequiredError(error)) {
+                showCustomerAddressRequiredModal();
+                return;
+            }
             handleApiError(error, 'Əməliyyat uğursuz oldu');
         } finally {
             setIsSubmittingTaskForm(false);
@@ -479,6 +495,10 @@ const TaskTab = ({ isActive }) => {
     };
 
     const handleStatusUpdate = async (values) => {
+        if (isBlockedDoneWithoutAddress(editingItem, values.status)) {
+            showCustomerAddressRequiredModal();
+            return;
+        }
         try {
             const payload = { status: values.status };
             if (values.status === 'pending' && values.rescheduled_date) {
@@ -493,6 +513,10 @@ const TaskTab = ({ isActive }) => {
             setIsStatusModalOpen(false);
             fetchData();
         } catch (error) {
+            if (isCustomerAddressRequiredError(error)) {
+                showCustomerAddressRequiredModal();
+                return;
+            }
             handleApiError(error, 'Status yenilənmədi');
         }
     };
@@ -679,6 +703,9 @@ const TaskTab = ({ isActive }) => {
                 onDelete={handleDelete}
                 onAccept={handleAcceptTask}
                 onViewLocation={handleViewLocation}
+                onEditCustomerAddress={(record) =>
+                    handleOpenAddressEditor({ id: record.customer, name: record.customer_name })
+                }
                 onViewDetail={(record) => {
                     setSelectedTaskForDetail(record);
                     setIsDetailModalOpen(true);

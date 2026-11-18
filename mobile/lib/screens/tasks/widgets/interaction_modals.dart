@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/core/api/api_client.dart';
+import 'package:mobile/screens/tasks/widgets/customer_address_guard.dart';
 
 // STATUS MODAL
 class StatusModal extends StatefulWidget {
@@ -85,6 +86,10 @@ class _StatusModalState extends State<StatusModal> {
       );
       return;
     }
+    if (isBlockedDoneWithoutAddress(widget.task, _status)) {
+      await showCustomerAddressRequiredDialog(context);
+      return;
+    }
 
     setState(() => _loading = true);
     try {
@@ -105,6 +110,10 @@ class _StatusModalState extends State<StatusModal> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
+        if (isCustomerAddressRequiredError(e)) {
+          await showCustomerAddressRequiredDialog(context);
+          return;
+        }
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Status yenilənə bilmədi')));
       }
     }

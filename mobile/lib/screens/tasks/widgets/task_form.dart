@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile/screens/tasks/widgets/customer_address_guard.dart';
 
 class TaskFormModal extends StatefulWidget {
   final Map<String, dynamic>? task;
@@ -166,6 +167,12 @@ class _TaskFormModalState extends State<TaskFormModal> {
       );
       return;
     }
+    if (widget.task != null &&
+        _customerId?.toString() == widget.task!['customer']?.toString() &&
+        isBlockedDoneWithoutAddress(widget.task, _status)) {
+      await showCustomerAddressRequiredDialog(context);
+      return;
+    }
     setState(() => _isSaving = true);
 
     try {
@@ -200,6 +207,9 @@ class _TaskFormModalState extends State<TaskFormModal> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
+        if (isCustomerAddressRequiredError(e)) {
+          await showCustomerAddressRequiredDialog(context);
+        }
       }
     }
   }

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -24,6 +25,7 @@ class _CustomerAddressEditModalState extends State<CustomerAddressEditModal> {
   final _mapCtrl = MapController();
 
   LatLng _coords = const LatLng(40.4093, 49.8671);
+  bool _hasCoords = false;
   bool _loading = true;
   bool _saving = false;
   bool _searching = false;
@@ -55,6 +57,7 @@ class _CustomerAddressEditModalState extends State<CustomerAddressEditModal> {
           double.parse(c['lat'].toString()),
           double.parse(c['lng'].toString()),
         );
+        _hasCoords = true;
       }
     } catch (_) {
       // ignore
@@ -63,19 +66,30 @@ class _CustomerAddressEditModalState extends State<CustomerAddressEditModal> {
     }
   }
 
-  Future<void> _searchAddress(String q) async {
+  /// OSM üçün ayrıca Dio — tətbiqin auth tokeni kənar serverə getməsin.
+  static final Dio _osm = Dio(BaseOptions(
+    baseUrl: 'https://nominatim.openstreetmap.org',
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 10),
+    headers: {'User-Agent': 'DigitaskMobile/1.0', 'Accept-Language': 'az'},
+  ));
+
+  int _searchSeq = 0;
+
+  Future<List<Map<String, dynamic>>> _searchAddress(String q) async {
     if (q.trim().length < 3) {
       setState(() => _addressOptions = []);
-      return;
+      return [];
     }
+    final seq = ++_searchSeq;
     setState(() => _searching = true);
     try {
-      final res = await ApiClient().dio.get(
-        'https://nominatim.openstreetmap.org/search',
+      final res = await _osm.get(
+        '/search',
         queryParameters: {
           'format': 'json',
           'q': q.trim(),
-          'limit': 5,
+          'limit': 6,
           'countrycodes': 'az',
         },
       );
@@ -86,13 +100,69 @@ class _CustomerAddressEditModalState extends State<CustomerAddressEditModal> {
                 'lng': double.parse(e['lon'].toString()),
               })
           .toList();
-      if (!mounted) return;
+      if (!mounted || seq != _searchSeq) return list;
       setState(() => _addressOptions = list);
+      return list;
+    } catch (_) {
+      return [];
+    } finally {
+      if (mounted && seq == _searchSeq) setState(() => _searching = false);
+    }
+  }
+
+  void _applyOption(Map<String, dynamic> o) {
+    final next = LatLng(o['lat'] as double, o['lng'] as double);
+    _searchSeq++;
+    setState(() {
+      _coords = next;
+      _hasCoords = true;
+      _addressCtrl.text = o['label'].toString();
+      _addressOptions = [];
+      _searching = false;
+    });
+    _mapCtrl.move(next, 17);
+    FocusScope.of(context).unfocus();
+  }
+
+  /// Enter / axtarış düyməsi: ilk nəticəni xəritədə göstər.
+  Future<void> _findOnMap(String q) async {
+    if (q.trim().length < 3) {
+      _snack('Axtarış üçün ən azı 3 hərf yazın');
+      return;
+    }
+    final list = await _searchAddress(q);
+    if (!mounted) return;
+    if (list.isNotEmpty) {
+      _applyOption(list.first);
+    } else {
+      _snack('Ünvan tapılmadı. Başqa sözlə yoxlayın və ya xəritəyə toxunun.');
+    }
+  }
+
+  Future<void> _pickPoint(LatLng point) async {
+    setState(() {
+      _coords = point;
+      _hasCoords = true;
+    });
+    if (_addressCtrl.text.trim().isNotEmpty) return;
+    try {
+      final res = await _osm.get('/reverse', queryParameters: {
+        'format': 'json',
+        'lat': point.latitude,
+        'lon': point.longitude,
+        'zoom': 18,
+      });
+      final label = (res.data is Map ? res.data['display_name'] : null)?.toString() ?? '';
+      if (mounted && label.isNotEmpty && _addressCtrl.text.trim().isEmpty) {
+        setState(() => _addressCtrl.text = label);
+      }
     } catch (_) {
       // ignore
-    } finally {
-      if (mounted) setState(() => _searching = false);
     }
+  }
+
+  void _snack(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   Future<void> _useMyLocation() async {
@@ -111,8 +181,8 @@ class _CustomerAddressEditModalState extends State<CustomerAddressEditModal> {
       final p = await Geolocator.getCurrentPosition();
       if (!mounted) return;
       final next = LatLng(p.latitude, p.longitude);
-      setState(() => _coords = next);
-      _mapCtrl.move(next, 16);
+      _mapCtrl.move(next, 17);
+      await _pickPoint(next);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -122,6 +192,14 @@ class _CustomerAddressEditModalState extends State<CustomerAddressEditModal> {
   }
 
   Future<void> _save() async {
+    if (_addressCtrl.text.trim().isEmpty) {
+      _snack('Ünvanı daxil edin');
+      return;
+    }
+    if (!_hasCoords) {
+      _snack('Xəritədə müştərinin yerini seçin (axtarın və ya xəritəyə toxunun)');
+      return;
+    }
     setState(() => _saving = true);
     try {
       await ApiClient().dio.patch('/tasks/customers/${widget.customerId}/', data: {
@@ -174,30 +252,29 @@ class _CustomerAddressEditModalState extends State<CustomerAddressEditModal> {
                       ],
                     ),
                     TextField(
-                      controller: _addressCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Ünvan',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
                       controller: _searchCtrl,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: _findOnMap,
                       onChanged: (v) {
-                        Future.delayed(const Duration(milliseconds: 400), () {
+                        Future.delayed(const Duration(milliseconds: 450), () {
                           if (!mounted) return;
                           if (_searchCtrl.text == v) _searchAddress(v);
                         });
                       },
                       decoration: InputDecoration(
-                        labelText: 'Ünvan axtar',
+                        labelText: 'Ünvan axtar (küçə, məhəllə, bina...)',
                         border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.search),
                         suffixIcon: _searching
                             ? const Padding(
                                 padding: EdgeInsets.all(12),
                                 child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                               )
-                            : const Icon(Icons.search),
+                            : IconButton(
+                                tooltip: 'Xəritədə tap',
+                                icon: const Icon(Icons.travel_explore, color: Colors.blue),
+                                onPressed: () => _findOnMap(_searchCtrl.text),
+                              ),
                       ),
                     ),
                     if (_addressOptions.isNotEmpty)
@@ -219,27 +296,45 @@ class _CustomerAddressEditModalState extends State<CustomerAddressEditModal> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              onTap: () {
-                                final next = LatLng(o['lat'] as double, o['lng'] as double);
-                                setState(() {
-                                  _coords = next;
-                                  _addressCtrl.text = o['label'].toString();
-                                  _addressOptions = [];
-                                });
-                                _mapCtrl.move(next, 16);
-                              },
+                              onTap: () => _applyOption(o),
                             );
                           },
                         ),
                       ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: OutlinedButton.icon(
-                        onPressed: _useMyLocation,
-                        icon: const Icon(Icons.my_location),
-                        label: const Text('Mənim lokasiyam'),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _addressCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Ünvan *',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.place_outlined),
+                        suffixIcon: IconButton(
+                          tooltip: 'Xəritədə göstər',
+                          icon: const Icon(Icons.map_outlined),
+                          onPressed: () => _findOnMap(_addressCtrl.text),
+                        ),
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _hasCoords
+                                ? 'Yer seçilib. Dəqiqləşdirmək üçün xəritəyə toxunun.'
+                                : 'Yer seçilməyib — axtarın və ya xəritəyə toxunun.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _hasCoords ? Colors.green.shade700 : Colors.orange.shade800,
+                            ),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _useMyLocation,
+                          icon: const Icon(Icons.my_location, size: 18),
+                          label: const Text('Mənim lokasiyam'),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Expanded(
@@ -250,15 +345,14 @@ class _CustomerAddressEditModalState extends State<CustomerAddressEditModal> {
                           options: MapOptions(
                             initialCenter: _coords,
                             initialZoom: 14,
-                            onTap: (tapPosition, point) {
-                              setState(() => _coords = point);
-                            },
+                            onTap: (tapPosition, point) => _pickPoint(point),
                           ),
                           children: [
                             TileLayer(
                               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                               userAgentPackageName: 'com.example.mobile',
                             ),
+                            if (_hasCoords)
                             MarkerLayer(
                               markers: [
                                 Marker(

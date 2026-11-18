@@ -5,6 +5,7 @@ from ..models import Task, TaskService, TaskServiceValue, Column, Service, TaskP
 from .product import TaskProductSerializer
 from documents.serializers import TaskDocumentSerializer
 from .task_type import TaskTypeSerializer
+from ..services.customer_address import ensure_customer_address_for_done
 
 User = get_user_model()
 
@@ -196,6 +197,12 @@ class TaskSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {'rescheduled_date': 'Təxirə salındı üçün tarix seçin (Rescheduled date).'}
                 )
+        becoming_done = status == Task.Status.DONE and (
+            self.instance is None or self.instance.status != Task.Status.DONE
+        )
+        if becoming_done:
+            customer = attrs.get('customer') or (self.instance.customer if self.instance else None)
+            ensure_customer_address_for_done(customer)
         return attrs
     
     def create(self, validated_data):

@@ -25,6 +25,7 @@ from ..serializers import (
     TaskCustomerHistorySerializer,
 )
 from ..services.task_activity import log_task_activity, task_status_label
+from ..services.customer_address import ensure_customer_address_for_done
 from warehouse.models import WarehouseInventory, StockMovement
 from ..pagination import TaskPagination, TaskActivityFeedPagination
 from notifications.models import Notification
@@ -529,6 +530,8 @@ class TaskViewSet(viewsets.ModelViewSet):
             rd = serializer.validated_data.get('rescheduled_date')
             pending_note = serializer.validated_data.get('pending_note')
             reject_note = serializer.validated_data.get('reject_note')
+            if new_status == Task.Status.DONE and old_status != Task.Status.DONE:
+                ensure_customer_address_for_done(task.customer)
             task.status = new_status
             if new_status == Task.Status.PENDING:
                 task.rescheduled_date = rd
