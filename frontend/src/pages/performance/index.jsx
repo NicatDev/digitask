@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, DatePicker, Button, Row, Col, Space, Tag, Progress, Segmented, Tooltip } from 'antd';
-import { LeftOutlined, RightOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Table, DatePicker, Button, Row, Col, Space, Tag, Progress, Segmented, Tooltip, Modal } from 'antd';
+import { LeftOutlined, RightOutlined, ReloadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import styles from './style.module.scss';
 import { getUserPerformance } from '../../axios/api/performance';
@@ -15,9 +15,10 @@ const AZ_MONTHS = [
 const AZ_MONTHS_TITLE = AZ_MONTHS.map((m) => m.charAt(0).toUpperCase() + m.slice(1));
 
 const PERIOD_OPTIONS = [
-    { label: 'Günlük', value: 'day' },
-    { label: 'Həftəlik', value: 'week' },
+    { label: 'Ümumi', value: 'all' },
     { label: 'Aylıq', value: 'month' },
+    { label: 'Həftəlik', value: 'week' },
+    { label: 'Günlük', value: 'day' },
 ];
 
 const TODAY_LABEL = { day: 'Bu gün', week: 'Bu həftə', month: 'Bu ay' };
@@ -56,8 +57,10 @@ const isCurrentPeriod = (period, anchor) => {
 const PerformancePage = () => {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState([]);
-    const [period, setPeriod] = useState('day');
+    const [period, setPeriod] = useState('month');
     const [anchor, setAnchor] = useState(() => dayjs());
+    const [infoOpen, setInfoOpen] = useState(false);
+    const isAll = period === 'all';
 
     useEffect(() => {
         fetchData();
@@ -67,10 +70,9 @@ const PerformancePage = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await getUserPerformance({
-                period,
-                date: anchor.format('YYYY-MM-DD'),
-            });
+            const res = await getUserPerformance(
+                isAll ? { period } : { period, date: anchor.format('YYYY-MM-DD') }
+            );
             setData(res.data);
         } catch (error) {
             console.error(error);
@@ -80,8 +82,8 @@ const PerformancePage = () => {
     };
 
     const shift = (dir) => setAnchor((a) => a.add(dir, period));
-    const isCurrent = isCurrentPeriod(period, anchor);
-    const rangeLabel = formatRangeLabel(period, anchor);
+    const isCurrent = isAll || isCurrentPeriod(period, anchor);
+    const rangeLabel = isAll ? 'Bütün dövr' : formatRangeLabel(period, anchor);
 
     const summary = useMemo(() => {
         const completed = data.reduce((acc, r) => acc + (r.stats?.completed || 0), 0);
@@ -207,7 +209,51 @@ const PerformancePage = () => {
         <div className={styles.performancePage}>
             <Title level={2} className={styles.pageTitle}>
                 İşçi Performansı
+                <Tooltip title="Necə hesablanır?">
+                    <ExclamationCircleOutlined
+                        className={styles.infoIcon}
+                        onClick={() => setInfoOpen(true)}
+                    />
+                </Tooltip>
             </Title>
+
+            <Modal
+                title="Performans necə hesablanır?"
+                open={infoOpen}
+                onCancel={() => setInfoOpen(false)}
+                footer={<Button type="primary" onClick={() => setInfoOpen(false)}>Bağla</Button>}
+            >
+                <div className={styles.infoBody}>
+                    <p><strong>Filtrlər:</strong></p>
+                    <ul>
+                        <li><strong>Ümumi</strong> — bütün dövr, tarix məhdudiyyəti yoxdur.</li>
+                        <li><strong>Aylıq</strong> — seçilmiş ayın 1-dən sonuna qədər (cari ay üçün: ayın 1-dən bu günə qədər).</li>
+                        <li><strong>Həftəlik</strong> — bazar ertəsindən bazar gününə qədər.</li>
+                        <li><strong>Günlük</strong> — seçilmiş bir gün.</li>
+                    </ul>
+                    <p>Bütün tarixlər Bakı vaxtı (UTC+4) ilə hesablanır.</p>
+
+                    <p><strong>Tamamlanmış</strong> — seçilmiş dövrdə statusu həqiqətən “Tamamlandı”ya keçirilmiş tapşırıqlar.
+                        Tarix tapşırığın tamamlandığı an götürülür, sonradan edilən redaktələr (başlıq, qeyd, qrup və s.) tarixi dəyişmir.
+                        Tamamlanandan sonra statusu geri qaytarılmış və ya silinmiş tapşırıqlar sayılmır.
+                        “Ümumi” filtrində hazırda tamamlanmış bütün tapşırıqlar sayılır.</p>
+
+                    <p><strong>Dövr üzrə aktiv</strong> — seçilmiş dövrdə yaradılmış və hazırda hələ də “Gözləyir” və ya “İcrada” olan tapşırıqlar.</p>
+
+                    <p><strong>Ümumi aktiv</strong> — tarixdən asılı olmayaraq hazırda “Gözləyir” və ya “İcrada” olan bütün tapşırıqlar.</p>
+
+                    <p><strong>Ümumi</strong> sütunu = Tamamlanmış + Ümumi aktiv.</p>
+
+                    <p><strong>Effektivlik</strong> = Tamamlanmış ÷ (Tamamlanmış + Ümumi aktiv) × 100%.</p>
+
+                    <p><strong>Qeydlər:</strong></p>
+                    <ul>
+                        <li>Tapşırığın bir neçə icraçısı varsa, hər icraçıya ayrıca sayılır.</li>
+                        <li>“Təxirə salındı” və “Rədd edildi” statuslu tapşırıqlar heç bir sayğaca daxil deyil.</li>
+                        <li>Silinmiş (deaktiv) tapşırıqlar sayılmır.</li>
+                    </ul>
+                </div>
+            </Modal>
 
             <div className={styles.periodBar}>
                 <Segmented
@@ -218,6 +264,7 @@ const PerformancePage = () => {
                 />
 
                 <div className={styles.dateNav}>
+                    {!isAll && (<>
                     <Tooltip title="Əvvəlki">
                         <Button icon={<LeftOutlined />} onClick={() => shift(-1)} />
                     </Tooltip>
@@ -246,6 +293,7 @@ const PerformancePage = () => {
                     >
                         {TODAY_LABEL[period]}
                     </Button>
+                    </>)}
                     <Tooltip title="Yenilə">
                         <Button icon={<ReloadOutlined />} onClick={fetchData} loading={loading} />
                     </Tooltip>

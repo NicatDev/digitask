@@ -13,9 +13,23 @@
         margin-top: 0;
         margin-bottom: 16px;
         word-break: break-word;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
 
-    /* Dövr seçimi: Günlük / Həftəlik / Aylıq + tarix naviqasiyası */
+    .infoIcon {
+        font-size: 20px;
+        color: #faad14;
+        cursor: pointer;
+        transition: transform 0.15s ease;
+
+        &:hover {
+            transform: scale(1.12);
+        }
+    }
+
+    /* Dövr seçimi: Ümumi / Aylıq / Həftəlik / Günlük + tarix naviqasiyası */
     .periodBar {
         display: flex;
         flex-wrap: wrap;
@@ -135,5 +149,19 @@
         .ant-table-wrapper {
             background: #fff;
         }
+    }
+}
+/* "Necə hesablanır?" modalı (portal ilə render olunur, ona görə üst səviyyədədir) */
+.infoBody {
+    font-size: 14px;
+    line-height: 1.6;
+
+    p {
+        margin-bottom: 10px;
+    }
+
+    ul {
+        padding-left: 20px;
+        margin-bottom: 12px;
     }
 }

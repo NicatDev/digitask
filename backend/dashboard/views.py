@@ -6,6 +6,7 @@ from tasks.models import Task, TaskType
 from notifications.models import Notification
 from notifications.services import send_notification
 from warehouse.models import StockMovement
+from performance.views import resolve_period_range, completed_in_range, active_tasks_qs
 from django.db.models import Count, Q
 from datetime import timedelta
 
@@ -47,15 +48,16 @@ class DashboardStatsView(views.APIView):
         # By Type
         type_stats = Task.objects.values('task_type__name', 'task_type__color').annotate(count=Count('id'))
 
-        # By User (Top 5). period=month -> current month only (same rule as
-        # performance view: DONE tasks updated this month + currently active tasks).
-        user_tasks = Task.objects.filter(assigned_to__isnull=False)
+        # By User (Top 5). period=month -> ayın 1-dən indiyə qədər həqiqətən
+        # tamamlanmış (TaskActivity "→ done") + hazırda açıq tapşırıqlar.
+        user_tasks = Task.objects.filter(assigned_to__isnull=False, is_active=True)
+        order_by = ('-total_tasks',)
         if request.query_params.get('period') == 'month':
-            now = timezone.now()
-            user_tasks = user_tasks.filter(
-                Q(status='done', updated_at__year=now.year, updated_at__month=now.month)
-                | Q(status__in=['todo', 'in_progress'])
-            )
+            _p, month_start, _end = resolve_period_range({'period': 'month'})
+            done_ids = completed_in_range(month_start, timezone.now()).values('id')
+            active_ids = active_tasks_qs().values('id')
+            user_tasks = user_tasks.filter(Q(id__in=done_ids) | Q(id__in=active_ids))
+            order_by = ('-done_tasks', '-total_tasks')
         user_stats = user_tasks.values(
             'assigned_to__username', 
             'assigned_to__first_name', 
@@ -66,7 +68,7 @@ class DashboardStatsView(views.APIView):
             total_tasks=Count('id'),
             active_tasks=Count('id', filter=Q(status__in=['todo', 'in_progress'])),
             done_tasks=Count('id', filter=Q(status='done'))
-        ).order_by('-total_tasks')[:5]
+        ).order_by(*order_by)[:5]
 
         # 2. Warehouse Stats (Last 30 days)
         last_30_days = timezone.now() - timedelta(days=30)

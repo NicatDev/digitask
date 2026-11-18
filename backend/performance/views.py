@@ -2,7 +2,7 @@ from rest_framework import views, response, permissions
 from django.db.models import Count, Q, F
 from django.utils import timezone
 from django.contrib.auth import get_user_model
-from tasks.models import Task
+from tasks.models import Task, TaskActivity
 from dateutil.relativedelta import relativedelta
 import datetime
 
@@ -11,7 +11,7 @@ User = get_user_model()
 # Azərbaycan vaxtı (UTC+4, yay saatı yoxdur). Gün/həftə/ay sərhədləri bu saatla hesablanır,
 # server TIME_ZONE='UTC' olsa da "bu gün" istifadəçi üçün düzgün olsun deyə.
 REPORT_TZ = datetime.timezone(datetime.timedelta(hours=4))
-PERIODS = ('day', 'week', 'month')
+PERIODS = ('day', 'week', 'month', 'all')
 
 
 def _parse_date(value):
@@ -46,6 +46,10 @@ def resolve_period_range(params):
     else:
         anchor = _parse_date(params.get('date')) or today
 
+    if period == 'all':
+        # Ümumi: tarix məhdudiyyəti yoxdur
+        return period, None, None
+
     if period == 'day':
         start_d = anchor
         end_d = anchor + datetime.timedelta(days=1)
@@ -58,6 +62,35 @@ def resolve_period_range(params):
 
     to_dt = lambda d: datetime.datetime.combine(d, datetime.time.min, tzinfo=REPORT_TZ)
     return period, to_dt(start_d), to_dt(end_d)
+
+
+def completed_in_range(range_start, range_end):
+    """
+    [range_start, range_end) aralığında həqiqətən tamamlanmış tapşırıqlar.
+
+    Tamamlanma tarixi `updated_at`-dən deyil, TaskActivity-dəki "status → done"
+    qeydindən götürülür (updated_at hər redaktədə dəyişir). Tapşırıq hazırda da
+    `done` olmalı və silinməmiş (is_active) olmalıdır.
+    """
+    qs = Task.objects.filter(status=Task.Status.DONE, is_active=True)
+    if range_start is None and range_end is None:
+        # Ümumi: bütün tamamlanmış tapşırıqlar (log-dan əvvəlki köhnələr də daxil)
+        return qs
+    done_task_ids = TaskActivity.objects.filter(
+        action=TaskActivity.Action.STATUS_CHANGE,
+        meta__to=Task.Status.DONE,
+        created_at__gte=range_start,
+        created_at__lt=range_end,
+    ).values('task_id')
+    return qs.filter(id__in=done_task_ids)
+
+
+def active_tasks_qs():
+    """Hazırda açıq (todo / in_progress) və silinməmiş tapşırıqlar."""
+    return Task.objects.filter(
+        status__in=[Task.Status.TODO, Task.Status.IN_PROGRESS],
+        is_active=True,
+    )
 
 
 class UserPerformanceView(views.APIView):
@@ -75,27 +108,22 @@ class UserPerformanceView(views.APIView):
             # Revised Logic requested by User:
             # "Total" = Active + Completed. This represents the "Total Volume" relevant to this month/snapshot.
             
-            # Metric 1: Tasks Completed (Status DONE and updated_at in selected day/week/month)
-            completed_tasks = Task.objects.filter(
-                assigned_to=user,
-                status='done',
-                updated_at__gte=range_start,
-                updated_at__lt=range_end,
-            )
-            
+            # Metric 1: Tasks completed (status → done logged) in selected day/week/month
+            completed_tasks = completed_in_range(range_start, range_end).filter(assigned_to=user)
+
             # Metric 2: Active Tasks (Current snapshot)
-            active_tasks = Task.objects.filter(
-                assigned_to=user,
-                status__in=['todo', 'in_progress']
-            )
+            active_tasks = active_tasks_qs().filter(assigned_to=user)
 
             completed_count = completed_tasks.count()
             active_count = active_tasks.count()
             # Seçilmiş dövr ərzində yaradılmış və hazırda hələ aktiv olan tapşırıqlar
-            active_in_period_count = active_tasks.filter(
-                created_at__gte=range_start,
-                created_at__lt=range_end,
-            ).count()
+            if range_start is None:
+                active_in_period_count = active_count
+            else:
+                active_in_period_count = active_tasks.filter(
+                    created_at__gte=range_start,
+                    created_at__lt=range_end,
+                ).count()
             
             # Total Volume = Completed (Efficiency) + Active (Backlog)
             # This ensures Total >= Completed and Total >= Active
