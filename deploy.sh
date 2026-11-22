@@ -37,6 +37,10 @@ fi
 log "Backend: pip install -r requirements.txt"
 pip install -r requirements.txt
 
+# Migration faylları git-də saxlanılmır (.gitignore) — serverdə yaradılır
+log "Backend: makemigrations"
+python manage.py makemigrations --noinput
+
 log "Backend: migrate"
 python manage.py migrate --noinput
 

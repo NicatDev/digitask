@@ -1,6 +1,7 @@
 from .service import Service, Column
 from .equipment import Equipment, OpticBox
 from .customer import Customer, CustomerImportJob
+from .customer_import import CustomerImportBatch, CustomerImportRow
 from .task import Task, TaskService, TaskServiceValue
 
 from .product import TaskProduct

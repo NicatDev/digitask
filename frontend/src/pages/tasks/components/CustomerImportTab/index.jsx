@@ -1,286 +1,245 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Descriptions, Divider, Progress, Space, Typography } from 'antd';
-import { getCustomerImportStatus, startCustomerImport, getCustomers, updateCustomer } from '../../../../axios/api/tasks';
-import { handleApiError } from '../../../../utils/errorHandler';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Button, Card, Progress, Space, Typography, Upload } from 'antd';
+import {
+    FileExcelOutlined, FileTextOutlined, InboxOutlined, QuestionCircleOutlined, ReloadOutlined,
+} from '@ant-design/icons';
+import {
+    getActiveCustomerImport, getCustomerImport, getCustomerImports, uploadCustomerImport,
+} from '../../../../axios/api/tasks';
+import ActiveBatchPanel from './ActiveBatchPanel';
+import BatchDetailDrawer from './BatchDetailDrawer';
+import HistoryTable from './HistoryTable';
+import ImportRulesModal from './ImportRulesModal';
+import PhoneNormalizeCard from './PhoneNormalizeCard';
+import RollbackModal from './RollbackModal';
+import { RUNNING, downloadFile, showError } from './utils';
+import styles from './style.module.scss';
 
-const { Text } = Typography;
-
+const { Title, Text, Paragraph } = Typography;
 const POLL_MS = 1500;
+const MAX_SIZE = 10 * 1024 * 1024;
 
-/** 55, 50, 51, 70, 77, 99 ilə başlayan tam 9 rəqəmli nömrəyə başda 0 əlavə edir */
-const AZ_MOBILE_PREFIXES = ['55', '50', '51', '70', '77', '99'];
-
-/** Telefon və ya qeydiyyat nömrəsi üçün eyni qayda */
-function normalizedAzMobileWithLeadingZero(raw) {
-    if (raw == null || raw === '') return null;
-    const digits = String(raw).replace(/\D/g, '');
-    if (digits.length !== 9) return null;
-    const p2 = digits.slice(0, 2);
-    if (!AZ_MOBILE_PREFIXES.includes(p2)) return null;
-    return `0${digits}`;
-}
-
-function digitsOnly(value) {
-    return String(value ?? '').replace(/\D/g, '');
-}
-
-/** Artıq düzgün rəqəmlərdirsə (0 + 9 rəqəm) dəyişiklik lazım deyil */
-function needsLeadingZeroFix(currentValue, normalized) {
-    if (!normalized) return false;
-    return digitsOnly(currentValue) !== digitsOnly(normalized);
-}
-
-async function fetchAllCustomers() {
-    const all = [];
-    let page = 1;
-    const pageSize = 100;
-    for (;;) {
-        const res = await getCustomers({ page, page_size: pageSize });
-        const results = res.data?.results ?? [];
-        const count = res.data?.count ?? 0;
-        all.push(...results);
-        if (results.length === 0 || all.length >= count) break;
-        page += 1;
-    }
-    return all;
-}
+const userError = (detail) => showError({ response: { data: { detail } } });
 
 const CustomerImportTab = () => {
-    const [jobId, setJobId] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [job, setJob] = useState(null);
-    const timerRef = useRef(null);
+    const [rulesOpen, setRulesOpen] = useState(false);
+    const [current, setCurrent] = useState(null);
+    const [uploading, setUploading] = useState(false);
+    const [uploadPct, setUploadPct] = useState(0);
+    const [history, setHistory] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyPage, setHistoryPage] = useState({ current: 1, pageSize: 20, total: 0 });
+    const [detail, setDetail] = useState(null);
+    const [detailRefresh, setDetailRefresh] = useState(0);
+    const [rollbackBatch, setRollbackBatch] = useState(null);
+    const pollRef = useRef(null);
+    const lastStatusRef = useRef(null);
+    const pageSizeRef = useRef(20);
 
-    const [phoneFixLoading, setPhoneFixLoading] = useState(false);
-    const [phoneFixLog, setPhoneFixLog] = useState([]);
-    const [phoneFixSummary, setPhoneFixSummary] = useState(null);
-
-    const stopPolling = () => {
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-        }
-    };
-
-    const fetchStatus = async (id) => {
+    const loadHistory = useCallback(async (page = 1, pageSize = pageSizeRef.current) => {
+        pageSizeRef.current = pageSize;
+        setHistoryLoading(true);
         try {
-            const res = await getCustomerImportStatus(id);
-            const current = res.data;
-            setJob(current);
-            if (current.status === 'done' || current.status === 'failed') {
-                stopPolling();
-            }
+            const res = await getCustomerImports({ page, page_size: pageSize });
+            setHistory(res.data.results || []);
+            setHistoryPage({ current: page, pageSize, total: res.data.count || 0 });
         } catch (e) {
-            stopPolling();
-            handleApiError(e, 'Import status yoxlanmadı');
-        }
-    };
-
-    useEffect(() => () => stopPolling(), []);
-
-    const appendPhoneLog = (line) => {
-        const ts = new Date().toISOString();
-        setPhoneFixLog((prev) => [...prev, `[${ts}] ${line}`]);
-    };
-
-    const handleStart = async () => {
-        setLoading(true);
-        try {
-            const res = await startCustomerImport();
-            const id = res.data?.job_id;
-            if (!id) return;
-            setJobId(id);
-            await fetchStatus(id);
-            stopPolling();
-            timerRef.current = setInterval(() => fetchStatus(id), POLL_MS);
-        } catch (e) {
-            handleApiError(e, 'Import başladılmadı');
+            await showError(e, 'Tarixçə yüklənmədi');
         } finally {
-            setLoading(false);
+            setHistoryLoading(false);
         }
-    };
+    }, []);
 
-    const handleNormalizePhones = async () => {
-        setPhoneFixLoading(true);
-        setPhoneFixLog([]);
-        setPhoneFixSummary(null);
-        let updated = 0;
-        let errors = 0;
+    const applyBatch = useCallback((b) => {
+        setCurrent(b);
+        if (!b) return;
+        // Detallar açıqdırsa onu da yenilə
+        setDetail((d) => (d && d.id === b.id ? b : d));
+        if (lastStatusRef.current !== b.status) {
+            lastStatusRef.current = b.status;
+            loadHistory(1);
+            setDetailRefresh((k) => k + 1);
+        }
+    }, [loadHistory]);
 
+    // Səhifə açılanda: yarımçıq və ya təsdiq gözləyən import varmı?
+    useEffect(() => {
+        (async () => {
+            try {
+                const res = await getActiveCustomerImport();
+                if (res.data) applyBatch(res.data);
+            } catch (e) {
+                await showError(e, 'Hazırkı import yoxlanmadı');
+            }
+        })();
+        loadHistory(1);
+    }, [applyBatch, loadHistory]);
+
+    // İşləyən proses varsa vəziyyəti izləyirik
+    const currentId = current?.id;
+    const currentStatus = current?.status;
+    useEffect(() => {
+        if (pollRef.current) clearInterval(pollRef.current);
+        if (!currentId || !RUNNING.includes(currentStatus)) return undefined;
+        let failures = 0;
+        pollRef.current = setInterval(async () => {
+            try {
+                const res = await getCustomerImport(currentId);
+                failures = 0;
+                applyBatch(res.data);
+            } catch {
+                failures += 1;
+                // Şəbəkə qısa müddət kəsilsə də proses serverdə davam edir — izləməyə davam edirik
+                if (failures === 5) userError('Serverlə əlaqə kəsilib. Proses serverdə davam edir — əlaqə bərpa olunanda nəticə görünəcək.');
+            }
+        }, POLL_MS);
+        return () => clearInterval(pollRef.current);
+    }, [currentId, currentStatus, applyBatch]);
+
+    const blocked = current && ['validating', 'importing', 'rolling_back', 'interrupted'].includes(current.status);
+
+    const beforeUpload = async (file) => {
+        const name = file.name.toLowerCase();
+        if (!name.endsWith('.xlsx') && !name.endsWith('.json')) {
+            userError('Yalnız Excel (.xlsx) və JSON (.json) faylları yükləmək olar. Köhnə .xls və ya .csv faylını Excel-də “.xlsx” kimi saxlayın.');
+            return Upload.LIST_IGNORE;
+        }
+        if (file.size > MAX_SIZE) {
+            userError('Fayl çox böyükdür (maksimum 10 MB). Faylı hissələrə bölüb yükləyin.');
+            return Upload.LIST_IGNORE;
+        }
+        if (file.size === 0) {
+            userError('Fayl boşdur.');
+            return Upload.LIST_IGNORE;
+        }
+        setUploading(true);
+        setUploadPct(0);
         try {
-            appendPhoneLog('Müştərilər yüklənir...');
-            const customers = await fetchAllCustomers();
-            appendPhoneLog(`Ümumi müştəri: ${customers.length}`);
-
-            const toPatch = [];
-            for (const c of customers) {
-                const patch = {};
-                const logBits = [];
-
-                const nextPhone = normalizedAzMobileWithLeadingZero(c.phone_number);
-                if (needsLeadingZeroFix(c.phone_number, nextPhone)) {
-                    patch.phone_number = nextPhone;
-                    logBits.push(`tel: "${c.phone_number}" → "${nextPhone}"`);
-                }
-
-                const nextReg = normalizedAzMobileWithLeadingZero(c.register_number);
-                if (needsLeadingZeroFix(c.register_number, nextReg)) {
-                    patch.register_number = nextReg;
-                    logBits.push(`qeyd: "${c.register_number}" → "${nextReg}"`);
-                }
-
-                if (Object.keys(patch).length > 0) {
-                    toPatch.push({
-                        id: c.id,
-                        full_name: c.full_name,
-                        patch,
-                        logLine: logBits.join('; '),
-                    });
-                }
-            }
-
-            const notApplicable = customers.length - toPatch.length;
-            appendPhoneLog(`Dəyişdiriləcək: ${toPatch.length}, şərtə uyğun gəlməyən/artıq eyni: ${notApplicable}`);
-
-            const chunkSize = 8;
-            for (let i = 0; i < toPatch.length; i += chunkSize) {
-                const chunk = toPatch.slice(i, i + chunkSize);
-                await Promise.all(
-                    chunk.map(async (row) => {
-                        try {
-                            await updateCustomer(row.id, row.patch);
-                            updated += 1;
-                            appendPhoneLog(`OK id=${row.id} ${row.full_name || ''}: ${row.logLine}`);
-                        } catch (e) {
-                            errors += 1;
-                            appendPhoneLog(`XƏTA id=${row.id}: ${e?.response?.data ? JSON.stringify(e.response.data) : e.message}`);
-                        }
-                    })
-                );
-            }
-
-            setPhoneFixSummary({
-                total: customers.length,
-                notApplicable,
-                updated,
-                errors,
+            const res = await uploadCustomerImport(file, (ev) => {
+                if (ev.total) setUploadPct(Math.round((ev.loaded / ev.total) * 100));
             });
-            appendPhoneLog(`Bitdi. Yenilənib: ${updated}, xəta: ${errors}.`);
+            lastStatusRef.current = null;
+            applyBatch(res.data);
         } catch (e) {
-            handleApiError(e, 'Nömrə yenilənməsi alınmadı');
-            appendPhoneLog(`Ümumi xəta: ${e.message}`);
+            await showError(e, 'Fayl yüklənmədi');
         } finally {
-            setPhoneFixLoading(false);
+            setUploading(false);
+        }
+        return Upload.LIST_IGNORE;
+    };
+
+    const openDetails = async (b) => {
+        setDetail(b);
+        try {
+            const res = await getCustomerImport(b.id);
+            setDetail(res.data);
+        } catch (e) {
+            await showError(e, 'Import tapılmadı');
         }
     };
 
-    const percent = job?.total_rows
-        ? Math.min(100, Math.round((job.processed_rows / job.total_rows) * 100))
-        : 0;
+    const onBatchChanged = (b) => {
+        lastStatusRef.current = null;
+        applyBatch(b);
+    };
 
     return (
-        <Space direction="vertical" size={24} style={{ width: '100%' }}>
-            <Card title="Bulk Customer Import" bordered>
-                <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                    <Text>
-                        Mənbə fayl: <Text code>backend/customers.json</Text>
-                    </Text>
-
-                    <Button type="primary" loading={loading} onClick={handleStart}>
-                        Import başlat
-                    </Button>
-
-                    {jobId ? (
-                        <Text>
-                            Job ID: <Text code>{jobId}</Text>
-                        </Text>
-                    ) : null}
-
-                    {job ? (
-                        <>
-                            <Progress
-                                percent={percent}
-                                status={
-                                    job.status === 'failed'
-                                        ? 'exception'
-                                        : job.status === 'done'
-                                          ? 'success'
-                                          : 'active'
-                                }
-                            />
-
-                            <Descriptions size="small" column={2} bordered>
-                                <Descriptions.Item label="Status">{job.status}</Descriptions.Item>
-                                <Descriptions.Item label="Ümumi sətir">{job.total_rows}</Descriptions.Item>
-                                <Descriptions.Item label="Processed">{job.processed_rows}</Descriptions.Item>
-                                <Descriptions.Item label="Created">{job.created_count}</Descriptions.Item>
-                                <Descriptions.Item label="Skipped">{job.skipped_count}</Descriptions.Item>
-                                <Descriptions.Item label="Errors">{job.error_count}</Descriptions.Item>
-                                <Descriptions.Item label="Duration (ms)">{job.duration_ms}</Descriptions.Item>
-                                <Descriptions.Item label="Finished">{job.finished_at || '-'}</Descriptions.Item>
-                            </Descriptions>
-
-                            {Array.isArray(job.sample_errors) && job.sample_errors.length > 0 ? (
-                                <Alert
-                                    type="warning"
-                                    showIcon
-                                    message="Sample errors"
-                                    description={
-                                        <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                                            {JSON.stringify(job.sample_errors, null, 2)}
-                                        </pre>
-                                    }
-                                />
-                            ) : null}
-                        </>
-                    ) : null}
-                </Space>
-            </Card>
-
-            <Card title="Telefon və qeydiyyat nömrəsi (0 prefiksi)" bordered>
-                <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <div className={styles.page}>
+            <div className={styles.header}>
+                <div>
+                    <Title level={3}>Müştəri importu</Title>
                     <Text type="secondary">
-                        Həm <Text strong>əlaqə nömrəsi</Text>, həm <Text strong>qeydiyyat nömrəsi</Text> üçün: yalnız
-                        rəqəmlərdən ibarət <Text strong>9 simvol</Text> və prefiks{' '}
-                        <Text code>{AZ_MOBILE_PREFIXES.join(', ')}</Text> olan dəyərlərin əvvəlinə <Text code>0</Text>{' '}
-                        əlavə olunur (məs. 554264644 → 0554264644). Digər formatlar toxunulmur.
+                        Excel və ya JSON faylından <b>yeni</b> müştəriləri əlavə edin. Sistemdə olan müştərilər dəyişdirilmir və silinmir.
                     </Text>
-                    <Button type="primary" loading={phoneFixLoading} onClick={handleNormalizePhones}>
-                        Bütün müştəriləri yoxla və düzəlt
+                </div>
+                <Button icon={<QuestionCircleOutlined />} onClick={() => setRulesOpen(true)}>Qaydalara bax</Button>
+            </div>
+
+            <div className={styles.steps}>
+                <Card title={<span className={styles.stepTitle}><span className={styles.stepNum}>1</span>Şablonu endirin</span>}>
+                    <Paragraph type="secondary">
+                        Şablonu doldurun: hər müştəri bir sətir. Ulduzlu sütunlar məcburidir, qeydiyyat nömrəsi və ya telefondan ən azı biri lazımdır.
+                    </Paragraph>
+                    <Space wrap>
+                        <Button type="primary" ghost icon={<FileExcelOutlined />}
+                                onClick={() => downloadFile('template/', undefined, 'musteri-import-sablonu.xlsx')}>
+                            Excel şablonu
+                        </Button>
+                        <Button icon={<FileTextOutlined />}
+                                onClick={() => downloadFile('sample-json/', undefined, 'musteri-import-numunesi.json')}>
+                            JSON nümunəsi
+                        </Button>
+                    </Space>
+                </Card>
+
+                <Card title={<span className={styles.stepTitle}><span className={styles.stepNum}>2</span>Faylı yükləyin</span>}>
+                    {blocked ? (
+                        <Alert
+                            type="info"
+                            showIcon
+                            title={current.status === 'interrupted'
+                                ? 'Əvvəlki import yarımçıq qalıb. Yeni fayl yükləmək üçün əvvəlcə onu “Davam et” və ya “Geri qaytar” edin.'
+                                : 'Hazırda bir əməliyyat gedir. Bitəndən sonra yeni fayl yükləyə bilərsiniz.'}
+                        />
+                    ) : (
+                        <Upload.Dragger
+                            accept=".xlsx,.json"
+                            multiple={false}
+                            showUploadList={false}
+                            beforeUpload={beforeUpload}
+                            disabled={uploading}
+                        >
+                            <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+                            <p className="ant-upload-text">Faylı bura sürüşdürün və ya klikləyib seçin</p>
+                            <p className="ant-upload-hint">
+                                Excel (.xlsx) və ya JSON (.json), maksimum 10 MB. Yükləyəndə heç nə yaradılmır — əvvəlcə nəticəni görəcəksiniz.
+                            </p>
+                            {uploading && <Progress percent={uploadPct} size="small" style={{ maxWidth: 320, margin: '0 auto' }} />}
+                        </Upload.Dragger>
+                    )}
+                    {current?.status === 'preview' && (
+                        <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                            Yeni fayl yükləsəniz, təsdiq gözləyən hazırkı import avtomatik ləğv olunacaq.
+                        </Text>
+                    )}
+                </Card>
+            </div>
+
+            <ActiveBatchPanel
+                batch={current}
+                onChange={onBatchChanged}
+                onOpenDetails={openDetails}
+                onRollback={setRollbackBatch}
+                onDismiss={() => { setCurrent(null); lastStatusRef.current = null; }}
+            />
+
+            <Card
+                title="Importların tarixçəsi"
+                extra={(
+                    <Button size="small" icon={<ReloadOutlined />}
+                            onClick={() => loadHistory(historyPage.current, historyPage.pageSize)}>
+                        Yenilə
                     </Button>
-
-                    {phoneFixSummary ? (
-                        <Descriptions size="small" column={2} bordered>
-                            <Descriptions.Item label="Ümumi müştəri">{phoneFixSummary.total}</Descriptions.Item>
-                            <Descriptions.Item label="Uğurla yeniləndi">{phoneFixSummary.updated}</Descriptions.Item>
-                            <Descriptions.Item label="Şərtə uyğun gəlməyən">{phoneFixSummary.notApplicable}</Descriptions.Item>
-                            <Descriptions.Item label="Xəta">{phoneFixSummary.errors}</Descriptions.Item>
-                        </Descriptions>
-                    ) : null}
-
-                    {phoneFixLog.length > 0 ? (
-                        <>
-                            <Divider orientation="left">Log</Divider>
-                            <pre
-                                style={{
-                                    margin: 0,
-                                    maxHeight: 320,
-                                    overflow: 'auto',
-                                    whiteSpace: 'pre-wrap',
-                                    background: '#0d1117',
-                                    color: '#c9d1d9',
-                                    padding: 12,
-                                    borderRadius: 6,
-                                    fontSize: 12,
-                                }}
-                            >
-                                {phoneFixLog.join('\n')}
-                            </pre>
-                        </>
-                    ) : null}
-                </Space>
+                )}
+            >
+                <HistoryTable
+                    data={history}
+                    loading={historyLoading}
+                    pagination={historyPage}
+                    onChange={(p) => loadHistory(p.current, p.pageSize)}
+                    onOpen={openDetails}
+                    onRollback={setRollbackBatch}
+                />
             </Card>
-        </Space>
+
+            <PhoneNormalizeCard />
+
+            <ImportRulesModal open={rulesOpen} onClose={() => setRulesOpen(false)} />
+            {detail && <BatchDetailDrawer batch={detail} onClose={() => setDetail(null)} refreshKey={detailRefresh} />}
+            {rollbackBatch && (
+                <RollbackModal batch={rollbackBatch} onClose={() => setRollbackBatch(null)} onDone={onBatchChanged} />
+            )}
+        </div>
     );
 };
 

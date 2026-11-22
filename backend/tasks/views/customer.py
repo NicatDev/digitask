@@ -3,14 +3,12 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from ..models import Customer, CustomerImportJob
+from ..models import Customer
 from ..serializers import (
     CustomerSerializer,
     CustomerOptionSerializer,
-    CustomerImportJobSerializer,
 )
 from rest_framework.pagination import PageNumberPagination
-from ..services.customer_import import start_customer_import_job
 
 class CustomerPagination(PageNumberPagination):
     page_size = 10
@@ -90,30 +88,3 @@ class CustomerViewSet(viewsets.ModelViewSet):
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=False, methods=["post"], url_path="import/start")
-    def import_start(self, request):
-        active_job = CustomerImportJob.objects.filter(
-            status__in=[CustomerImportJob.Status.PENDING, CustomerImportJob.Status.RUNNING]
-        ).first()
-        if active_job:
-            return Response(
-                {
-                    "detail": "Hazırda aktiv import var.",
-                    "job_id": str(active_job.id),
-                },
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        job = CustomerImportJob.objects.create(
-            status=CustomerImportJob.Status.PENDING,
-            triggered_by=request.user,
-        )
-        start_customer_import_job(job.id)
-        return Response({"job_id": str(job.id)}, status=status.HTTP_202_ACCEPTED)
-
-    @action(detail=False, methods=["get"], url_path=r"import/(?P<job_id>[^/.]+)")
-    def import_status(self, request, job_id=None):
-        job = CustomerImportJob.objects.filter(pk=job_id).first()
-        if not job:
-            return Response({"detail": "Job tapılmadı."}, status=status.HTTP_404_NOT_FOUND)
-        return Response(CustomerImportJobSerializer(job).data)

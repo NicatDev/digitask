@@ -6,6 +6,7 @@ from .views import (
     EquipmentViewSet,
     OpticBoxViewSet,
     CustomerViewSet,
+    CustomerImportBatchViewSet,
     TaskViewSet,
     TaskServiceViewSet,
     TaskProductViewSet,
@@ -19,6 +20,7 @@ router.register(r'columns', ColumnViewSet)
 router.register(r'equipment', EquipmentViewSet)
 router.register(r'optic-boxes', OpticBoxViewSet)
 router.register(r'customers', CustomerViewSet)
+router.register(r'customer-imports', CustomerImportBatchViewSet, basename='customer-import')
 router.register(r'tasks', TaskViewSet)
 router.register(r'task-services', TaskServiceViewSet)
 router.register(r'task-products', TaskProductViewSet)

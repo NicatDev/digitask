@@ -21,8 +21,29 @@ export const getCustomerOptions = (params) => axiosInstance.get('/tasks/customer
 export const createCustomer = (data) => axiosInstance.post('/tasks/customers/', data);
 export const updateCustomer = (id, data) => axiosInstance.patch(`/tasks/customers/${id}/`, data);
 export const deleteCustomer = (id) => axiosInstance.delete(`/tasks/customers/${id}/`);
-export const startCustomerImport = () => axiosInstance.post('/tasks/customers/import/start/');
-export const getCustomerImportStatus = (jobId) => axiosInstance.get(`/tasks/customers/import/${jobId}/`);
+
+// Customer import (Excel / JSON) — yalnız yeni müştəri yaradır
+const CI = '/tasks/customer-imports';
+export const getCustomerImports = (params) => axiosInstance.get(`${CI}/`, { params });
+export const getCustomerImport = (id) => axiosInstance.get(`${CI}/${id}/`);
+export const getActiveCustomerImport = () => axiosInstance.get(`${CI}/active/`);
+export const uploadCustomerImport = (file, onUploadProgress) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return axiosInstance.post(`${CI}/upload/`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 180000,
+        onUploadProgress,
+    });
+};
+export const confirmCustomerImport = (id) => axiosInstance.post(`${CI}/${id}/confirm/`);
+export const cancelCustomerImport = (id) => axiosInstance.post(`${CI}/${id}/cancel/`);
+export const resumeCustomerImport = (id) => axiosInstance.post(`${CI}/${id}/resume/`);
+export const getCustomerImportRollbackCheck = (id) => axiosInstance.get(`${CI}/${id}/rollback-check/`);
+export const rollbackCustomerImport = (id) => axiosInstance.post(`${CI}/${id}/rollback/`);
+export const getCustomerImportRows = (id, params) => axiosInstance.get(`${CI}/${id}/rows/`, { params });
+export const downloadCustomerImportFile = (path, params) =>
+    axiosInstance.get(`${CI}/${path}`, { params, responseType: 'blob', timeout: 120000 });
 
 // Equipment & Optic box (admin)
 export const getEquipment = (params) => axiosInstance.get('/tasks/equipment/', { params });
