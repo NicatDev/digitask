@@ -20,32 +20,68 @@ npm run build
 # --- Backend --------------------------------------------------------------
 cd "$BACKEND_DIR"
 
-# Find the virtualenv (first match wins)
+# Tətbiqin (gunicorn) işlədiyi istifadəçi və Python — paketlər məhz onun görəcəyi yerə qurulmalıdır.
+SERVICE_USER="$(systemctl show -p User --value digitask.service 2>/dev/null || true)"
+SERVICE_USER="${SERVICE_USER:-root}"
+
 VENV=""
 for d in "$BACKEND_DIR/venv" "$BACKEND_DIR/.venv" "$BACKEND_DIR/env" "$APP_DIR/venv" "$APP_DIR/.venv" "$APP_DIR/env"; do
-    if [ -f "$d/bin/activate" ]; then VENV="$d"; break; fi
+    if [ -x "$d/bin/python" ]; then VENV="$d"; break; fi
 done
 
+PIP_AS=()
+PIP_USER_FLAG=()
 if [ -n "$VENV" ]; then
-    log "Backend: using virtualenv $VENV"
-    # shellcheck disable=SC1091
-    source "$VENV/bin/activate"
+    PY="$VENV/bin/python"
+    log "Backend: virtualenv $VENV"
 else
-    echo "WARNING: virtualenv not found, using system python" >&2
+    PY="$(command -v python3)"
+    if [ "$SERVICE_USER" != "root" ]; then
+        # Tətbiq istifadəçisinin paketləri (~/.local) — root kimi işlədilən manage.py də onları görsün
+        SERVICE_HOME="$(getent passwd "$SERVICE_USER" | cut -d: -f6)"
+        export PYTHONUSERBASE="$SERVICE_HOME/.local"
+        PIP_AS=(sudo -u "$SERVICE_USER" -H)
+        PIP_USER_FLAG=(--user)
+    fi
+    log "Backend: python $PY (xidmət istifadəçisi: $SERVICE_USER)"
 fi
 
-log "Backend: pip install -r requirements.txt"
-pip install -r requirements.txt
+# Yalnız ÇATIŞMAYAN paketlər qurulur. Mövcud paketlər (məs. Django) heç vaxt avtomatik yenilənmir.
+log "Backend: çatışmayan paketlər"
+MISSING="$("${PIP_AS[@]}" "$PY" - requirements.txt <<'PYEOF'
+import re, sys
+from importlib import metadata
+missing = []
+for line in open(sys.argv[1], encoding="utf-8"):
+    req = line.split("#", 1)[0].strip()
+    if not req:
+        continue
+    name = re.split(r"[<>=!~\[; ]", req, maxsplit=1)[0]
+    try:
+        metadata.version(name)
+    except metadata.PackageNotFoundError:
+        missing.append(req)
+print(" ".join(missing))
+PYEOF
+)"
+if [ -n "$MISSING" ]; then
+    echo "Quraşdırılır: $MISSING"
+    # shellcheck disable=SC2086
+    "${PIP_AS[@]}" "$PY" -m pip install "${PIP_USER_FLAG[@]}" $MISSING
+else
+    echo "Hamısı quraşdırılıb."
+fi
+"$PY" -c "import openpyxl, django; print('openpyxl', openpyxl.__version__, '| django', django.get_version())"
 
 # Migration faylları git-də saxlanılmır (.gitignore) — serverdə yaradılır
 log "Backend: makemigrations"
-python manage.py makemigrations --noinput
+"$PY" manage.py makemigrations --noinput
 
 log "Backend: migrate"
-python manage.py migrate --noinput
+"$PY" manage.py migrate --noinput
 
 log "Backend: collectstatic"
-python manage.py collectstatic --noinput
+"$PY" manage.py collectstatic --noinput
 
 # --- Restart services -----------------------------------------------------
 log "Restarting services"
