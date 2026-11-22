@@ -4,29 +4,43 @@ import RowsTable from './RowsTable';
 import { REF_LABELS, STATUS_META, fmtDate, fmtSize } from './utils';
 
 /** Bir importun detalları: Yeni / Artıq var / Problemli tabları */
+const countBadge = (n, color) => (
+    <span style={{
+        marginLeft: 6, padding: '0 8px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+        background: n ? color : '#f0f0f0', color: n ? '#fff' : '#8c8c8c',
+    }}>{n}</span>
+);
+
 const BatchDetailDrawer = ({ batch, onClose, refreshKey }) => {
-    const [tab, setTab] = useState('new');
+    const isPreview = batch?.status === 'preview';
+    const newCount = !batch ? 0 : (isPreview ? batch.new_count
+        : batch.created_count + (batch.status === 'interrupted' ? batch.new_count : 0));
+    const existingCount = batch ? batch.existing_count + batch.duplicate_in_file_count : 0;
+    // Boş tabı açmırıq: əvvəlcə dolu olan tab göstərilir
+    const [tab, setTab] = useState(() => {
+        if (newCount) return 'new';
+        if (batch?.problem_count) return 'problem';
+        return existingCount ? 'existing' : 'new';
+    });
     if (!batch) return null;
     const st = STATUS_META[batch.status] || { color: 'default', label: batch.status_label };
-    const isPreview = batch.status === 'preview';
-    const newCount = isPreview ? batch.new_count : batch.created_count + (batch.status === 'interrupted' ? batch.new_count : 0);
     const rb = batch.rollback_summary || {};
 
     const items = [
         {
             key: 'new',
-            label: `${isPreview ? 'Yaradılacaq' : 'Yeni əlavə olunanlar'} (${newCount})`,
-            children: <RowsTable batchId={batch.id} group="new" refreshKey={refreshKey} />,
+            label: <span>{isPreview ? 'Yaradılacaq' : 'Yeni əlavə olunanlar'}{countBadge(newCount, '#52c41a')}</span>,
+            children: <RowsTable batchId={batch.id} group="new" refreshKey={refreshKey} isPreview={isPreview} />,
         },
         {
             key: 'existing',
-            label: `Artıq var (${batch.existing_count + batch.duplicate_in_file_count})`,
-            children: <RowsTable batchId={batch.id} group="existing" refreshKey={refreshKey} />,
+            label: <span>Artıq var{countBadge(existingCount, '#1677ff')}</span>,
+            children: <RowsTable batchId={batch.id} group="existing" refreshKey={refreshKey} isPreview={isPreview} />,
         },
         {
             key: 'problem',
-            label: `Problemli (${batch.problem_count})`,
-            children: <RowsTable batchId={batch.id} group="problem" refreshKey={refreshKey} />,
+            label: <span>Problemli{countBadge(batch.problem_count, '#ff4d4f')}</span>,
+            children: <RowsTable batchId={batch.id} group="problem" refreshKey={refreshKey} isPreview={isPreview} />,
         },
     ];
 

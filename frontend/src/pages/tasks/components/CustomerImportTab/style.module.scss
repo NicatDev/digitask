@@ -66,18 +66,142 @@
     margin-bottom: 12px;
 }
 
-.reasons {
+.groupHint {
+    margin-bottom: 12px;
+}
+
+/* Sətir kartları */
+.rowCard {
+    border: 1px solid #f0f0f0;
+    border-left: 4px solid #d9d9d9;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    background: #fff;
+}
+
+.rowCard_new,
+.rowCard_created { border-left-color: #52c41a; }
+.rowCard_existing { border-left-color: #1677ff; }
+.rowCard_duplicate_in_file { border-left-color: #13c2c2; }
+.rowCard_problem { border-left-color: #ff4d4f; }
+
+.rowHead {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.rowTitle {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+}
+
+.rowNum {
     font-size: 12px;
-    line-height: 1.5;
-    min-width: 260px;
+    color: #8c8c8c;
+    white-space: nowrap;
 }
 
-.reasonError {
-    color: #cf1322;
+.rowName {
+    font-size: 15px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
 }
 
-.reasonWarn {
-    color: #ad6800;
+.resultTag {
+    margin-inline-end: 0;
+    font-weight: 500;
+}
+
+.fieldsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px 16px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.fieldLabel {
+    font-size: 11px;
+    color: #8c8c8c;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.fieldValue {
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.refValue {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+
+    :global(.ant-tag) {
+        margin-inline-end: 0;
+        font-size: 11px;
+        line-height: 18px;
+    }
+}
+
+.note {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.6;
+
+    ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+}
+
+.noteTitle {
+    font-weight: 600;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.noteError {
+    background: #fff2f0;
+    border: 1px solid #ffccc7;
+    color: #a8071a;
+}
+
+.noteInfo {
+    background: #e6f4ff;
+    border: 1px solid #91caff;
+    color: #0c4a8f;
+}
+
+.noteWarn {
+    background: #fffbe6;
+    border: 1px solid #ffe58f;
+    color: #874d00;
+}
+
+.okLine {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #389e0d;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .matchCell {

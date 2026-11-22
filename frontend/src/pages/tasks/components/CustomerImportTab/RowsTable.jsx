@@ -1,34 +1,180 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Input, Space, Table, Tag, Tooltip, Typography } from 'antd';
-import { DownloadOutlined, SwapOutlined, WarningOutlined } from '@ant-design/icons';
+import { Alert, Button, Empty, Input, List, Space, Tag, Tooltip, Typography } from 'antd';
+import {
+    CheckCircleFilled, CloseCircleFilled, CopyOutlined, DownloadOutlined, InfoCircleFilled,
+    SwapOutlined, WarningFilled,
+} from '@ant-design/icons';
 import { getCustomerImportRows } from '../../../../axios/api/tasks';
 import CompareModal from './CompareModal';
-import { RESULT_META, downloadFile, showError } from './utils';
+import { RESULT_META, coordsText, downloadFile, showError } from './utils';
 import styles from './style.module.scss';
 
 const { Text } = Typography;
 
-const refCell = (ref, raw) => {
-    if (!ref) return raw ? <Text type="secondary">{String(raw)}</Text> : <Text type="secondary">—</Text>;
+const FIELD_AZ = { register_number: 'qeydiyyat nömrəsi', phone_number: 'telefonu' };
+
+/** "N:554264644" → "0554264644" */
+const keyToNumber = (key) => {
+    if (!key) return '';
+    const v = key.slice(2);
+    return key.startsWith('N:') && v.length === 9 ? `0${v}` : v;
+};
+
+const isEmpty = (v) => v === null || v === undefined || String(v).trim() === '';
+
+const GROUP_HINT = {
+    new: (preview) => ({
+        type: 'success',
+        text: preview
+            ? 'Bu müştərilər “Təsdiqlə” düyməsindən sonra yaradılacaq.'
+            : 'Bu müştərilər import zamanı yaradılıb.',
+    }),
+    existing: () => ({
+        type: 'info',
+        text: 'Bu sətirlər sistemdə artıq olduğu üçün yaradılmır və sistemdəki müştəri dəyişdirilmir. '
+            + '“Müqayisə et” ilə fayldakı məlumatı sistemdəki ilə yan-yana görə bilərsiniz.',
+    }),
+    problem: () => ({
+        type: 'error',
+        text: 'Bu sətirlər yaradılmayacaq. Hər sətrin altında qırmızı xanada səbəbi yazılıb. '
+            + 'Düzəltmək üçün: “Excel kimi endir” → səbəbə görə düzəldin → faylı yenidən yükləyin. '
+            + 'Artıq yaradılmış müştərilər təkrar yaradılmayacaq.',
+    }),
+};
+
+/** Region / avadanlıq / optik qutu dəyəri + "yeni" / "oxşar" nişanı */
+const RefValue = ({ refData, raw, showRaw, willCreate }) => {
+    if (!refData) {
+        return showRaw && !isEmpty(raw) ? <Text type="danger">{String(raw)}</Text> : <Text type="secondary">—</Text>;
+    }
     return (
-        <Space size={4} wrap>
-            <span>{ref.name}</span>
-            {ref.action === 'create' && <Tag color="orange" style={{ marginInlineEnd: 0 }}>yeni</Tag>}
-            {ref.action === 'match' && ref.score < 1 && (
-                <Tooltip title={`Fayldakı: «${ref.input}» — oxşarlıq ${Math.round(ref.score * 100)}%`}>
-                    <Tag color="gold" style={{ marginInlineEnd: 0 }}>oxşar</Tag>
+        <span className={styles.refValue}>
+            {refData.action === 'create' && !willCreate ? refData.input : refData.name}
+            {refData.action === 'create' && willCreate && <Tag color="orange">yeni yaradılacaq</Tag>}
+            {refData.action === 'match' && refData.score < 1 && (
+                <Tooltip title={`Faylda «${refData.input}» yazılıb — ${Math.round(refData.score * 100)}% oxşarlıqla tapıldı`}>
+                    <Tag color="gold">oxşar ad</Tag>
                 </Tooltip>
             )}
-        </Space>
+        </span>
+    );
+};
+
+const Field = ({ label, children }) => (
+    <div className={styles.field}>
+        <span className={styles.fieldLabel}>{label}</span>
+        <span className={styles.fieldValue}>{children}</span>
+    </div>
+);
+
+/** Sistemdə artıq var: hansı nömrə kimə aiddir — sadə cümlə ilə */
+const ExistingExplain = ({ row }) => {
+    const m = (row.matches || []).find((x) => (x.matched_on || []).length);
+    if (!m) return <>Bu nömrə ilə müştəri sistemdə artıq var.</>;
+    const on = m.matched_on[0];
+    const who = m.customer?.full_name ? `«${m.customer.full_name}»` : `#${m.customer_id}`;
+    const inactive = m.customer && m.customer.is_active === false ? ' (bu müştəri silinib/deaktivdir)' : '';
+    return (
+        <>
+            Fayldakı {on.incoming_field === 'register_number' ? 'qeydiyyat nömrəsi' : 'telefon'}{' '}
+            <b>{keyToNumber(on.key)}</b> sistemdəki {who} müştərisinin {FIELD_AZ[on.existing_field] || on.existing_field} ilə eynidir{inactive}.
+            {row.matches.length > 1 && ` Bu nömrə ilə ${row.matches.length} müştəri var.`}
+        </>
+    );
+};
+
+const RowCard = ({ row, onCompare }) => {
+    const meta = RESULT_META[row.result] || { color: 'default', label: row.result };
+    const d = row.data || {};
+    const raw = row.raw || {};
+    const isProblem = row.result === 'problem';
+    const willCreate = row.result === 'new';
+    const val = (field) => {
+        if (!isEmpty(d[field])) return d[field];
+        if (isProblem && !isEmpty(raw[field])) return <Text type="danger">{String(raw[field])}</Text>;
+        return <Text type="secondary">—</Text>;
+    };
+    const coords = d.lat !== null && d.lat !== undefined
+        ? coordsText(d.lat, d.lng)
+        : (isProblem && (!isEmpty(raw.lat) || !isEmpty(raw.lng))
+            ? <Text type="danger">{`${raw.lat ?? '—'}, ${raw.lng ?? '—'}`}</Text>
+            : <Text type="secondary">—</Text>);
+
+    const reasons = (row.reasons || []).filter((x) => !['exists', 'exists_after_preview', 'duplicate_in_file'].includes(x.code));
+    // Yaradılmayacaq sətirdə "yeni region yaradılacaq" kimi qeydlər çaşdırıcıdır — göstərmirik
+    const warnings = (row.warnings || []).filter((w) => row.result === 'new' || row.result === 'created' || !w.code.endsWith('_create'));
+    const lateExisting = (row.reasons || []).find((x) => x.code === 'exists_after_preview');
+    const hasMatches = (row.matches || []).length > 0;
+
+    return (
+        <div className={`${styles.rowCard} ${styles[`rowCard_${row.result}`] || ''}`}>
+            <div className={styles.rowHead}>
+                <div className={styles.rowTitle}>
+                    <span className={styles.rowNum}>Sətir {row.row_number}</span>
+                    <span className={styles.rowName}>{isEmpty(d.full_name) ? val('full_name') : d.full_name}</span>
+                </div>
+                <Space size={8} wrap>
+                    <Tag color={meta.color} className={styles.resultTag}>{meta.label}</Tag>
+                    {row.created_customer && <Text type="secondary">Sistem ID: {row.created_customer}</Text>}
+                    {row.result === 'created' && !row.created_customer && <Text type="secondary">sonradan silinib</Text>}
+                    {hasMatches && (
+                        <Button size="small" icon={<SwapOutlined />} onClick={() => onCompare(row)}>
+                            Müqayisə et
+                        </Button>
+                    )}
+                </Space>
+            </div>
+
+            <div className={styles.fieldsGrid}>
+                <Field label="Qeydiyyat №">{val('register_number')}</Field>
+                <Field label="Telefon">{val('phone_number')}</Field>
+                <Field label="Region"><RefValue refData={d.region} raw={raw.region} showRaw={isProblem} willCreate={willCreate} /></Field>
+                <Field label="Avadanlıq"><RefValue refData={d.equipment} raw={raw.equipment} showRaw={isProblem} willCreate={willCreate} /></Field>
+                <Field label="Optik qutu"><RefValue refData={d.optic_box} raw={raw.optic_box} showRaw={isProblem} willCreate={willCreate} /></Field>
+                <Field label="Ünvan">{val('address')}</Field>
+                <Field label="Koordinat">{coords}</Field>
+            </div>
+
+            {isProblem && reasons.length > 0 && (
+                <div className={`${styles.note} ${styles.noteError}`}>
+                    <div className={styles.noteTitle}><CloseCircleFilled /> Niyə yaradılmayacaq?</div>
+                    <ul>{reasons.map((x, i) => <li key={i}>{x.message}</li>)}</ul>
+                </div>
+            )}
+            {row.result === 'existing' && (
+                <div className={`${styles.note} ${styles.noteInfo}`}>
+                    <div className={styles.noteTitle}><InfoCircleFilled /> Sistemdə artıq var — yaradılmayacaq</div>
+                    <div>
+                        {lateExisting ? `${lateExisting.message} ` : null}
+                        <ExistingExplain row={row} />
+                    </div>
+                </div>
+            )}
+            {row.result === 'duplicate_in_file' && (
+                <div className={`${styles.note} ${styles.noteInfo}`}>
+                    <div className={styles.noteTitle}><CopyOutlined /> Faylda təkrar</div>
+                    <div>Faylın {row.duplicate_of_row}-ci sətri ilə tam eynidir — müştəri yalnız bir dəfə yaradılır.</div>
+                </div>
+            )}
+            {warnings.length > 0 && (
+                <div className={`${styles.note} ${styles.noteWarn}`}>
+                    <div className={styles.noteTitle}><WarningFilled /> Diqqət</div>
+                    <ul>{warnings.map((x, i) => <li key={i}>{x.message}</li>)}</ul>
+                </div>
+            )}
+            {(row.result === 'new' || row.result === 'created') && warnings.length === 0 && (
+                <div className={styles.okLine}><CheckCircleFilled /> Problem yoxdur</div>
+            )}
+        </div>
     );
 };
 
 /** Bir tab üçün sətirlər (serverdən səhifə-səhifə) */
-const RowsTable = ({ batchId, group, refreshKey }) => {
+const RowsTable = ({ batchId, group, refreshKey, isPreview }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(50);
+    const [pageSize, setPageSize] = useState(20);
     const [total, setTotal] = useState(0);
     const [search, setSearch] = useState('');
     const [query, setQuery] = useState('');
@@ -55,72 +201,11 @@ const RowsTable = ({ batchId, group, refreshKey }) => {
         return () => clearTimeout(t);
     }, [search]);
 
-    /** Təmizlənmiş dəyər; problemli sətirdə isə səhvi görmək üçün fayldakı orijinal dəyər (boz) */
-    const valueCell = (r, field) => {
-        const clean = r.data?.[field];
-        if (clean) return clean;
-        const raw = r.raw?.[field];
-        if (r.result === 'problem' && raw !== null && raw !== undefined && String(raw).trim() !== '') {
-            return <Text type="secondary">{String(raw)}</Text>;
-        }
-        return <Text type="secondary">—</Text>;
-    };
-    const refOrRaw = (r, field) => refCell(r.data?.[field], r.result === 'problem' ? r.raw?.[field] : null);
-
-    const columns = [
-        { title: 'Sətir', dataIndex: 'row_number', width: 70, fixed: 'left' },
-        { title: 'Ad Soyad', width: 200, render: (_, r) => valueCell(r, 'full_name') },
-        { title: 'Qeydiyyat №', width: 130, render: (_, r) => valueCell(r, 'register_number') },
-        { title: 'Telefon', width: 150, render: (_, r) => valueCell(r, 'phone_number') },
-        { title: 'Region', width: 160, render: (_, r) => refOrRaw(r, 'region') },
-        { title: 'Avadanlıq', width: 170, render: (_, r) => refOrRaw(r, 'equipment') },
-        {
-            title: 'Nəticə',
-            width: 120,
-            render: (_, r) => {
-                const meta = RESULT_META[r.result] || { color: 'default', label: r.result };
-                return (
-                    <Space orientation="vertical" size={2}>
-                        <Tag color={meta.color} style={{ marginInlineEnd: 0 }}>{meta.label}</Tag>
-                        {r.created_customer && <Text type="secondary" style={{ fontSize: 11 }}>ID {r.created_customer}</Text>}
-                        {r.result === 'created' && !r.created_customer && (
-                            <Text type="secondary" style={{ fontSize: 11 }}>sonradan silinib</Text>
-                        )}
-                    </Space>
-                );
-            },
-        },
-        {
-            title: 'Səbəb / qeyd',
-            render: (_, r) => (
-                <div className={styles.reasons}>
-                    {(r.reasons || []).filter((x) => x.code !== 'exists').map((x, i) => (
-                        <div key={`r${i}`} className={r.result === 'problem' ? styles.reasonError : undefined}>• {x.message}</div>
-                    ))}
-                    {(r.warnings || []).map((x, i) => (
-                        <div key={`w${i}`} className={styles.reasonWarn}><WarningOutlined /> {x.message}</div>
-                    ))}
-                    {r.result === 'existing' && (r.reasons || []).some((x) => x.code === 'exists') && (
-                        <div>Bu nömrə ilə müştəri sistemdə artıq var.</div>
-                    )}
-                </div>
-            ),
-        },
-        {
-            title: '',
-            width: 120,
-            fixed: 'right',
-            render: (_, r) =>
-                (r.matches || []).length > 0 ? (
-                    <Button size="small" icon={<SwapOutlined />} onClick={() => setCompareRow(r)}>
-                        Müqayisə et
-                    </Button>
-                ) : null,
-        },
-    ];
+    const hint = GROUP_HINT[group]?.(isPreview);
 
     return (
         <>
+            {hint && total > 0 && <Alert type={hint.type} showIcon title={hint.text} className={styles.groupHint} />}
             <div className={styles.rowsToolbar}>
                 <Input.Search
                     allowClear
@@ -137,22 +222,21 @@ const RowsTable = ({ batchId, group, refreshKey }) => {
                     Excel kimi endir
                 </Button>
             </div>
-            <Table
-                size="small"
-                rowKey="id"
+            <List
                 loading={loading}
-                columns={columns}
                 dataSource={data}
-                scroll={{ x: 1200 }}
-                pagination={{
+                locale={{ emptyText: <Empty description={query ? 'Axtarışa uyğun sətir yoxdur' : 'Bu bölmədə sətir yoxdur'} /> }}
+                renderItem={(row) => <RowCard key={row.id} row={row} onCompare={setCompareRow} />}
+                pagination={total > pageSize ? {
                     current: page,
                     pageSize,
                     total,
                     showSizeChanger: true,
-                    pageSizeOptions: ['20', '50', '100', '200'],
+                    pageSizeOptions: ['20', '50', '100'],
                     showTotal: (t) => `Cəmi ${t}`,
                     onChange: (p, s) => { setPage(p); setPageSize(s); },
-                }}
+                    align: 'center',
+                } : false}
             />
             {compareRow && <CompareModal row={compareRow} onClose={() => setCompareRow(null)} />}
         </>

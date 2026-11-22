@@ -240,3 +240,52 @@ class EdgeCaseTests(base.ImportFlowTests):
             self.client.post(f"{URL}{b.pk}/rollback/")
         self.assertFalse(Customer.objects.filter(pk=c.pk).exists())
         self.assertFalse(os.path.exists(path))
+
+
+@override_settings(CUSTOMER_IMPORT_SYNC=True)
+class ShortNameTests(EdgeCaseTests):
+    """Çox qısa / rəqəmli adla yeni region-avadanlıq yaradılmır."""
+
+    test_ambiguous_region_is_problem = None
+    test_inactive_equipment_is_problem_and_untouched = None
+    test_optic_box_match_create_and_rollback = None
+    test_created_region_kept_on_rollback_if_used_elsewhere = None
+    test_register_with_two_numbers_is_problem = None
+    test_multiple_phones_stored_and_second_matches_existing = None
+    test_deactivated_existing_customer_counts_as_existing = None
+    test_same_name_warning = None
+    test_json_non_object_and_unknown_keys = None
+    test_row_and_size_limits = None
+    test_excel_title_row_above_header_and_extra_columns = None
+    test_excel_duplicate_column_rejected = None
+    test_new_upload_cancels_pending_preview = None
+    test_upload_refused_while_another_import_running = None
+    test_stale_statuses_recover = None
+    test_process_killed_mid_import_then_resume = None
+    test_rollback_deletes_passport_images = None
+
+    def test_short_and_numeric_names_not_created(self):
+        b = self.batch(self.upload_json([
+            {"full_name": "A", "phone_number": "0551000020", "region": "s"},
+            {"full_name": "B", "phone_number": "0551000021", "region": "123"},
+            {"full_name": "C", "phone_number": "0551000022", "region": "Suraxanı", "optic_box": "y"},
+            {"full_name": "D", "phone_number": "0551000023", "region": "Abşeron"},
+        ]))
+        rows = self.rows(b.pk)
+        self.assertIn("region_too_short", self.codes(rows[1]))
+        self.assertIn("region_too_short", self.codes(rows[2]))
+        self.assertIn("optic_box_too_short", self.codes(rows[3]))
+        self.assertEqual(rows[4].result, "new")
+        self.assertEqual(b.summary["planned_refs"]["region"], [{"name": "Abşeron", "rows": 1}])
+
+    def test_short_name_matching_existing_is_ok(self):
+        Region.objects.create(name="AB")
+        b = self.batch(self.upload_json([{"full_name": "A", "phone_number": "0551000024", "region": "ab"}]))
+        self.assertEqual(self.only_row(b).result, "new")
+
+    def test_coordinate_messages_show_values(self):
+        b = self.batch(self.upload_json([
+            {"full_name": "A", "phone_number": "0551000025", "region": "Suraxanı", "lat": 49.86, "lng": 40.4},
+        ]))
+        msg = self.only_row(b).reasons[0]["message"]
+        self.assertIn("enlik 40.4, uzunluq 49.86", msg)

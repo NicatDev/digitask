@@ -29,6 +29,9 @@ PROBLEM = "problem"
 MAX_LEN = {"full_name": 200, "register_number": 60, "phone_number": 200, "address": 255}
 REF_LABELS = {"region": "Region", "equipment": "Avadanlıq", "optic_box": "Optik qutu"}
 REF_MAX_LEN = {"region": 120, "equipment": 200, "optic_box": 200}
+# Yeni yaradılacaq adın minimum uzunluğu (mövcud adla dəqiq uyğunluq üçün tətbiq olunmur)
+REF_MIN_NEW_LEN = {"region": 3, "equipment": 2, "optic_box": 2}
+REF_GENITIVE = {"region": "regionun", "equipment": "avadanlığın", "optic_box": "optik qutunun"}
 FIELD_LABELS_AZ = {"register_number": "qeydiyyat nömrəsi", "phone_number": "telefon"}
 
 
@@ -133,7 +136,19 @@ class RefCatalog:
                 warning = (f"{self.kind}_create", f"Yeni {label.lower()} yaradılacaq: {_q(obj['name'])}.")
             return decision, None, warning
 
-        # Tapılmadı → yaradılacaq (sonrakı sətirlər də bunu tapsın deyə kataloqa əlavə olunur)
+        # Tapılmadı. Çox qısa və ya yalnız rəqəmdən ibarət ad səhv yazılış ola bilər ("s", "12") —
+        # belə adla yeni region/avadanlıq yaratmaq risklidir.
+        compact = normalize_name(text).replace(" ", "")
+        min_len = REF_MIN_NEW_LEN[self.kind]
+        if len(compact) < min_len or compact.isdigit():
+            why = "yalnız rəqəmdən ibarətdir" if compact.isdigit() else f"çox qısadır (ən azı {min_len} hərf)"
+            return None, (
+                f"{self.kind}_too_short",
+                f"{label} {_q(text)} sistemdə tapılmadı, yeni ad kimi də {why}. "
+                f"Səhv yazılıb ola bilər — {REF_GENITIVE[self.kind]} tam adını yazın.",
+            ), None
+
+        # Yeni yaradılacaq (sonrakı sətirlər də bunu tapsın deyə kataloqa əlavə olunur)
         planned = {"id": None, "name": text, "is_active": True, "planned": True}
         self.candidates.append((normalize_name(text), planned))
         decision = {"input": text, "action": "create", "id": None, "name": text, "score": 0}
@@ -191,17 +206,24 @@ def _coords(raw_lat, raw_lng, reasons):
     if lat is None and lng is None:
         return None, None
     if lat is None or lng is None:
-        reasons.append(("coords_partial", "Yalnız enlik və ya yalnız uzunluq yazılıb. İkisi birlikdə olmalıdır (və ya ikisi də boş qalmalıdır)."))
+        which = "uzunluq (lng)" if lng is None else "enlik (lat)"
+        reasons.append(("coords_partial",
+                        f"Koordinatın yarısı yazılıb: {which} boşdur. Ya ikisini də yazın, ya da ikisini də boş saxlayın."))
         return None, None
+    shown = f"enlik {lat}, uzunluq {lng}"
     if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
-        reasons.append(("coords_out_of_range", "Koordinatlar mümkün olmayan dəyərdədir."))
+        reasons.append(("coords_out_of_range",
+                        f"Koordinat mümkün olmayan dəyərdədir ({shown}). Enlik −90…90, uzunluq −180…180 arası olmalıdır."))
         return None, None
     if not in_azerbaijan(lat, lng):
         if in_azerbaijan(lng, lat):
             reasons.append(("coords_swapped",
-                            "Enlik və uzunluğun yerləri dəyişik görünür (Azərbaycanda enlik ~38–42, uzunluq ~44–51)."))
+                            f"Enlik və uzunluq yerləri dəyişik yazılıb ({shown}). "
+                            f"Düzgünü: enlik {lng}, uzunluq {lat}."))
         else:
-            reasons.append(("coords_outside_az", "Koordinatlar Azərbaycandan kənardadır."))
+            reasons.append(("coords_outside_az",
+                            f"Koordinat Azərbaycandan kənardadır ({shown}). Azərbaycanda enlik təxminən 38–42, "
+                            "uzunluq 44–51 arasında olur. Koordinatı yoxlayın və ya boş saxlayın."))
         return None, None
     return round(lat, 7), round(lng, 7)
 
