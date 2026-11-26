@@ -46,17 +46,17 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>DigiTask needs access to your photo library so you can choose images to attach to tasks.</string>
+	<string>DigiTask uses your photo library so you can attach images to tasks, surveys, support requests and your profile.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>DigiTask needs access to save selected images.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>DigiTask needs camera access so you can capture images for task surveys.</string>
+	<string>DigiTask uses the camera so you can photograph work results for task surveys and attachments.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app needs access to location when open.</string>
+	<string>DigiTask uses your location to show field staff on your company's live map and to set a customer's address on the map.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>This app needs access to location when in the background.</string>
+	<string>While you are signed in, DigiTask shares your location with your company, also when the app is in the background, so dispatchers can see field staff on the live map and coordinate tasks.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>This app needs access to location when in the background.</string>
+	<string>While you are signed in, DigiTask shares your location with your company, also when the app is in the background, so dispatchers can see field staff on the live map and coordinate tasks.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

@@ -54,3 +54,6 @@ yarn-error.log*
 *.p8
 *.p12
 *.mobileprovision
+
+# App Store materials (screenshots, listing texts) - local only
+appstore/

@@ -60,6 +60,17 @@ class LocationService {
 
     WebSocketChannel? channel;
     bool isConnected = false;
+
+    // Çıxış edəndə: bu isolate-dəki lokasiya axını və bağlantı da dayandırılmalıdır.
+    service.on('stopService').listen((event) async {
+      _mobileTrackingStopped = true;
+      _mobileReconnectTimer?.cancel();
+      await _mobilePositionStream?.cancel();
+      _mobilePositionStream = null;
+      try {
+        await channel?.sink.close();
+      } catch (_) {}
+    });
     
     Future<void> connectWebSocket() async {
       if (_mobileTrackingStopped) return;

@@ -6,7 +6,7 @@ import styles from './LegalLayout.module.scss';
 const { Title, Paragraph } = Typography;
 const { Content } = Layout;
 
-const LegalLayout = ({ title, children }) => (
+const LegalLayout = ({ title, updated, children }) => (
   <Layout className={styles.legalRoot}>
     <Content className={styles.legalContent}>
       <Link to="/login" className={styles.backLink}>
@@ -15,7 +15,7 @@ const LegalLayout = ({ title, children }) => (
       <Title level={2}>{title}</Title>
       <div className={styles.legalBody}>{children}</div>
       <Paragraph type="secondary" className={styles.footerNote}>
-        Last updated: {new Date().toLocaleDateString('en-GB')}
+        Last updated: {updated || new Date().toLocaleDateString('en-GB')}
       </Paragraph>
     </Content>
   </Layout>

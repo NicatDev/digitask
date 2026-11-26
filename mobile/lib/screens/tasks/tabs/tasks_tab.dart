@@ -475,7 +475,7 @@ class _TasksTabState extends State<TasksTab> {
                                 children: [
                                   Icon(Icons.arrow_back, size: 18),
                                   SizedBox(width: 8),
-                                  Text('Ǝvvəl'),
+                                  Text('Əvvəl'),
                                 ],
                               ),
                             ),

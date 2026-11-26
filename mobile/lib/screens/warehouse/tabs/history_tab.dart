@@ -217,7 +217,7 @@ class _HistoryTabState extends State<HistoryTab> {
                               ElevatedButton(
                                 onPressed: _currentPage > 1 ? () => _changePage(_currentPage - 1) : null,
                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.blue),
-                                child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.arrow_back, size: 18), SizedBox(width: 8), Text('Ǝvvəl')]),
+                                child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.arrow_back, size: 18), SizedBox(width: 8), Text('Əvvəl')]),
                               ),
                               Text('Səhifə $_currentPage', style: const TextStyle(fontWeight: FontWeight.bold)),
                               ElevatedButton(
