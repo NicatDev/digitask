@@ -3,6 +3,7 @@ import { Table, Card, DatePicker, Typography, Tag, Tabs, message } from 'antd';
 import { getAuditLogs } from '../../axios/api/audit';
 import styles from './style.module.scss';
 import dayjs from 'dayjs';
+import { localTimeReplacer, toLocalDisplay } from '../../utils/dateTime';
 
 const { Title } = Typography;
 
@@ -191,11 +192,11 @@ const ReportsPage = () => {
                         <div key={field} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
                             <strong style={{ minWidth: 100 }}>{field}:</strong>
                             <span style={{ background: '#ffeef0', padding: '2px 6px', borderRadius: 4, textDecoration: 'line-through', color: '#cf1322' }}>
-                                {String(diff.old)}
+                                {String(toLocalDisplay(diff.old))}
                             </span>
                             <span>→</span>
                             <span style={{ background: '#f6ffed', padding: '2px 6px', borderRadius: 4, color: '#389e0d' }}>
-                                {String(diff.new)}
+                                {String(toLocalDisplay(diff.new))}
                             </span>
                         </div>
                     ))}
@@ -206,7 +207,7 @@ const ReportsPage = () => {
         // For Create / Delete, show as JSON or Key-Value list
         return (
             <pre className={styles.jsonPayload}>
-                {JSON.stringify(changes, null, 2)}
+                {JSON.stringify(changes, localTimeReplacer, 2)}
             </pre>
         );
     };

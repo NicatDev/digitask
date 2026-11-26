@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:dio/dio.dart' as dio;
+import 'package:mobile/core/server_time.dart';
 
 class StockMovementFilesModal extends StatefulWidget {
   final Map<String, dynamic> stockMovement;
@@ -127,7 +128,7 @@ class _StockMovementFilesModalState extends State<StockMovementFilesModal> {
                               child: const Icon(Icons.description, color: Colors.blue),
                             ),
                             title: Text(doc['title'] ?? 'Adsız', style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text(doc['created_at']?.toString().substring(0, 10) ?? '', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                            subtitle: Text(displayServerValue(doc['created_at'], pattern: 'yyyy-MM-dd'), style: const TextStyle(fontSize: 12, color: Colors.grey)),
                             trailing: IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
                               onPressed: () => _deleteDocument(doc['id']),

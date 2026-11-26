@@ -1,4 +1,5 @@
 import 'package:mobile/models/user_model.dart';
+import 'package:mobile/core/server_time.dart';
 
 class ChatGroup {
   final int id;
@@ -47,12 +48,12 @@ class ChatGroup {
       ownerId: ownerId,
       isActive: json['is_active'] ?? true,
       onlyOwnerCanSend: json['only_owner_can_send'] ?? false,
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: parseServerTime(json['created_at']),
       unreadCount: json['unread_count'] ?? 0,
       lastMessage: json['last_message'] is Map ? json['last_message']['content'] :  null,
       lastMessageSender: json['last_message'] is Map ? json['last_message']['sender'] : null,
       lastMessageAt: json['last_message'] is Map && json['last_message']['created_at'] != null
-          ? DateTime.parse(json['last_message']['created_at']) 
+          ? parseServerTime(json['last_message']['created_at']) 
           : null,
       members: json['members'] != null 
           ? (json['members'] as List).map((m) => User.fromJson(m['user'] ?? m)).toList() 
@@ -114,7 +115,7 @@ class ChatMessage {
       senderName: parsedSenderName,
       senderAvatar: json['sender_avatar'], 
       content: json['content'] ?? '', // Handle null content safely
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: parseServerTime(json['created_at']),
       isRead: json['is_read'] ?? false,
     );
   }

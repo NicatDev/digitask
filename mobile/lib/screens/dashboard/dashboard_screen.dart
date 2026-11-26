@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mobile/core/server_time.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -504,7 +505,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                    const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
                    const SizedBox(width: 8),
                    Text(
-                     DateFormat('EEEE, d MMMM yyyy, HH:mm').format(DateTime.parse(event['date'])),
+                     DateFormat('EEEE, d MMMM yyyy, HH:mm').format(parseServerTime(event['date'])),
                      style: const TextStyle(color: Colors.grey, fontSize: 14),
                    ),
                 ],
@@ -532,7 +533,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildEventCard(dynamic event) {
-    final DateTime date = DateTime.parse(event['date']);
+    final DateTime date = parseServerTime(event['date']);
     final String month = DateFormat('MMM').format(date);
     final String day = DateFormat('d').format(date);
     final String time = DateFormat('HH:mm').format(date);
@@ -1031,7 +1032,7 @@ class _AddEventFormState extends State<AddEventForm> {
                         'title': _titleController.text,
                         'description': _descController.text,
                         'event_type': _eventType,
-                        'date': dt.toIso8601String(),
+                        'date': dt.toUtc().toIso8601String(),
                         'is_active': true,
                         if (_selectedImages.isNotEmpty) 'images': List<XFile>.from(_selectedImages),
                       });

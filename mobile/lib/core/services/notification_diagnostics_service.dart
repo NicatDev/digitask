@@ -43,7 +43,7 @@ class NotificationDiagnosticsService {
         if (error != null) 'error': error.toString(),
         if (stackTrace != null) 'stack': stackTrace.toString(),
         'device': device,
-        'created_at': now.toIso8601String(),
+        'created_at': now.toUtc().toIso8601String(),
         ...?extra,
       };
 

@@ -153,7 +153,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'az'
 
-TIME_ZONE = 'UTC'
+# Azərbaycan vaxtı. Bazada vaxt yenə UTC saxlanılır; API cavabı +04:00 ilə gəlir,
+# zonasız göndərilən vaxt Bakı vaxtı sayılır, tarix filtrləri Bakı gününə görə işləyir.
+TIME_ZONE = 'Asia/Baku'
 
 USE_I18N = True
 

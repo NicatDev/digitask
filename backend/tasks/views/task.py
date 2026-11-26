@@ -214,7 +214,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         if ordering in ordering_whitelist:
             queryset = queryset.order_by(*ordering_whitelist[ordering])
         else:
-            today = timezone.now().date()
+            today = timezone.localdate()
             assigned_to_me_exists = TaskAssigneeThrough.objects.filter(
                 task_id=OuterRef('pk'),
                 user_id=user.id,

@@ -19,8 +19,7 @@ class EventViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset().prefetch_related('event_images')
         active_only = self.request.query_params.get('active_only')
         if active_only == 'true':
-            now = timezone.now()
-            qs = qs.filter(is_active=True, date__date__gte=now.date()).order_by('-created_at')
+            qs = qs.filter(is_active=True, date__date__gte=timezone.localdate()).order_by('-created_at')
         return qs
 
     def perform_create(self, serializer):

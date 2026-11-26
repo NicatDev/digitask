@@ -1,3 +1,5 @@
+import 'package:mobile/core/server_time.dart';
+
 class NotificationModel {
   final int id;
   final String title;
@@ -21,7 +23,7 @@ class NotificationModel {
       title: json['title'],
       message: json['message'] ?? '',
       notificationType: json['notification_type'] ?? 'general',
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: parseServerTime(json['created_at']),
       isRead: json['is_read'] ?? false,
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile/core/server_time.dart';
 
 class HistoryCard extends StatelessWidget {
   final Map<String, dynamic> movement;
@@ -37,7 +38,7 @@ class HistoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final type = movement['movement_type'] ?? '';
     final date = movement['created_at'] != null 
-        ? DateFormat('dd.MM.yyyy HH:mm').format(DateTime.parse(movement['created_at']))
+        ? DateFormat('dd.MM.yyyy HH:mm').format(parseServerTime(movement['created_at']))
         : '-';
     final qtyOld = double.tryParse(movement['quantity_old']?.toString() ?? '0') ?? 0.0;
     final qtyNew = double.tryParse(movement['quantity_new']?.toString() ?? '0') ?? 0.0;

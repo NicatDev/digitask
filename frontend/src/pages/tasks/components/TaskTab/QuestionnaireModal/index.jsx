@@ -167,7 +167,8 @@ const QuestionnaireModal = ({
                     let simpleVal = val;
                     if (val && (col.field_type === 'date' || col.field_type === 'datetime')) {
                         try {
-                            if (val.format) simpleVal = val.format(col.field_type === 'date' ? 'YYYY-MM-DD' : 'YYYY-MM-DDTHH:mm:ss');
+                            // datetime vaxt zonası ilə göndərilir (Z = +04:00), server onu səhv UTC saymasın
+                            if (val.format) simpleVal = val.format(col.field_type === 'date' ? 'YYYY-MM-DD' : 'YYYY-MM-DDTHH:mm:ssZ');
                         } catch (e) { }
                     }
 

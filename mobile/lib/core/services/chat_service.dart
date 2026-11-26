@@ -9,6 +9,7 @@ import 'package:mobile/models/chat_model.dart';
 import 'package:mobile/models/user_model.dart';
 import 'package:mobile/core/services/token_service.dart';
 import 'package:mobile/screens/chat/reply_codec.dart';
+import 'package:mobile/core/server_time.dart';
 
 class ChatService {
   static final ChatService _instance = ChatService._internal();
@@ -326,7 +327,7 @@ class ChatService {
           senderId: data['sender_id'],
           senderName: data['sender'],
           content: data['message'],
-          createdAt: DateTime.parse(data['created_at']),
+          createdAt: parseServerTime(data['created_at']),
           isRead: currentUserId != null && data['sender_id'] == currentUserId, 
       );
       // Append to current messages
@@ -410,7 +411,7 @@ class ChatService {
                   unreadCount: group.unreadCount + 1, // Increment unread
                   lastMessage: stripReply((data['message_content'] ?? '').toString()),
                   lastMessageSender: data['sender_name'],
-                  lastMessageAt: DateTime.parse(data['created_at'])
+                  lastMessageAt: parseServerTime(data['created_at'])
               );
               
               currentGroups.removeAt(index);

@@ -9,6 +9,7 @@ import 'package:mobile/core/constants.dart';
 import 'dart:io'; 
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:mobile/core/server_time.dart';
 
 class SurveyModal extends StatefulWidget {
   final Map<String, dynamic> task;
@@ -207,7 +208,12 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
         if (val['column'] != null) {
            // For images, value might be full URL string
            // 'value' is generic getter from backend
-           _formValues[val['column'].toString()] = val['value'];
+           var existing = val['value'];
+           // Tarix-vaxt sahəsi yerli vaxtla göstərilir
+           if (existing is String) {
+             existing = displayServerValue(existing, pattern: 'yyyy-MM-dd HH:mm');
+           }
+           _formValues[val['column'].toString()] = existing;
         }
       }
     }
@@ -292,7 +298,10 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
       case 'decimal': return {'decimal_value': double.tryParse(value.toString())};
       case 'boolean': return {'boolean_value': value};
       case 'date': return {'date_value': value};
-      case 'datetime': return {'datetime_value': value};
+      // Yerli vaxtı UTC-yə çevirib göndəririk ki, server onu səhv zonada saxlamasın
+      case 'datetime':
+        final local = DateTime.tryParse(value.toString());
+        return {'datetime_value': local == null ? value : local.toUtc().toIso8601String()};
       default: return {'charfield_value': value};
     }
   }

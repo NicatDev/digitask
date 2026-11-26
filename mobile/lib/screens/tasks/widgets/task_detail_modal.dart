@@ -12,6 +12,7 @@ import 'package:mobile/screens/tasks/widgets/files_modal.dart';
 import 'package:mobile/screens/tasks/widgets/interaction_modals.dart' hide SurveyModal, FilesModal, ProductsModal;
 import 'package:mobile/screens/tasks/widgets/products_modal.dart';
 import 'package:mobile/screens/tasks/widgets/survey_modal.dart';
+import 'package:mobile/core/server_time.dart';
 
 final _imageUrlRe = RegExp(r'\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$', caseSensitive: false);
 
@@ -265,10 +266,10 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
     final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
     final dateFormat = DateFormat('dd MMM yyyy, HH:mm');
     final createdAt = task['created_at'] != null
-        ? dateFormat.format(DateTime.parse(task['created_at']))
+        ? dateFormat.format(parseServerTime(task['created_at']))
         : '-';
     final updatedAt = task['updated_at'] != null
-        ? dateFormat.format(DateTime.parse(task['updated_at']))
+        ? dateFormat.format(parseServerTime(task['updated_at']))
         : '-';
 
     final taskServicesRaw = task['task_services'];
@@ -434,7 +435,7 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
                                   ..._activities.map((a) {
                                     final m = a as Map<String, dynamic>;
                                     final at = m['created_at'] != null
-                                        ? dateFormat.format(DateTime.parse(m['created_at']))
+                                        ? dateFormat.format(parseServerTime(m['created_at']))
                                         : '';
                                     return Card(
                                       margin: const EdgeInsets.only(bottom: 8),
@@ -928,7 +929,7 @@ class _TaskDetailModalState extends State<TaskDetailModal> {
               if (note.isNotEmpty) Text(note, style: const TextStyle(color: Colors.grey)),
               ...values.map((v) => Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text('${v['column_name'] ?? v['column_key'] ?? '-'}: ${v['value'] ?? '-'}'),
+                    child: Text('${v['column_name'] ?? v['column_key'] ?? '-'}: ${v['value'] == null ? '-' : displayServerValue(v['value'])}'),
                   )),
             ],
           ),

@@ -12,6 +12,7 @@ import 'package:mobile/screens/tasks/widgets/assignee_modal.dart';
 import 'package:mobile/screens/tasks/widgets/customer_address_edit_modal.dart';
 import 'package:mobile/screens/tasks/widgets/task_display_helpers.dart';
 import 'package:mobile/screens/chat/task_message_codec.dart';
+import 'package:mobile/core/server_time.dart';
 
 String _digitsOnlyForCompare(String s) => s.replaceAll(RegExp(r'\D'), '');
 
@@ -67,7 +68,7 @@ class TaskCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // Format Date
     final createdAt = task['created_at'] != null
-        ? DateTime.tryParse(task['created_at'].toString())
+        ? tryParseServerTime(task['created_at'])
         : null;
     final dateStr = createdAt != null ? DateFormat('dd MMM yyyy').format(createdAt) : '';
     final timeStr = createdAt != null ? DateFormat('HH:mm').format(createdAt) : '';

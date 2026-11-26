@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/core/api/api_client.dart';
+import 'package:mobile/core/server_time.dart';
 
 /// Müştərinin bütün tapşırıqları — yalnız modal açılanda sorğu.
 /// [taskId] və ya [customerId] — tək biri verilməlidir.
@@ -106,7 +107,7 @@ class _CustomerTasksHistoryModalState extends State<CustomerTasksHistoryModal> {
                                     ? names.join(', ')
                                     : '—';
                                 final created = t['created_at'] != null
-                                    ? DateFormat('dd.MM.yyyy HH:mm').format(DateTime.parse(t['created_at']))
+                                    ? DateFormat('dd.MM.yyyy HH:mm').format(parseServerTime(t['created_at']))
                                     : '';
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 6),

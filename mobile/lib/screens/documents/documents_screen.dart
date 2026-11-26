@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:mobile/core/services/chat_service.dart';
 import 'package:mobile/models/user_model.dart';
+import 'package:mobile/core/server_time.dart';
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -826,7 +827,7 @@ class DocumentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final date = DateTime.tryParse(doc['created_at'] ?? '');
+    final date = tryParseServerTime(doc['created_at']);
     final dateStr = date != null ? DateFormat('dd.MM.yyyy HH:mm').format(date) : '';
     
     // Operation logic: action OR task_title OR '-'
