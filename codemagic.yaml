@@ -1,6 +1,9 @@
 # Codemagic CI/CD — DigiTask (Flutter iOS)
 #
-# Dashboard → Code signing identities: remove extra provisioning profiles; keep only digitask_app.
+# Apple hesabı: Diginet LLC (Team MCTUG52M88)
+# Codemagic tələbləri (Team settings):
+#   - Integrations → Developer Portal: API açarı "digitask-new"
+#   - Code signing identities: Apple Distribution sertifikatı + com.digigroup.digitask üçün App Store profili
 
 workflows:
   ios-flutter-release:
@@ -10,15 +13,15 @@ workflows:
     working_directory: mobile
 
     integrations:
-      app_store_connect: digitask
+      app_store_connect: digitask-new
 
     environment:
       ios_signing:
-        provisioning_profiles:
-          - digitask
-       
+        distribution_type: app_store
+        bundle_identifier: com.digigroup.digitask
+
       vars:
-        APP_STORE_APPLE_ID: "6760935006"
+        APP_STORE_APPLE_ID: "6839693177"
 
       flutter: stable
       xcode: latest
@@ -31,11 +34,6 @@ workflows:
       - name: Setup signing
         script: |
           xcode-project use-profiles --verbose
-
-      - name: Debug provisioning profiles
-        script: |
-          echo "Available provisioning profiles:"
-          ls ~/Library/MobileDevice/Provisioning\ Profiles/
 
       - name: Get Flutter packages
         script: flutter pub get
@@ -50,13 +48,14 @@ workflows:
 
       - name: Set build number
         script: |
-          BUILD_NUMBER=16
+          # App Store Connect-dəki sonuncu build nömrəsi + 1 (heç build yoxdursa 1)
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || true)
+          BUILD_NUMBER=$(( ${LATEST:-0} + 1 ))
           echo "Using build number: $BUILD_NUMBER"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $CM_ENV
 
       - name: Build IPA
         script: |
-          flutter pub get
           flutter build ipa --release --build-name=1.0.0 --build-number=$BUILD_NUMBER --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
@@ -66,5 +65,7 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_testflight: true
-        submit_to_app_store: true
+        # İlk mərhələ: build yalnız App Store Connect-ə yüklənir (daxili TestFlight).
+        # Xarici beta və mağazaya göndərmə, mağaza məlumatları doldurulandan sonra açılacaq.
+        submit_to_testflight: false
+        submit_to_app_store: false

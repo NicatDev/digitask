@@ -41,10 +41,10 @@ class DefaultFirebaseOptions {
   // iOS config from GoogleService-Info.plist
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDBQSGfRYvjacEKYmbjRsO92DWB05ga874',
-    appId: '1:656216418148:ios:8836e77ad8fff805c6fc71',
+    appId: '1:656216418148:ios:9b2a98aae73820bec6fc71',
     messagingSenderId: '656216418148',
     projectId: 'digigroup-11ad6',
     storageBucket: 'digigroup-11ad6.firebasestorage.app',
-    iosBundleId: 'com.digigroup.ios',
+    iosBundleId: 'com.digigroup.digitask',
   );
 }

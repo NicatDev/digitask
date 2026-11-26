@@ -49,3 +49,8 @@ yarn-error.log*
 !**/migrations/__init__.py
 **/__pycache__/
 *.pyc
+# Local secrets / notes (never commit)
+*.local.md
+*.p8
+*.p12
+*.mobileprovision
