@@ -6,6 +6,7 @@ import 'package:mobile/core/services/chat_service.dart';
 import 'package:mobile/models/user_model.dart';
 import 'package:mobile/screens/warehouse/widgets/location_picker_modal.dart';
 import 'package:mobile/screens/warehouse/widgets/warehouse_card.dart';
+import 'package:mobile/core/osm_attribution.dart';
 
 class WarehousesTab extends StatefulWidget {
   const WarehousesTab({super.key});
@@ -741,6 +742,7 @@ class LocationMapModal extends StatelessWidget {
                     ),
                   ],
                 ),
+                const OsmAttribution(),
               ],
             ),
           ),

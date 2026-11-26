@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:mobile/core/osm_attribution.dart';
 
 class LocationPickerModal extends StatefulWidget {
   final LatLng? initialLocation;
@@ -65,6 +66,7 @@ class _LocationPickerModalState extends State<LocationPickerModal> {
                     ),
                   ],
                 ),
+                const OsmAttribution(),
               ],
             ),
           ),

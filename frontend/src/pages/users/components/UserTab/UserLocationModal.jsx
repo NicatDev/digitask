@@ -228,7 +228,7 @@ const UserLocationModal = ({ open, onCancel, userId }) => {
                         zoom={13}
                         style={{ height: '100%', width: '100%' }}
                     >
-                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                        <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                         <MapResizer />
 
                         {/* Fly to user when data loads */}

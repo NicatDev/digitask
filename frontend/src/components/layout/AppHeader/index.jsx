@@ -80,7 +80,7 @@ const AppHeader = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
                     <Button
                         type="text"
                         icon={<AndroidOutlined style={{ color: '#3DDC84', fontSize: '18px' }} />}
-                        onClick={() => window.open('/digitask-20261126.apk', '_blank')}
+                        onClick={() => window.open('/digitask-20261126b.apk', '_blank')}
                         title="Android APK Yüklə"
                     />
 

@@ -10,6 +10,7 @@ import 'package:mobile/core/tracking_socket_url.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:mobile/core/osm_attribution.dart';
 
 /// OSRM public demo — same as web live-map.
 const _osrmBase =
@@ -883,6 +884,7 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
                         ),
                         PolylineLayer(polylines: _buildPolylines()),
                         MarkerLayer(markers: _buildMarkers()),
+                        const OsmAttribution(),
                       ],
                     ),
                     Positioned(

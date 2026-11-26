@@ -578,7 +578,7 @@ const CustomerTab = ({ isActive }) => {
                             zoom={15}
                             style={{ height: '100%', width: '100%' }}
                         >
-                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                            <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                             <MapResizer />
                             <Marker position={[viewingCustomer.address_coordinates.lat, viewingCustomer.address_coordinates.lng]}>
                                 <Popup>

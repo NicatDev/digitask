@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mobile/core/services/chat_service.dart';
 import 'package:mobile/models/user_model.dart';
+import 'package:mobile/core/osm_attribution.dart';
 
 class CustomersTab extends StatefulWidget {
   const CustomersTab({super.key});
@@ -1069,6 +1070,7 @@ class LocationMapModal extends StatelessWidget {
                     ),
                   ],
                 ),
+                const OsmAttribution(),
               ],
             ),
           ),
@@ -1146,6 +1148,7 @@ class _LocationPickerModalState extends State<LocationPickerModal> {
                     ),
                   ],
                 ),
+                const OsmAttribution(),
               ],
             ),
           ),

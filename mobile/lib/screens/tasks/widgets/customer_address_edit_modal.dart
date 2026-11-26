@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mobile/core/api/api_client.dart';
+import 'package:mobile/core/osm_attribution.dart';
 
 class CustomerAddressEditModal extends StatefulWidget {
   final int customerId;
@@ -363,6 +364,7 @@ class _CustomerAddressEditModalState extends State<CustomerAddressEditModal> {
                                 ),
                               ],
                             ),
+                            const OsmAttribution(),
                           ],
                         ),
                       ),
